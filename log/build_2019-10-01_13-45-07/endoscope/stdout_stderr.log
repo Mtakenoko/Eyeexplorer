@@ -1,0 +1,31 @@
+-- Found ament_cmake: 0.7.3 (/home/takeyama/workspace/ros2_ws/install/ament_cmake/share/ament_cmake/cmake)
+-- Using PYTHON_EXECUTABLE: /usr/bin/python3
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Found rclcpp: 0.7.10 (/home/takeyama/workspace/ros2_ws/install/rclcpp/share/rclcpp/cmake)
+-- Found rosidl_adapter: 0.7.6 (/home/takeyama/workspace/ros2_ws/install/rosidl_adapter/share/rosidl_adapter/cmake)
+-- Found rmw_implementation_cmake: 0.7.2 (/home/takeyama/workspace/ros2_ws/install/rmw_implementation_cmake/share/rmw_implementation_cmake/cmake)
+-- Found sensor_msgs: 0.7.0 (/home/takeyama/workspace/ros2_ws/install/sensor_msgs/share/sensor_msgs/cmake)
+-- Found rclcpp_components: 0.7.10 (/home/takeyama/workspace/ros2_ws/install/rclcpp_components/share/rclcpp_components/cmake)
+-- Found poco_vendor:  (/home/takeyama/workspace/ros2_ws/install/poco_vendor/share/poco_vendor/cmake)
+CMake Error at CMakeLists.txt:26 (find_package):
+  By not providing "Findcamera_info_manager.cmake" in CMAKE_MODULE_PATH this
+  project has asked CMake to find a package configuration file provided by
+  "camera_info_manager", but CMake did not find one.
+
+  Could not find a package configuration file provided by
+  "camera_info_manager" with any of the following names:
+
+    camera_info_managerConfig.cmake
+    camera_info_manager-config.cmake
+
+  Add the installation prefix of "camera_info_manager" to CMAKE_PREFIX_PATH
+  or set "camera_info_manager_DIR" to a directory containing one of the above
+  files.  If "camera_info_manager" provides a separate development package or
+  SDK, be sure it has been installed.
+
+
+-- Configuring incomplete, errors occurred!
+See also "/home/takeyama/workspace/ros2_eyeexplorer/build/endoscope/CMakeFiles/CMakeOutput.log".
+See also "/home/takeyama/workspace/ros2_eyeexplorer/build/endoscope/CMakeFiles/CMakeError.log".
+Makefile:252: recipe for target 'cmake_check_build_system' failed
+make: *** [cmake_check_build_system] Error 1

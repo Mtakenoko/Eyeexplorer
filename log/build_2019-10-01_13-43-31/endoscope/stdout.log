@@ -1,0 +1,15 @@
+-- Found ament_cmake: 0.7.3 (/home/takeyama/workspace/ros2_ws/install/ament_cmake/share/ament_cmake/cmake)
+-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.6.8", minimum required is "3") 
+-- Using PYTHON_EXECUTABLE: /usr/bin/python3
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Found rclcpp: 0.7.10 (/home/takeyama/workspace/ros2_ws/install/rclcpp/share/rclcpp/cmake)
+-- Found rosidl_adapter: 0.7.6 (/home/takeyama/workspace/ros2_ws/install/rosidl_adapter/share/rosidl_adapter/cmake)
+-- Found rmw_implementation_cmake: 0.7.2 (/home/takeyama/workspace/ros2_ws/install/rmw_implementation_cmake/share/rmw_implementation_cmake/cmake)
+-- Found sensor_msgs: 0.7.0 (/home/takeyama/workspace/ros2_ws/install/sensor_msgs/share/sensor_msgs/cmake)
+-- Found OpenCV: /usr (found suitable version "3.2.0", minimum required is "3") 
+-- Found rclcpp_components: 0.7.10 (/home/takeyama/workspace/ros2_ws/install/rclcpp_components/share/rclcpp_components/cmake)
+-- Found poco_vendor:  (/home/takeyama/workspace/ros2_ws/install/poco_vendor/share/poco_vendor/cmake)
+-- Configuring incomplete, errors occurred!
+See also "/home/takeyama/workspace/ros2_eyeexplorer/build/endoscope/CMakeFiles/CMakeOutput.log".
+See also "/home/takeyama/workspace/ros2_eyeexplorer/build/endoscope/CMakeFiles/CMakeError.log".
+Makefile:252: recipe for target 'cmake_check_build_system' failed

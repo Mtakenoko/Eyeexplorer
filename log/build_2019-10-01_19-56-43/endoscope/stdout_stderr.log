@@ -1,0 +1,25 @@
+[35m[1mScanning dependencies of target ROI[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/ROI.dir/src/ROI.cpp.o[0m
+[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:[m[K In function ‘[01m[Kcv::Rect set_ROI(cv::Mat)[m[K’:
+[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:71:48:[m[K [01;35m[Kwarning: [m[Kformat ‘[01m[K%f[m[K’ expects argument of type ‘[01m[Kdouble[m[K’, but argument 2 has type ‘[01m[Kint[m[K’ [[01;35m[K-Wformat=[m[K]
+   printf("ROI.x = %f, ROI.y = %f\n",[32m[KROI.x[m[K,ROI.y[01;35m[K)[m[K;
+                                     [32m[K~~~~~[m[K      [01;35m[K^[m[K
+[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:71:48:[m[K [01;35m[Kwarning: [m[Kformat ‘[01m[K%f[m[K’ expects argument of type ‘[01m[Kdouble[m[K’, but argument 3 has type ‘[01m[Kint[m[K’ [[01;35m[K-Wformat=[m[K]
+[100%] [32m[1mLinking CXX executable ROI[0m
+[100%] Built target ROI
+[100%] Built target ROI
+[36mInstall the project...[0m
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/lib/endoscope/ROI
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/ament_index/resource_index/package_run_dependencies/endoscope
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/ament_index/resource_index/parent_prefix_path/endoscope
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/environment/path.sh
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/local_setup.bash
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/local_setup.sh
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/local_setup.zsh
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/ament_index/resource_index/packages/endoscope
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/cmake/endoscopeConfig.cmake
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/cmake/endoscopeConfig-version.cmake
+-- Up-to-date symlink: /home/takeyama/workspace/ros2_eyeexplorer/install/endoscope/share/endoscope/package.xml

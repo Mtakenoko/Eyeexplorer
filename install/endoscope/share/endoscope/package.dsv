@@ -1,0 +1,8 @@
+source;share/endoscope/hook/cmake_prefix_path.ps1
+source;share/endoscope/hook/cmake_prefix_path.dsv
+source;share/endoscope/hook/cmake_prefix_path.sh
+source;share/endoscope/local_setup.bash
+source;share/endoscope/local_setup.dsv
+source;share/endoscope/local_setup.ps1
+source;share/endoscope/local_setup.sh
+source;share/endoscope/local_setup.zsh
