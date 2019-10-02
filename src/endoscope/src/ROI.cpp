@@ -10,8 +10,7 @@
 
 #include "sensor_msgs/msg/image.hpp"
 
-int
-encoding2mat_type(const std::string & encoding)
+int encoding2mat_type(const std::string & encoding)
 {
   if (encoding == "mono8") {
     return CV_8UC1;
@@ -30,6 +29,39 @@ encoding2mat_type(const std::string & encoding)
   } else {
     throw std::runtime_error("Unsupported encoding type");
   }
+}
+
+/// Convert an OpenCV matrix encoding type to a string format recognized by sensor_msgs::Image.
+/**
+ * \param[in] mat_type The OpenCV encoding type.
+ * \return A string representing the encoding type.
+ */
+std::string mat_type2encoding(int mat_type)
+{
+  switch (mat_type) {
+    case CV_8UC1:
+      return "mono8";
+    case CV_8UC3:
+      return "bgr8";
+    case CV_16SC1:
+      return "mono16";
+    case CV_8UC4:
+      return "rgba8";
+    default:
+      throw std::runtime_error("Unsupported encoding type");
+  }
+}
+void convert_frame_to_message(const cv::Mat & frame, size_t frame_id, sensor_msgs::msg::Image & msg)
+{
+  // copy cv information into ros message
+  msg.height = frame.rows;
+  msg.width = frame.cols;
+  msg.encoding = mat_type2encoding(frame.type());
+  msg.step = static_cast<sensor_msgs::msg::Image::_step_type>(frame.step);
+  size_t size = frame.step * frame.rows;
+  msg.data.resize(size);
+  memcpy(&msg.data[0], frame.data, size);
+  msg.header.frame_id = std::to_string(frame_id);
 }
 
 cv::Rect set_ROI(const cv::Mat src){    //ROIを設定する
@@ -70,16 +102,10 @@ cv::Rect set_ROI(const cv::Mat src){    //ROIを設定する
   return ROI;
 }
 
-bool g_IsFirst = true;
-cv::Rect g_ROI;
-
-/// Convert the ROS Image message to an OpenCV matrix and display it to the user.
-// \param[in] msg The image message to show.
-void show_image(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera, rclcpp::Logger logger)
+std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> g_pub;
+void subpub_image(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera, rclcpp::Logger logger)
 {
   RCLCPP_INFO(logger, "Received image #%s", msg->header.frame_id.c_str());
-  std::cerr << "Received image #" << msg->header.frame_id.c_str() << std::endl;
-
   if (show_camera) {
     // Convert to an OpenCV matrix by assigning the data.
     cv::Mat frame(msg->height, msg->width, encoding2mat_type(msg->encoding), const_cast<unsigned char *>(msg->data.data()), msg->step);
@@ -87,14 +113,15 @@ void show_image(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera, 
     if (msg->encoding == "rgb8") {
       cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
     }
-    
-    if(g_IsFirst){      //一回だけの処理(ROIの設定)
-      g_ROI = set_ROI(frame);   //raw_imageを元にROIを決定
-      g_IsFirst = false;
-      printf("(ROI.x,ROI.y) = (%d,%d)\n",g_ROI.x,g_ROI.y);
-      printf("(ROI.height,ROI.width) = (%d,%d)\n",g_ROI.height,g_ROI.width);
+    static bool IsFirst = true;
+    static cv::Rect ROI;
+    if(IsFirst){      //一回だけの処理(ROIの設定)
+      ROI = set_ROI(frame);   //raw_imageを元にROIを決定
+      IsFirst = false;
+      printf("(ROI.x,ROI.y) = (%d,%d)\n",ROI.x,ROI.y);
+      printf("(ROI.height,ROI.width) = (%d,%d)\n",ROI.height,ROI.width);
     }
-    cv::Mat cvframe = frame(g_ROI); //ROIをかける
+    cv::Mat cvframe = frame(ROI); //ROIをかける
 
     //ガウシアンフィルタをかける
     /*cv::Mat gaussian_frame;
@@ -104,6 +131,15 @@ void show_image(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera, 
     cv::imshow("ROI", cvframe);
     // Draw the screen and wait for 1 millisecond.
     cv::waitKey(1);
+
+    //Publish Image
+    RCLCPP_INFO(logger, "Publishing image #%s", msg->header.frame_id.c_str());
+    auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
+    const rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+
+    convert_frame_to_message(cvframe, atoi(msg->header.frame_id.c_str()), *msg_pub);  //cv → msg
+    g_pub->publish(std::move(msg_pub));
+
   }
 }
 
@@ -117,7 +153,8 @@ int main(int argc, char * argv[])
   rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
   rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
   bool show_camera = true;
-  std::string topic("image");   
+  std::string topic_sub("image");   
+  std::string topic_pub("ROI_image");
 
   // Force flush of the stdout buffer.
   // This ensures a correct sync of all prints
@@ -125,46 +162,31 @@ int main(int argc, char * argv[])
   setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
   if (show_camera) {
-    // Initialize an OpenCV named window called "showimage".
-    cv::namedWindow("ROI", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("ROI", cv::WINDOW_AUTOSIZE);  // Initialize an OpenCV named window called "showimage".
     cv::waitKey(1);
   }
 
   // Initialize a ROS node.
   auto node = rclcpp::Node::make_shared("ROI");
+  rclcpp::Logger node_logger = node->get_logger();
 
   // Set quality of service profile based on command line options.
-  auto qos = rclcpp::QoS(
-    rclcpp::QoSInitialization(
-      // The history policy determines how messages are saved until taken by
-      // the reader.
-      // KEEP_ALL saves all messages until they are taken.
-      // KEEP_LAST enforces a limit on the number of messages that are saved,
-      // specified by the "depth" parameter.
-      history_policy,
-      // Depth represents how many messages to store in history when the
-      // history policy is KEEP_LAST.
-      depth
-  ));
-
-  // The reliability policy can be reliable, meaning that the underlying transport layer will try
-  // ensure that every message gets received in order, or best effort, meaning that the transport
-  // makes no guarantees about the order or reliability of delivery.
+  auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
   qos.reliability(reliability_policy);
 
-  auto callback = [show_camera, &node](const sensor_msgs::msg::Image::SharedPtr msg)
-    {
-      show_image(msg, show_camera, node->get_logger());
-    };
+  auto callback = [show_camera, &node](const sensor_msgs::msg::Image::SharedPtr msg_sub){
+    subpub_image(msg_sub, show_camera, node->get_logger());
+  };    
 
-  std::cerr << "Subscribing to topic '" << topic << "'" << std::endl;
-  RCLCPP_INFO(node->get_logger(), "Subscribing to topic '%s'", topic.c_str());
-  // Initialize a subscriber that will receive the ROS Image message to be displayed.
-  auto sub = node->create_subscription<sensor_msgs::msg::Image>(
-    topic, qos, callback);
+  //Set QoS to Subscribe
+  RCLCPP_INFO(node->get_logger(), "Subscribing to topic '%s'", topic_sub.c_str());
+  auto sub = node->create_subscription<sensor_msgs::msg::Image>(topic_sub, qos, callback);  // Initialize a subscriber that will receive the ROS Image message to be displayed.
+
+  //Set QoS to Publish
+  RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub.c_str());
+  g_pub = node->create_publisher<sensor_msgs::msg::Image>(topic_pub, qos); // Create the image publisher with our custom QoS profile.
 
   rclcpp::spin(node);
-
   rclcpp::shutdown();
 
   return 0;
