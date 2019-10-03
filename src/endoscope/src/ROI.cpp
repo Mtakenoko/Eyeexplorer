@@ -10,6 +10,8 @@
 
 #include "sensor_msgs/msg/image.hpp"
 
+#include <ktl.h>
+
 int encoding2mat_type(const std::string & encoding)
 {
   if (encoding == "mono8") {
@@ -124,9 +126,9 @@ void subpub_image(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera
     cv::Mat cvframe = frame(ROI); //ROIをかける
 
     //ガウシアンフィルタをかける
-    /*cv::Mat gaussian_frame;
-    cv::GaussianBlur(cvframe, cvframe, cv::Size(3,3), 10, 10);
-    */
+    cv::Mat gaussian_frame;
+    //cv::GaussianBlur(cvframe, cvframe, cv::Size(3,3), 10, 10);
+    
     // Show the image in a window called "showimage".
     cv::imshow("ROI", cvframe);
     // Draw the screen and wait for 1 millisecond.
@@ -138,8 +140,7 @@ void subpub_image(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera
     const rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
 
     convert_frame_to_message(cvframe, atoi(msg->header.frame_id.c_str()), *msg_pub);  //cv → msg
-    g_pub->publish(std::move(msg_pub));
-
+    g_pub->publish(std::move(msg_pub)); 
   }
 }
 
