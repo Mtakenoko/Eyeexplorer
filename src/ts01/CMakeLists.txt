@@ -38,6 +38,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+add_executable(ts01_open_close
+  src/ts01_open_close.cpp
+)
+ament_target_dependencies(ts01_open_close
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+)
+install(TARGETS
+  ts01_open_close
+  DESTINATION lib/${PROJECT_NAME}
+)
+target_link_libraries(ts01_open_close -lts01)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
