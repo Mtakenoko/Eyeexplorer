@@ -3,10 +3,11 @@
 #include <sstream>
 #include <string>
 
+#include "opencv2/opencv.hpp"
+#include "opencv2/features2d.hpp"
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include <opencv2/opencv.hpp>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -66,71 +67,66 @@ std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> g_pub;
 
 void feature_point_extraction(const sensor_msgs::msg::Image::SharedPtr msg, bool show_camera, size_t feature, size_t match, rclcpp::Logger logger){
 
-    RCLCPP_INFO(logger, "Received image #%s", msg->header.frame_id.c_str());
-    // Convert to an OpenCV matrix by assigning the data.
-    cv::Mat frame(msg->height, msg->width, encoding2mat_type(msg->encoding), const_cast<unsigned char *>(msg->data.data()), msg->step);
+  RCLCPP_INFO(logger, "Received image #%s", msg->header.frame_id.c_str());
+  // Convert to an OpenCV matrix by assigning the data.
+  cv::Mat frame(msg->height, msg->width, encoding2mat_type(msg->encoding), const_cast<unsigned char *>(msg->data.data()), msg->step);
 
-    if (msg->encoding == "rgb8") {
-    cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
-    }
+  if (msg->encoding == "rgb8") {
+  cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
+  }
 
-    static cv::Mat dst1, dst2;
-    static std::vector<cv::KeyPoint> keypoints1, keypoints2;
-	static cv::Mat descriptor1, descriptor2;
- 
-    dst2 = frame;
-    cv::Ptr<cv::FeatureDetector> detector;
-    cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
-    if (feature == 0){
-        // AKAZE特徴抽出
-	    detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
-	    descriptorExtractor = cv::AKAZE::create();
-    }else if (feature == 1){
-        //ORB特徴量抽出
-        detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
-	    descriptorExtractor = cv::AKAZE::create();
-    }else if (feature == 2){
-        //SIFT特徴量抽出
-        detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
-	    descriptorExtractor = cv::AKAZE::create();        
-    }else if (feature == 3){
-        //SURF特徴量抽出
-        detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
-	    descriptorExtractor = cv::AKAZE::create();        
-    }else if (feature == 4){
-        //BRISK特徴量抽出
-        detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
-	    descriptorExtractor = cv::AKAZE::create();        
-    }else{
-        printf("Choosing Incorrect Option of Feature point detector.\n");
-        return;
-    }
+  ////  detection 開始  ////
+  static cv::Mat dst1, dst2;
+  static std::vector<cv::KeyPoint> keypoints1, keypoints2;
+  static cv::Mat descriptor1, descriptor2;
+
+  dst2 = frame;
+  cv::Ptr<cv::FeatureDetector> detector;
+  cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
+  if (feature == 0){
+    // AKAZE特徴抽出
+    detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
+    descriptorExtractor = cv::AKAZE::create();
+  } else if (feature == 1){
+    //ORB特徴量抽出
+    detector = cv::ORB::create(30, 1.25f, 4, 7, 0, 2, 0, 7);
+    descriptorExtractor = cv::ORB::create();      
+  } else if (feature == 2){     
+    //BRISK特徴量抽出
+    detector = cv::BRISK::create(120, 3, 0.6f);
+    descriptorExtractor = cv::BRISK::create();  
+  } else{
+    printf("Choosing Incorrect Option of Feature point detector.\n");
+    return;
+  }
 
 	detector->detect(dst2, keypoints2);
 	descriptorExtractor->compute(dst2, keypoints2, descriptor2);
 
-    static int i = 0; i++;
-    if(i < 3){      //一回だけの処理(ROIの設定)
-        dst1 = dst2;
-        keypoints1 = keypoints2;
-        descriptor1 = descriptor2;    
-        return;
-    }
-    ////    matching 開始   ////
-    //対応点の探索
-    cv::Ptr<cv::DescriptorMatcher> matcher;
-    if (match == 0){
-        //Brute-Force matcher
-        matcher = cv::DescriptorMatcher::create("BruteForce");   
-    }else if (match == 1){
-        //FLANN
-        matcher = cv::DescriptorMatcher::create("BruteForce");  
-    }else{
-        printf("Choosing Incorrect Option of Matcher\n");
-        return;
-    }
-   	
-    std::vector<cv::DMatch> dmatch;
+  static int i = 0; i++;
+  if(i < 3){      //一回だけの処理(ROIの設定)
+      dst1 = dst2;
+      keypoints1 = keypoints2;
+      descriptor1 = descriptor2;    
+      return;
+  }
+  ////    detection 終了  ////
+
+  ////    matching 開始   ////
+  //対応点の探索
+  cv::Ptr<cv::DescriptorMatcher> matcher;
+  if (match == 0){
+      //Brute-Force matcher
+      matcher = cv::DescriptorMatcher::create("BruteForce");   
+  }else if (match == 1){
+      //FLANN
+      matcher = cv::DescriptorMatcher::create("FlannBased");  
+  }else{
+      printf("Choosing Incorrect Option of Matcher\n");
+      return;
+  }
+  
+  std::vector<cv::DMatch> dmatch;
 	std::vector<cv::DMatch> dmatch12, dmatch21;
 	std::vector<cv::Point2f> match_point1,match_point2;
 
@@ -165,28 +161,78 @@ void feature_point_extraction(const sensor_msgs::msg::Image::SharedPtr msg, bool
 		}
 	}     
     
-    //インライアの対応点のみ表示
+  //インライアの対応点のみ表示
 	cv::Mat cvframe;
-    cv::drawMatches(dst1, keypoints1, dst2, keypoints2, dmatch, cvframe);
-    if (show_camera){
-        cv::imshow("cvframe", cvframe);
-        cv::waitKey(1);
-    }
+  cv::drawMatches(dst1, keypoints1, dst2, keypoints2, dmatch, cvframe);
+  if (show_camera){
+    cv::imshow("cvframe", cvframe);
+    cv::waitKey(1);
+  }
 
-    dst1 = dst2;
-    keypoints1 = keypoints2;
-    descriptor1 = descriptor2;   
+  dst1 = dst2;
+  keypoints1 = keypoints2;
+  descriptor1 = descriptor2;   
+  ////    matching 終了   ////
+  
+  ////    reconstruction 開始   ////
+  std::vector<cv::Point2d> p1;
+	std::vector<cv::Point2d> p2;
 
-    
-    ////    matching 終了   ////
+	//対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
+	for (size_t i = 0; i < dmatch.size(); i++) {	//特徴点の数だけ処理
+		cv::Mat ip(3, 1, CV_64FC1);	//3×1のベクトル
+		cv::Point2d p;
 
-    //Publish Image
-    RCLCPP_INFO(logger, "Publishing image #%s", msg->header.frame_id.c_str());
-    auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
-    const rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+		ip.at<double>(0) = keypoints1[dmatch[i].queryIdx].pt.x;	//1枚目の画像の特徴点のx座標を取得
+		ip.at<double>(1) = keypoints1[dmatch[i].queryIdx].pt.y;	//1枚目の画像の特徴点のy座標を取得
+		ip.at<double>(2) = 1.0;	//z座標については焦点距離1.0だとする
 
-    convert_frame_to_message(cvframe, atoi(msg->header.frame_id.c_str()), *msg_pub);  //cv → msg
-    g_pub->publish(std::move(msg_pub)); 
+		cv::Mat cameraMatrix;	
+		//ip = cameraMatrix.inv()*ip;	//カメラのキャリブレーション行列により画像平面からグローバル平面へ写像
+		p.x = ip.at<double>(0);
+		p.y = ip.at<double>(1);
+		p1.push_back(p);
+
+		ip.at<double>(0) = keypoints2[dmatch[i].trainIdx].pt.x;	//2枚目の画像の特徴点のx座標を取得
+		ip.at<double>(1) = keypoints2[dmatch[i].trainIdx].pt.y;	//2枚目の画像の特徴点のy座標を取得
+		ip.at<double>(2) = 1.0;
+
+		//ip = cameraMatrix.inv()*ip;	//カメラのキャリブレーション行列により画像平面からグローバル平面へ写像
+		p.x = ip.at<double>(0);
+		p.y = ip.at<double>(1);
+		p2.push_back(p);
+	}
+	cv::Mat mask; //RANSACの結果を保持するためのマスク
+	cv::Mat essentialMat = cv::findEssentialMat(p1, p2, 1.0, cv::Point2f(0, 0), cv::RANSAC, 0.9999, 0.003, mask);	//RANSACによって
+
+	cv::Mat r, t;
+	cv::recoverPose(essentialMat, p1, p2, r, t);
+  
+	//正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
+	cv::Mat prjMat1, prjMat2;
+	prjMat1 = cv::Mat::eye(3, 4, CV_64FC1); //片方は回転、並進ともに0
+	prjMat2 = cv::Mat(3, 4, CV_64FC1);
+
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			prjMat2.at<double>(i, j) = r.at<double>(i, j);
+		}
+	}
+	prjMat2.at<double>(0, 3) = t.at<double>(0);
+	prjMat2.at<double>(1, 3) = t.at<double>(1);
+	prjMat2.at<double>(2, 3) = t.at<double>(2);
+	
+	cv::Mat point3D;
+	cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point3D);	//三角測量
+  cv::imshow("point3D",point3D);
+  cv::waitKey(1);
+
+  //Publish Image
+  RCLCPP_INFO(logger, "Publishing image #%s", msg->header.frame_id.c_str());
+  auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
+
+  convert_frame_to_message(cvframe, atoi(msg->header.frame_id.c_str()), *msg_pub);  //cv → msg
+  g_pub->publish(std::move(msg_pub)); 
 }
 
 int main(int argc, char * argv[])
@@ -228,13 +274,14 @@ int main(int argc, char * argv[])
         feature_point_extraction(msg_sub, show_camera, feature, match, node->get_logger());
     };    
 
+    //Set QoS to Publish
+    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub.c_str());
+    g_pub = node->create_publisher<sensor_msgs::msg::Image>(topic_pub, qos); // Create the image publisher with our custom QoS profile.
+    
     //Set QoS to Subscribe
     RCLCPP_INFO(node->get_logger(), "Subscribing to topic '%s'", topic_sub.c_str());
     auto sub = node->create_subscription<sensor_msgs::msg::Image>(topic_sub, qos, callback);  // Initialize a subscriber that will receive the ROS Image message to be displayed.
 
-    //Set QoS to Publish
-    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub.c_str());
-    g_pub = node->create_publisher<sensor_msgs::msg::Image>(topic_pub, qos); // Create the image publisher with our custom QoS profile.
 
     rclcpp::spin(node);
     rclcpp::shutdown();

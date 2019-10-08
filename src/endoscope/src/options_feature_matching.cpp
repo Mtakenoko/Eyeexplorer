@@ -75,9 +75,7 @@ bool parse_command_options(
       ss << " -e: Feature point detector.  " << std::endl;
       ss << "   0 - AKAZE" << std::endl;
       ss << "   1 - ORB" << std::endl;
-      ss << "   2 - SIFT" << std::endl;
-      ss << "   3 - SURF" << std::endl;
-      ss << "   4 - BRISK" << std::endl;
+      ss << "   2 - BRISK" << std::endl;
     }
     if (match != nullptr) {
       ss << " -m: Matching Feature point.  " << std::endl;
