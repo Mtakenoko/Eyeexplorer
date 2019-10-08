@@ -125,7 +125,7 @@ int main(int argc, char * argv[])
   size_t height = 540;
   size_t device = 0;
   bool movie_mode = false;
-  std::string topic("image");
+  std::string topic("ROI_image");
 
   // Force flush of the stdout buffer.
   // This ensures a correct sync of all prints
