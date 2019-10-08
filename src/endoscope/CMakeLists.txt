@@ -41,6 +41,21 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+add_executable(cap_ROI
+  src/cap_ROI.cpp
+  src/options_cap_ROI.cpp
+)
+ament_target_dependencies(cap_ROI
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+)
+install(TARGETS
+  cap_ROI
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 add_executable(matching
   src/feature_matching.cpp
   src/options_feature_matching.cpp
