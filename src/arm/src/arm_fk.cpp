@@ -192,6 +192,6 @@ ReadEncoder::ReadEncoder()
     
     publisher_ = this->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip,qos);
     subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(topic_sub,qos,callback);
-    timer_ = this->create_wall_timer(10ms, publish_callback);
+    timer_ = this->create_wall_timer(1ms, publish_callback);
 }
 

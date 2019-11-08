@@ -217,8 +217,8 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
   detector->detect(dst2, keypoints2);
   descriptorExtractor->compute(dst2, keypoints2, descriptor2);
 
-  static int i = 0; i++;
-  if(i < 3){
+  static int loop_count = 0; loop_count++;
+  if(loop_count < 3){
       dst1 = dst2.clone();
       keypoints1 = keypoints2;
       descriptor1 = descriptor2.clone();    
@@ -250,7 +250,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     //maskの領域生成
     cv::Mat mask12 = cv::Mat::zeros((keypoints1.size()), keypoints2.size(), CV_8U);
     cv::Mat mask21 = cv::Mat::zeros((keypoints2.size()), keypoints1.size(), CV_8U);
-    int count = 0;
+    int mask_count = 0;
     if(!mask1.empty() && !mask2.empty()){
       cv::Point2d pt1, pt2;
       for(size_t i = 0; i < keypoints1.size(); i++){
@@ -259,12 +259,12 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
           pt2 = keypoints2[j].pt;
           if(mask1.at<uchar>(pt1) == 255 && mask2.at<uchar>(pt2) == 255){ //キーポイント点ではどちらもマスクが白なら
             mask12.at<uchar>(i, j) = 255; //その点についてはマスクを除去してあげよう
-            count++;
+            mask_count++;
           }
         }
       }
     }
-    printf("count num = %d\n",count);
+    printf("count num = %d\n",mask_count);
     mask21 = mask12.t();
     if(!mask12.empty() && !mask21.empty()){
       matcher->match(descriptor1, descriptor2, dmatch12, mask12); //dst1 -> dst2
@@ -318,58 +318,10 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
 
   ////    reconstruction 開始     ////
   //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
-  cv::Mat cameraMatrix(3, 3, CV_32FC1);
-  float fovx = 364.283456, fovy = 366.617877, u0 = 159.699646, v0 = 155.864578;
-  cameraMatrix = (cv::Mat_<float>(3,3) << fovx, 0.0, u0, 0.0, fovy, v0, 0.0, 0.0, 1.0);
+  cv::Mat cameraMatrix(3, 3, CV_64FC1);
+  double fovx = 364.283456, fovy = 366.617877, u0 = 159.699646, v0 = 155.864578;
+  cameraMatrix = (cv::Mat_<double>(3,3) << fovx, 0.0, u0, 0.0, fovy, v0, 0.0, 0.0, 1.0);
 
-  /*//外部カメラパラメータ行列(運動学から求まる位置・姿勢行列)(3×4)
-  cv::Mat prjMat1, prjMat2;[%0.2f %0.2f %0.2f]
-  prjMat1 = cv::Mat(3, 4, CV_32FC1);
-  prjMat2 = cv::Mat(3, 4, CV_32FC1);
-
-  for(int i = 0; i < 3; i++){
-    prjMat1.at<float>(i, 3) = x1.at<float>(i);  //透視射影行列へ代入（並進）
-    prjMat2.at<float>(i, 3) = x2.at<float>(i);
-  }
-  for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        prjMat1.at<float>(i, j) = r1.at<float>(i, j);
-        prjMat2.at<float>(i, j) = r2.at<float>(i, j);
-      }
-  }
-
-  //対応付いた特徴点の取り出し
-  if(dmatch.size() > 3){
-    std::vector<cv::Point2d> p1;
-    std::vector<cv::Point2d> p2;
-    for (size_t i = 0; i < dmatch.size(); i++){
-      cv::Mat ip(3, 1, CV_32FC1);
-      cv::Point2d p;
-      //同時座標[u,v,1]での画像平面上の特徴点座標
-      ip.at<float>(0) = keypoints1[dmatch[i].queryIdx].pt.x; 
-      ip.at<float>(1) = keypoints1[dmatch[i].queryIdx].pt.y;
-      ip.at<float>(2) = 1;
-      //画像平面（同次系）からワールド座標に変換
-      ip = r1.inv() * cameraMatrix.inv() * ip + x1; //ip:画像平面　→　カメラ座標　→　ワールド座標
-      p.x = ip.at<float>(0);
-      p.y = ip.at<float>(1);
-      p1.push_back(p);
-
-      //画像2についても同様
-      ip.at<float>(0) = keypoints2[dmatch[i].queryIdx].pt.x;
-      ip.at<float>(1) = keypoints2[dmatch[i].queryIdx].pt.y;
-      ip.at<float>(2) = 1;
-      
-      ip = r2.inv() * cameraMatrix.inv() * ip + x2;
-      p.x = ip.at<float>(0);
-      p.y = ip.at<float>(1);
-      p2.push_back(p);
-    }
-
-    //三角測量（すべてワールド座標で記述）
-    cv::Mat point4D;
-    cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point4D);	//引数：カメラの透視射影行列(3×4)、特徴点の配列(2×N)
-    */
   //カメラ座標にて三角測量
   if(dmatch.size() > 5){
     std::vector<cv::Point2d> p1;
@@ -377,59 +329,57 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
 
     //対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
     for (size_t i = 0; i < dmatch.size(); i++) {	//特徴点の数だけ処理
-      cv::Mat ip(3, 1, CV_32FC1);	//3×1のベクトル
+      cv::Mat ip(3, 1, CV_64FC1);	//3×1のベクトル
       cv::Point2d p;
 
-      ip.at<float>(0) = keypoints1[dmatch[i].queryIdx].pt.x;	//1枚目の画像の特徴点のx座標を取得
-      ip.at<float>(1) = keypoints1[dmatch[i].queryIdx].pt.y;	//1枚目の画像の特徴点のy座標を取得
-      ip.at<float>(2) = 1.0;	//同次座標(焦点距離入れたほうがいいかも？)
+      ip.at<double>(0) = keypoints1[dmatch[i].queryIdx].pt.x;	//1枚目の画像の特徴点のx座標を取得
+      ip.at<double>(1) = keypoints1[dmatch[i].queryIdx].pt.y;	//1枚目の画像の特徴点のy座標を取得
+      ip.at<double>(2) = 1.0;	//同次座標(焦点距離入れたほうがいいかも？)
 
       ip = cameraMatrix.inv()*ip;	//カメラのキャリブレーション行列により画像平面からカメラ平面へ写像
-      p.x = ip.at<float>(0);
-      p.y = ip.at<float>(1);
+      p.x = ip.at<double>(0);
+      p.y = ip.at<double>(1);
       p1.push_back(p);
 
-      ip.at<float>(0) = keypoints2[dmatch[i].trainIdx].pt.x;	//2枚目の画像の特徴点のx座標を取得
-      ip.at<float>(1) = keypoints2[dmatch[i].trainIdx].pt.y;	//2枚目の画像の特徴点のy座標を取得
-      ip.at<float>(2) = 1.0;
+      ip.at<double>(0) = keypoints2[dmatch[i].trainIdx].pt.x;	//2枚目の画像の特徴点のx座標を取得
+      ip.at<double>(1) = keypoints2[dmatch[i].trainIdx].pt.y;	//2枚目の画像の特徴点のy座標を取得
+      ip.at<double>(2) = 1.0;
 
       ip = cameraMatrix.inv()*ip;	//カメラのキャリブレーション行列により画像平面からカメラ平面へ写像
-      p.x = ip.at<float>(0);
-      p.y = ip.at<float>(1);
+      p.x = ip.at<double>(0);
+      p.y = ip.at<double>(1);
       p2.push_back(p);
     }
     //１つめの画像を正規化座標としたときに2枚目の画像への回転・並進変換行列
-    cv::Mat r_arm(3, 3, CV_64FC1), t_arm(3, 1, CV_32FC1), r(3, 3, CV_64FC1), t(3, 1, CV_32FC1);
-    r_arm = r2 * r1.inv();
-    t_arm = x2 - x1;
-
+    cv::Mat r(3, 3, CV_64FC1), t(3, 1, CV_64FC1);
     cv::Mat maskmask; //RANSACの結果を保持するためのマスク
     cv::Mat essentialMat = cv::findEssentialMat(p1, p2, 1.0, cv::Point2f(0, 0), cv::RANSAC, 0.9999, 0.003, maskmask);	//RANSACによって
-
     cv::recoverPose(essentialMat, p1, p2, r, t);
-        //
-    static cv::Mat t_sum(3, 1, CV_32FC1), r_sum(3, 3, CV_32FC1), rr(3, 3, CV_32FC1);
-    static Ktl::Matrix<3,3> R_sum;
-    Ktl::Matrix<3, 3> R;
-    static bool r_sum_state = false;
-    if (!r_sum_state){
-      r_arm.convertTo(r_sum, CV_32FC1);
-      t_sum = t_arm.clone();
-      r_sum_state = true;
-    }
 
-    for(int i = 0;i < 3; i++){
-      t_sum.at<float>(i) += t.at<float>(i);
+    //アームの運動学で求めた位置・姿勢
+    cv::Mat r_arm(3, 3, CV_32FC1), t_arm(3, 1, CV_32FC1), r_32(3, 3, CV_32FC1), t_32(3, 1, CV_32FC1);
+    static cv::Mat t_sum(3, 1, CV_32FC1), r_sum(3, 3, CV_32FC1);
+    r.convertTo(r_32, CV_32FC1);
+    t.convertTo(t_32, CV_32FC1);
+    r_arm = r2 * r1.inv();
+    t_arm = r1 * (x2 - x1);
+    //足していく
+    static bool sum_state= false;
+    if (!sum_state){
+      r_sum = r2.clone();
+      t_sum = x2.clone();
+      sum_state = true;
+    }else{
+      t_sum += t_32;
+      r_sum = r_32 * r_sum;
     }
-    
-    r.convertTo(rr, CV_32FC1);
-    r_sum = rr * r_sum;
-
-    printf("t     = [%0.2f %0.2f %0.2f]\n", t.at<double>(0), t.at<double>(1), t.at<double>(2));
+    printf("loop_count #%d\n", loop_count);
+    printf("t_32  = [%0.2f %0.2f %0.2f]\n", t_32.at<float>(0), t_32.at<float>(1), t_32.at<float>(2));
     printf("t_arm = [%0.2f %0.2f %0.2f]\n", t_arm.at<float>(0), t_arm.at<float>(1), t_arm.at<float>(2));
-    printf("r     = [%0.2lf %0.2lf %0.2lf \n          %0.2lf %0.2lf %0.2lf\n          %0.2lf %0.2lf %0.2lf]\n", r.at<double>(0,0), r.at<double>(0,1), r.at<double>(0,2), r.at<double>(1,0), r.at<double>(1,1), r.at<double>(1,2), r.at<double>(2,0), r.at<double>(2,1), r.at<double>(2,2));
-    printf("rr    = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", rr.at<float>(0,0), rr.at<float>(0,1), rr.at<float>(0,2), rr.at<float>(1,0), rr.at<float>(1,1), rr.at<float>(1,2), rr.at<float>(2,0), rr.at<float>(2,1), rr.at<float>(2,2));
-    printf("r_arm = [%0.2lf %0.2lf %0.2lf \n          %0.2lf %0.2lf %0.2lf\n          %0.2lf %0.2lf %0.2lf]\n", r_arm.at<double>(0,0), r_arm.at<double>(0,1), r_arm.at<double>(0,2), r_arm.at<double>(1,0), r_arm.at<double>(1,1), r_arm.at<double>(1,2), r_arm.at<double>(2,0), r_arm.at<double>(2,1), r_arm.at<double>(2,2));
+    printf("t_sum = [%0.2f %0.2f %0.2f]\n", t_sum.at<float>(0), t_sum.at<float>(1), t_sum.at<float>(2));
+    printf("r_32  = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_32.at<float>(0,0), r_32.at<float>(0,1), r_32.at<float>(0,2), r_32.at<float>(1,0), r_32.at<float>(1,1), r_32.at<float>(1,2), r_32.at<float>(2,0), r_32.at<float>(2,1), r_32.at<float>(2,2));
+    printf("r1    = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r1.at<float>(0,0), r1.at<float>(0,1), r1.at<float>(0,2), r1.at<float>(1,0), r1.at<float>(1,1), r1.at<float>(1,2), r1.at<float>(2,0), r1.at<float>(2,1), r1.at<float>(2,2));
+    printf("r_arm = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_arm.at<float>(0,0), r_arm.at<float>(0,1), r_arm.at<float>(0,2), r_arm.at<float>(1,0), r_arm.at<float>(1,1), r_arm.at<float>(1,2), r_arm.at<float>(2,0), r_arm.at<float>(2,1), r_arm.at<float>(2,2));
     printf("r_sum = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_sum.at<float>(0,0), r_sum.at<float>(0,1), r_sum.at<float>(0,2), r_sum.at<float>(1,0), r_sum.at<float>(1,1), r_sum.at<float>(1,2), r_sum.at<float>(2,0), r_sum.at<float>(2,1), r_sum.at<float>(2,2));
 
 
@@ -463,10 +413,10 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
 
     for (int i = 0; i < 3; i++) {
-      //prjMat2.at<float>(i, 3) = t.at<double>(i);
+      //prjMat2.at<float>(i, 3) = t.at<float>(i);
       prjMat2.at<float>(i, 3) = t_arm.at<float>(i);
       for (int j = 0; j < 3; j++) {
-        //prjMat2.at<float>(i, j) = r.at<double>(i, j);
+        //prjMat2.at<float>(i, j) = r.at<float>(i, j);
         prjMat2.at<float>(i, j) = r_arm.at<float>(i, j);
       }
     }
@@ -590,9 +540,9 @@ int main(int argc, char * argv[])
     cv::Mat arm_rot(3, 3, CV_32FC1);
     auto callback_arm_trans = [&arm_trans, &arm_rot, &node](const geometry_msgs::msg::Transform::SharedPtr msg_sub){
       //並進成分
-      arm_trans.at<float>(0) = msg_sub->translation.x / 1000.0;
-      arm_trans.at<float>(1) = msg_sub->translation.y / 1000.0;
-      arm_trans.at<float>(2) = msg_sub->translation.z / 1000.0;
+      arm_trans.at<float>(0) = msg_sub->translation.x;
+      arm_trans.at<float>(1) = msg_sub->translation.y;
+      arm_trans.at<float>(2) = msg_sub->translation.z;
       //回転成分
       transformQuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(1, 0), arm_rot.at<float>(2, 0),
                                   arm_rot.at<float>(0, 1), arm_rot.at<float>(1, 1), arm_rot.at<float>(2, 1),
