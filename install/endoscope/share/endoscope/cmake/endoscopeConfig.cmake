@@ -1,1 +1,0 @@
-/home/takeyama/workspace/ros2_eyeexplorer/build/endoscope/ament_cmake_core/endoscopeConfig.cmake

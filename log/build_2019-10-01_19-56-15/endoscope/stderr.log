@@ -1,5 +1,0 @@
-[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:[m[K In function ‘[01m[Kcv::Rect set_ROI(cv::Mat)[m[K’:
-[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:71:54:[m[K [01;35m[Kwarning: [m[Kformat ‘[01m[K%f[m[K’ expects argument of type ‘[01m[Kdouble[m[K’, but argument 2 has type ‘[01m[Kint[m[K’ [[01;35m[K-Wformat=[m[K]
-   printf("ROI.x = %0.1f, ROI.y = %0.1f\n",[32m[KROI.x[m[K,ROI.y[01;35m[K)[m[K;
-                                           [32m[K~~~~~[m[K      [01;35m[K^[m[K
-[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:71:54:[m[K [01;35m[Kwarning: [m[Kformat ‘[01m[K%f[m[K’ expects argument of type ‘[01m[Kdouble[m[K’, but argument 3 has type ‘[01m[Kint[m[K’ [[01;35m[K-Wformat=[m[K]

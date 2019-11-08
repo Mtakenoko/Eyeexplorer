@@ -70,11 +70,38 @@ void convert_frame_to_message(const cv::Mat & frame, size_t frame_id, sensor_msg
   msg.header.frame_id = std::to_string(frame_id);
 }
 
-void convert_point3D_to_PCL(const cv::Mat & point4D, size_t frame_id, sensor_msgs::msg::PointCloud2 & msg){
-  msg.height = point4D.rows;
-  msg.width = point4D.cols;
-  memccpy(&msg.data[0], point4D.data, point4D.rows, point4D.cols);
-  msg.header.frame_id = std::to_string(frame_id);
+void convert_pointcloud_to_PCL(const cv::Mat pointCloud2, size_t frame_id, sensor_msgs::msg::PointCloud2 & msg_cloud_pub){
+  msg_cloud_pub.header = std_msgs::msg::Header();
+  msg_cloud_pub.header.stamp = rclcpp::Clock().now();
+  msg_cloud_pub.header.frame_id = frame_id;
+  
+  msg_cloud_pub.is_bigendian = false;
+  msg_cloud_pub.is_dense = true;
+
+  msg_cloud_pub.height = 1;
+  msg_cloud_pub.width = pointCloud2.cols;
+
+  msg_cloud_pub.fields.resize(3);
+  msg_cloud_pub.fields[0].name = "x";
+  msg_cloud_pub.fields[1].name = "y";
+  msg_cloud_pub.fields[2].name = "z";
+
+  sensor_msgs::msg::PointField::_offset_type offset = 0;
+  for (uint32_t i = 0; i < msg_cloud_pub.fields.size(); ++i, offset += sizeof(float)) {
+    msg_cloud_pub.fields[i].count = 1;
+    msg_cloud_pub.fields[i].offset = offset;
+    msg_cloud_pub.fields[i].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  }
+
+  msg_cloud_pub.point_step = offset;
+  msg_cloud_pub.row_step = msg_cloud_pub.point_step * msg_cloud_pub.width;
+  msg_cloud_pub.data.resize(msg_cloud_pub.row_step * msg_cloud_pub.height);
+
+  auto floatData = reinterpret_cast<float *>(msg_cloud_pub.data.data());
+  for (uint32_t i = 0; i < msg_cloud_pub.width; ++i) {
+    for (uint32_t j = 0; j < 3; ++j)
+    floatData[i * (msg_cloud_pub.point_step / sizeof(float)) + j] = pointCloud2.at<cv::Vec3f>(i)[j];
+  }
 }
 
 void transformQuaternionToRotMat(
@@ -204,8 +231,8 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
       descriptorExtractor = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.00005f);
   } else if (feature == 1){
       //ORB特徴量抽出
-      detector = cv::ORB::create(10000, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
-      descriptorExtractor = cv::ORB::create(10000, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
+      detector = cv::ORB::create(1000, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
+      descriptorExtractor = cv::ORB::create(1000, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
   } else if (feature == 2){     
       //BRISK特徴量抽出
       detector = cv::BRISK::create(120, 3, 0.6f);
@@ -372,7 +399,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     }else{
       t_sum += t_32;
       r_sum = r_32 * r_sum;
-    }
+    }/*
     printf("loop_count #%d\n", loop_count);
     printf("t_32  = [%0.2f %0.2f %0.2f]\n", t_32.at<float>(0), t_32.at<float>(1), t_32.at<float>(2));
     printf("t_arm = [%0.2f %0.2f %0.2f]\n", t_arm.at<float>(0), t_arm.at<float>(1), t_arm.at<float>(2));
@@ -381,49 +408,63 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     printf("r1    = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r1.at<float>(0,0), r1.at<float>(0,1), r1.at<float>(0,2), r1.at<float>(1,0), r1.at<float>(1,1), r1.at<float>(1,2), r1.at<float>(2,0), r1.at<float>(2,1), r1.at<float>(2,2));
     printf("r_arm = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_arm.at<float>(0,0), r_arm.at<float>(0,1), r_arm.at<float>(0,2), r_arm.at<float>(1,0), r_arm.at<float>(1,1), r_arm.at<float>(1,2), r_arm.at<float>(2,0), r_arm.at<float>(2,1), r_arm.at<float>(2,2));
     printf("r_sum = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_sum.at<float>(0,0), r_sum.at<float>(0,1), r_sum.at<float>(0,2), r_sum.at<float>(1,0), r_sum.at<float>(1,1), r_sum.at<float>(1,2), r_sum.at<float>(2,0), r_sum.at<float>(2,1), r_sum.at<float>(2,2));
+    */
 
-
-    //tfで5点アルゴリズムで推定したカメラ座標系
+    //tfで5点アルゴリズムで推定したカメラ座標系をtfにしてRVizにて表示
     tf2_ros::StaticTransformBroadcaster broadcaster(node);
     geometry_msgs::msg::TransformStamped msg;
-    msg.transform.translation.x = t_sum.at<float>(0);
-    msg.transform.translation.y = t_sum.at<float>(1);
-    msg.transform.translation.z = t_sum.at<float>(2);
-    //回転行列
     float qx, qy, qz, qw; 
     transformRotMatToQuaternion(qx, qy, qz, qw,
           r_sum.at<float>(0,0), r_sum.at<float>(1,0), r_sum.at<float>(2,0),
           r_sum.at<float>(0,1), r_sum.at<float>(1,1), r_sum.at<float>(2,1),
           r_sum.at<float>(0,2), r_sum.at<float>(1,2), r_sum.at<float>(2,2)
     );
+    msg.transform.translation.x = t_sum.at<float>(0);
+    msg.transform.translation.y = t_sum.at<float>(1);
+    msg.transform.translation.z = t_sum.at<float>(2);
     msg.transform.rotation.x = qx;
     msg.transform.rotation.y = qy;
     msg.transform.rotation.z = qz;
     msg.transform.rotation.w = qw;
-    //
     msg.header.frame_id = "map";
     msg.child_frame_id = "camera_5point";
-
     broadcaster.sendTransform(msg);
 
-
+    /*
     //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
     cv::Mat prjMat1, prjMat2;
     prjMat1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
     prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
-
     for (int i = 0; i < 3; i++) {
-      //prjMat2.at<float>(i, 3) = t.at<float>(i);
-      prjMat2.at<float>(i, 3) = t_arm.at<float>(i);
+      prjMat2.at<float>(i, 3) = t.at<float>(i);
       for (int j = 0; j < 3; j++) {
-        //prjMat2.at<float>(i, j) = r.at<float>(i, j);
-        prjMat2.at<float>(i, j) = r_arm.at<float>(i, j);
+        prjMat2.at<float>(i, j) = r.at<float>(i, j);
       }
     }
-    
+    //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
+    cv::Mat prjMat3, prjMat4;
+    prjMat3 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
+    prjMat4 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
+    for (int i = 0; i < 3; i++) {
+      prjMat4.at<float>(i, 3) = t_arm.at<float>(i);
+      for (int j = 0; j < 3; j++) {
+        prjMat4.at<float>(i, j) = r_arm.at<float>(i, j);
+      }
+    }*/
+    //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
+    cv::Mat prjMat5, prjMat6;
+    prjMat5 = cv::Mat(3, 4, CV_32FC1); //片方は回転、並進ともに0
+    prjMat6 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
+    for (int i = 0; i < 3; i++) {
+      prjMat5.at<float>(i, 3) = x1.at<float>(i);
+      prjMat6.at<float>(i, 3) = x2.at<float>(i);
+      for (int j = 0; j < 3; j++) {
+        prjMat5.at<float>(i, j) = r1.at<float>(i, j);
+        prjMat6.at<float>(i, j) = r2.at<float>(i, j);
+      }
+    }
     cv::Mat point4D;
-    cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point4D);	//三角測量
-    //ここまで
+    cv::triangulatePoints(prjMat5, prjMat6, p1, p2, point4D);	//三角測量
     
     // viz用に並べ替え&距離が長すぎるのは削除
     cv::Mat pointCloud(point4D.cols, 1, CV_32FC3);
@@ -433,6 +474,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
           pointCloud.at<cv::Vec3f>(i)[j] = point4D.at<float>(j, i);
       }
     }
+    //平均距離を表示
     float dist = 0.0;
     int dist_count = 0;
     for (int i = 0; i < point4D.cols; i++){
@@ -461,12 +503,12 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     //Publish Image
     RCLCPP_INFO(logger, "Publishing image #%s", msg_image->header.frame_id.c_str());
     auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
-    auto msg_pub_pointcloud = std::make_unique<sensor_msgs::msg::PointCloud2>();
-
+    auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     convert_frame_to_message(cvframe, atoi(msg_image->header.frame_id.c_str()), *msg_pub);  //cv → msg
-    //convert_point3D_to_PCL(point4D, atoi(msg_pub_pointcloud->header.frame_id.c_str()), *msg_pub_pointcloud);
+    convert_pointcloud_to_PCL(pointCloud2, atoi(msg_cloud_pub->header.frame_id.c_str()), *msg_cloud_pub);
+    
     pub->publish(std::move(msg_pub)); 
-    //pub_pointcloud->publish(std::move(msg_pub_pointcloud));
+    pub_pointcloud->publish(std::move(msg_cloud_pub));
   }
 
   // 1つめのフレームに代入
@@ -476,7 +518,6 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
   mask1 = mask2.clone();  
   x1 = x2.clone();
   r1 = r2.clone();
-
 }
 
 int main(int argc, char * argv[])

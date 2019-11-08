@@ -1,4 +1,0 @@
-[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:[m[K In function ‘[01m[Kcv::Rect set_ROI(cv::Mat)[m[K’:
-[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/endoscope/src/ROI.cpp:75:1:[m[K [01;35m[Kwarning: [m[Kcontrol reaches end of non-void function [[01;35m[K-Wreturn-type[m[K]
- [01;35m[K}[m[K
- [01;35m[K^[m[K
