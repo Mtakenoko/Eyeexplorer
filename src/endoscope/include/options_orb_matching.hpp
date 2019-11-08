@@ -51,10 +51,11 @@ std::string get_command_option(
  * \param[in] burger_mode If true, produce images of burgers rather than use a camera.
  */
 bool parse_command_options(
-  int argc, char ** argv, size_t * depth,
+  int argc, char ** argv, 
+  size_t * depth,
   rmw_qos_reliability_policy_t * reliability_policy,
-  rmw_qos_history_policy_t * history_policy, bool * show_camera = nullptr, double * freq = nullptr,
-  size_t * width = nullptr, size_t * height = nullptr, size_t * device = nullptr, bool * movie_mode = nullptr,
-  std::string * topic = nullptr);
+  rmw_qos_history_policy_t * history_policy, 
+  bool * show_camera = nullptr, 
+  size_t * feature = nullptr, size_t * match = nullptr, bool * mask = nullptr);
 
 #endif  // IMAGE_TOOLS__OPTIONS_HPP_

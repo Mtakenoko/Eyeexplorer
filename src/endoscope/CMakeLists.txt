@@ -25,40 +25,31 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(message_filters)
 find_package(OpenCV REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
-add_executable(ROI
-  src/ROI.cpp
+# cap_endoscope node
+add_executable(cap_endoscope
+src/cap_endoscope.cpp
+option/options_cap_endoscope.cpp
 )
-ament_target_dependencies(ROI
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
+ament_target_dependencies(cap_endoscope
+"rclcpp"
+"sensor_msgs"
+"std_msgs"
+"OpenCV"
 )
 install(TARGETS
-  ROI
-  DESTINATION lib/${PROJECT_NAME}
+cap_endoscope
+DESTINATION lib/${PROJECT_NAME}
 )
 
-add_executable(cap_ROI
-  src/cap_ROI.cpp
-  src/options_cap_ROI.cpp
-)
-ament_target_dependencies(cap_ROI
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-)
-install(TARGETS
-  cap_ROI
-  DESTINATION lib/${PROJECT_NAME}
-)
-
+# matching node
 add_executable(matching
   src/feature_matching.cpp
-  src/options_feature_matching.cpp
+  option/options_feature_matching.cpp
 )
 ament_target_dependencies(matching
   "rclcpp"
@@ -71,6 +62,59 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# orb matching node
+add_executable(orb_matching
+  src/orb_matching.cpp
+  option/options_orb_matching.cpp
+)
+ament_target_dependencies(orb_matching
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+)
+install(TARGETS
+  orb_matching
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# opticalflow node
+add_executable(opticalflow
+  src/opticalflow.cpp
+)
+ament_target_dependencies(opticalflow
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+)
+install(TARGETS
+  opticalflow
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# matching & reconstruction node
+add_executable(reconstruction
+  src/matching_reconstruction.cpp
+  option/options_orb_matching.cpp
+)
+# 実行ファイルをリンクする
+target_link_libraries(reconstruction ktl ktlrt)
+
+ament_target_dependencies(reconstruction
+"rclcpp"
+"sensor_msgs"
+"std_msgs"
+"OpenCV"
+"message_filters"
+"tf2_msgs"
+"tf2_geometry_msgs"
+)
+install(TARGETS
+  reconstruction
+  DESTINATION lib/${PROJECT_NAME}
+)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

@@ -19,7 +19,7 @@ TS01 ts01;
 
 /*******************************************************************
  *     init_module
- *******************************************************************/
+ ******************************************************************
 int init_module(void)
 {
     ts01.open("192.168.1.100");
@@ -52,7 +52,7 @@ int init_module(void)
 
     printf("Initialized TS01/n");
     return 1;
-}
+}*/
 
 /*******************************************************************
  *     cleanup_module
@@ -72,10 +72,9 @@ void cleanup_module(void)
 
 int main(int argc, char * argv[]){
     rclcpp::init(argc, argv);
-    rclcpp::WallRate loop_rate(1000);
+    rclcpp::WallRate loop_rate(10);
     auto node = rclcpp::Node::make_shared("ts01_open_close");
     rclcpp::Logger node_logger = node->get_logger();
-
 
     // Initialize default demo parameters
     size_t depth = rmw_qos_profile_default.depth;
@@ -86,25 +85,28 @@ int main(int argc, char * argv[]){
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
-    publisher_ = node->create_publisher<std_msgs::msg::String>("ts01_status",qos);
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr publisher_;
+    publisher_ = node->create_publisher<std_msgs::msg::Bool>("ts01_status",qos);
 
-    TS01InputData input;   //TS01の入力
-    TS01OutputData output; //TS01の出力
+    auto msg = std::make_shared<std_msgs::msg::Bool>();
+    msg->data = false;
+    publisher_->publish(*msg);
 
-    ts01.set_dout_mode(0, false);  //デジタル入力（非パルス）
+    RCLCPP_INFO(node_logger, "Waiting for opening TS01");
     ts01.open("192.168.1.100");
+    //~~~~~~~接続待ち~~~~~~~//
     RCLCPP_INFO(node_logger, "TS01 is opened");
+    msg->data = true;
 
     while (rclcpp::ok()) {
-        /*
         static bool v = true;
         RCLCPP_INFO(node_logger, "Publishing Voltage #%zd", v);
-        output.dout[0] = (int)v;
-        ts01.write_data(&output);
-        v = !v ;
+        //output.dout[0] = (int)v;
+        //ts01.write_data(&output);
+        //v = !v ;
+        publisher_->publish(*msg);
         rclcpp::spin_some(node);
-        loop_rate.sleep();*/
+        loop_rate.sleep();
     }
     rclcpp::shutdown();
     cleanup_module();

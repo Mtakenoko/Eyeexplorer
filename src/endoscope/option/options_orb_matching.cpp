@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "../include/option_cap_ROI.hpp"
+#include "../include/options_orb_matching.hpp"
 
 bool find_command_option(const std::vector<std::string> & args, const std::string & option)
 {
@@ -44,11 +44,12 @@ bool get_flag_option(const std::vector<std::string> & args, const std::string & 
 }
 
 bool parse_command_options(
-  int argc, char ** argv, size_t * depth,
+  int argc, char ** argv, 
+  size_t * depth,
   rmw_qos_reliability_policy_t * reliability_policy,
-  rmw_qos_history_policy_t * history_policy, bool * show_camera,
-  double * freq, size_t * width, size_t * height, size_t * device, bool * movie_mode,
-  std::string * topic)
+  rmw_qos_history_policy_t * history_policy, 
+  bool * show_camera,
+  size_t * feature, size_t * match, bool * mask)
 {
   std::vector<std::string> args(argv, argv + argc);
 
@@ -61,32 +62,30 @@ bool parse_command_options(
     ss << "    1 - reliable (default)" << std::endl;
     ss << " -d: Depth of the queue: only honored if used together with 'keep last'. " <<
       "10 (default)" << std::endl;
-    if (freq != nullptr) {
-      ss << " -f: Publish frequency in Hz. 30 (default)" << std::endl;
-    }
     ss << " -k: History QoS setting:" << std::endl;
     ss << "    0 - only store up to N samples, configurable via the queue depth (default)" <<
       std::endl;
     ss << "    1 - keep all the samples" << std::endl;
     if (show_camera != nullptr) {
       ss << " -s: Camera stream:" << std::endl;
-      ss << "    0 - Do not show the camera stream" << std::endl;
+      ss << "    0 - Do not show the camera stream (default)" << std::endl;
       ss << "    1 - Show the camera stream" << std::endl;
     }
-    if (width != nullptr && height != nullptr) {
-      ss << " -x WIDTH and -y HEIGHT. Resolution. " << std::endl;
-      ss << "    Please type v4l2-ctl --list-formats-ext " << std::endl;
-      ss << "    to obtain a list of valid values." << std::endl;
+    if (feature != nullptr) {
+      ss << " -e: Feature point detector.  " << std::endl;
+      ss << "   0 - AKAZE (default)" << std::endl;
+      ss << "   1 - ORB" << std::endl;
+      ss << "   2 - BRISK" << std::endl;
     }
-    if (topic != nullptr) {
-      ss << " -t TOPIC: use topic TOPIC instead of the default" << std::endl;
+    if (match != nullptr) {
+      ss << " -m: Matching Feature point.  " << std::endl;
+      ss << "   0 - Brute-Force matcher (default)" << std::endl;
+      ss << "   1 - FLANN" << std::endl;
     }
-    if (device != nullptr){
-      ss << " -c: Camera device" << std::endl;
-      ss << "    Please type number of camera device."  << std::endl;
-    }
-    if (movie_mode != nullptr) {
-      ss << " -m: produce images of endoscope's movie rather than connecting to a camera" << std::endl;
+    if (mask != nullptr) {
+      ss << " -a: Mask On/Off.  " << std::endl;
+      ss << "   0 - OFF (default)" << std::endl;
+      ss << "   1 - ON" << std::endl;
     }
     std::cout << ss.str();
     return false;
@@ -102,13 +101,6 @@ bool parse_command_options(
     *depth = std::stoul(depth_str.c_str());
   }
 
-  if (freq != nullptr) {
-    auto freq_str = get_command_option(args, "-f");
-    if (!freq_str.empty()) {
-      *freq = std::stod(freq_str.c_str());
-    }
-  }
-
   auto reliability_str = get_command_option(args, "-r");
   if (!reliability_str.empty()) {
     unsigned int r = std::stoul(reliability_str.c_str());
@@ -122,31 +114,24 @@ bool parse_command_options(
     *history_policy = r ? RMW_QOS_POLICY_HISTORY_KEEP_ALL : RMW_QOS_POLICY_HISTORY_KEEP_LAST;
   }
 
-  if (width != nullptr && height != nullptr) {
-    auto width_str = get_command_option(args, "-x");
-    auto height_str = get_command_option(args, "-y");
-    if (!width_str.empty() && !height_str.empty()) {
-      *width = std::stoul(width_str.c_str());
-      *height = std::stoul(height_str.c_str());
-    }
-  }
-  
-  if (topic != nullptr) {
-    std::string tmptopic = get_command_option(args, "-t");
-    if (!tmptopic.empty()) {
-      *topic = tmptopic;
+  auto feature_str = get_command_option(args, "-e");
+  if (!feature_str.empty()) {
+    if (!feature_str.empty()) {
+      *feature = std::stoul(feature_str.c_str());
     }
   }
 
-  if (device != nullptr) {
-    auto device_str = get_command_option(args, "-c");
-    if (!device_str.empty()){
-      *device = std::stoul(device_str.c_str());
+  auto match_str = get_command_option(args, "-m");
+  if (!match_str.empty()) {
+    if (!match_str.empty()) {
+      *match = std::stoul(match_str.c_str());
     }
   }
 
-  if (movie_mode){
-    *movie_mode = get_flag_option(args, "-m");
+  auto mask_str = get_command_option(args, "-a");
+  if (!mask_str.empty()) {
+    *mask = std::stoul(mask_str.c_str()) != 0 ? true : false;
   }
+
   return true;
 }

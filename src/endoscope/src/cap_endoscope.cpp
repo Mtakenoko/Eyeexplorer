@@ -18,15 +18,18 @@
 #include <string>
 #include <utility>
 
+#include "opencv2/opencv.hpp"
+#include "opencv2/features2d.hpp"
+#include "opencv2/core/core.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include "opencv2/video.hpp"
 
 #include "rclcpp/rclcpp.hpp"
 
 #include "sensor_msgs/msg/image.hpp"
 #include "std_msgs/msg/bool.hpp"
 
-#include "../include/option_cap_ROI.hpp"
+#include "../include/option_cap_endoscope.hpp"
 
 
 /// Convert an OpenCV matrix encoding type to a string format recognized by sensor_msgs::Image.
@@ -73,18 +76,17 @@ void convert_frame_to_message(
 
 
 cv::Rect set_ROI(const cv::Mat src){    //ROIを設定する
-    
   cv::Rect ROI;
   cv::Mat gray, bin;
   cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);   //入力画像をグレースケールに変換
-  cv::threshold(gray, bin, 100, 255, cv::THRESH_BINARY);   //30をしきい値として二値化処理
+  cv::threshold(gray, bin, 30, 255, cv::THRESH_BINARY);   //30をしきい値として二値化処理
        
   cv::Mat LabelImg, stats, centroids;
   int nLab = cv::connectedComponentsWithStats(bin, LabelImg, stats, centroids);   //二値化処理したものにラベリング実行。戻り値はラベル数。
   if (nLab == 2 ) {    //内視鏡画像と黒部分の2つだけにわけれたとき
-    int *param1 = stats.ptr<int>(1); 
-    ROI.height = param1[cv::ConnectedComponentsTypes::CC_STAT_HEIGHT]/1.5;  //ラベリングした画像の縦の0.8倍したものをROIの縦にする
-    ROI.width = param1[cv::ConnectedComponentsTypes::CC_STAT_WIDTH]/1.5;    //ラベリングした画像の横の0.8倍したものをROIの横にする
+    //int *param1 = stats.ptr<int>(1); 
+    ROI.height = 320;//param1[cv::ConnectedComponentsTypes::CC_STAT_HEIGHT]/1.5;  //ラベリングした画像の縦の0.8倍したものをROIの縦にする
+    ROI.width = 320;//param1[cv::ConnectedComponentsTypes::CC_STAT_WIDTH]/1.5;    //ラベリングした画像の横の0.8倍したものをROIの横にする
 
   	double *param2 = centroids.ptr<double>(1);
    	ROI.x = static_cast<int>(param2[0]) - (int)(ROI.width / 2);    //ROIの重心位置のx
@@ -99,9 +101,9 @@ cv::Rect set_ROI(const cv::Mat src){    //ROIを設定する
 		    break;
 	    }
 	  }
-	  int *param1 = stats.ptr<int>(num);
-	  ROI.height = param1[cv::ConnectedComponentsTypes::CC_STAT_HEIGHT]/1.5;
-    ROI.width = param1[cv::ConnectedComponentsTypes::CC_STAT_WIDTH]/1.5;
+	  //int *param1 = stats.ptr<int>(num);
+	  ROI.height = 320;//param1[cv::ConnectedComponentsTypes::CC_STAT_HEIGHT]/1.5;
+    ROI.width = 320;//param1[cv::ConnectedComponentsTypes::CC_STAT_WIDTH]/1.5;
 
 	  double *param2 = centroids.ptr<double>(num);
 	  ROI.x = static_cast<int>(param2[0]) - ROI.width / 2;
@@ -110,13 +112,62 @@ cv::Rect set_ROI(const cv::Mat src){    //ROIを設定する
   return ROI;
 }
 
+cv::Mat preprocess(cv::Mat src){
+    //ヒストグラム平坦化（CLAHE）
+    cv::Mat YCrCb[3], Y; 
+    cv::Mat clahe_img, dst_clahe;
+    double clipLimit = 0.5;
+    cv::Size tileGridSize = cv::Size(8, 8);
+
+    cv::cvtColor(src, clahe_img, cv::COLOR_BGR2YCrCb);   //入力画像をYCrCbに変換
+    cv::split(clahe_img,YCrCb);
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clipLimit, tileGridSize);
+    clahe->apply(YCrCb[0], YCrCb[0]);
+    cv::merge(YCrCb, 3, clahe_img); 
+    cv::cvtColor(clahe_img, dst_clahe, cv::COLOR_YCrCb2BGR);
+    
+    //L*a*b空間でマスク処理
+    cv::Mat img_Lab, Lab[3], img_mask_red, img_mask_L, img_bitwise, img_bitwise_red, img_bitwise_L, dst_mask; //L*a*b空間でマスク処理
+    cv::cvtColor(dst_clahe, img_Lab, cv::COLOR_BGR2Lab);
+    cv::split(img_Lab, Lab);
+    cv::threshold(Lab[1], img_mask_red, 138, 255, cv::THRESH_BINARY);   //下限を上げるとさらにマスクされる
+    cv::bitwise_and(dst_clahe, dst_clahe, img_bitwise_red, img_mask_red);
+    cv::threshold(Lab[0], img_mask_L, 180, 255, cv::THRESH_BINARY_INV);     //下限を下げるとさらにマスクされる
+    cv::bitwise_and(dst_clahe, dst_clahe, img_bitwise_L, img_mask_L);
+    cv::bitwise_and(img_mask_red, img_mask_red, dst_mask, img_mask_L);   //それぞれのマスクを足し合わせる
+    cv::bitwise_and(dst_clahe, dst_clahe, img_bitwise, dst_mask);
+
+    /*//ORB
+    cv::Mat orb_img, orb_img2;
+    static std::vector<cv::KeyPoint> keypoints, keypoints2;
+    cv::Ptr<cv::FeatureDetector> detector, detector2;
+    cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
+    detector = cv::ORB::create(100, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
+    detector2 = cv::ORB::create(100, 1.25f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
+	  detector->detect(src, keypoints);
+    detector2->detect(img_bitwise, keypoints2);
+    cv::drawKeypoints(src, keypoints, orb_img, cv::Scalar(0,0,255));
+    cv::drawKeypoints(img_bitwise, keypoints2, orb_img2, cv::Scalar(0,0,255));
+    cv::imshow("ORB", orb_img);
+    cv::imshow("ORB2", orb_img2);*/
+
+    //cv::cvtColor(img_bitwise, dst_mask, cv::COLOR_Lab2BGR);
+    //cv::imshow("red",img_bitwise_red);
+    //cv::imshow("clahe_img", img_bitwise_L);
+    //cv::imshow("mask_red",img_mask_red);
+    //cv::imshow("mask_L",img_mask_L);
+    //cv::imshow("total_mask", dst_mask);;
+    //cv::waitKey(1);
+    return dst_mask;
+}
+
 int main(int argc, char * argv[])
 {
   // Pass command line arguments to rclcpp.
   rclcpp::init(argc, argv);
 
   // Initialize default demo parameters
-  bool show_camera = false;
+  size_t show_camera = 0;
   size_t depth = rmw_qos_profile_default.depth;
   double freq = 30.0;
   rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
@@ -125,7 +176,8 @@ int main(int argc, char * argv[])
   size_t height = 540;
   size_t device = 0;
   bool movie_mode = false;
-  std::string topic("ROI_image");
+  std::string topic("endoscope_image");
+  std::string topic_mask("mask_image");
 
   // Force flush of the stdout buffer.
   // This ensures a correct sync of all prints
@@ -141,29 +193,18 @@ int main(int argc, char * argv[])
   }
 
   // Initialize a ROS 2 node to publish images read from the OpenCV interface to the camera.
-  auto node = rclcpp::Node::make_shared("cam2image");
+  auto node = rclcpp::Node::make_shared("cap_endoscope");
   rclcpp::Logger node_logger = node->get_logger();
 
   // Set the parameters of the quality of service profile. Initialize as the default profile
   // and set the QoS parameters specified on the command line.
-  auto qos = rclcpp::QoS(
-    rclcpp::QoSInitialization(
-      // The history policy determines how messages are saved until taken by the reader.
-      // KEEP_ALL saves all messages until they are taken, up to a system resource limit.
-      // KEEP_LAST enforces a limit on the number of messages that are saved.
-      // The limit is specified by the history "depth" parameter.
-      history_policy,
-      // Depth represents how many messages to save in history when the history policy is KEEP_LAST.
-      depth));
-
-  // The reliability policy can be reliable, meaning that the underlying transport layer will try
-  // ensure that every message gets received in order, or best effort, meaning that the transport
-  // makes no guarantees about the order or reliability of delivery.
+  auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
   qos.reliability(reliability_policy);
 
   RCLCPP_INFO(node_logger, "Publishing data on topic '%s'", topic.c_str());
   // Create the image publisher with our custom QoS profile.
   auto pub = node->create_publisher<sensor_msgs::msg::Image>(topic, qos);
+  auto pub_mask = node->create_publisher<sensor_msgs::msg::Image>(topic_mask, qos);
 
   // is_flipped will cause the incoming camera image message to flip about the y-axis.
   bool is_flipped = false;
@@ -204,6 +245,7 @@ int main(int argc, char * argv[])
   // Initialize OpenCV image matrices.
   cv::Mat frame;
   cv::Mat flipped_frame;
+  cv::Mat flipped_mask_frame;
 
   size_t i = 1;
 
@@ -211,41 +253,53 @@ int main(int argc, char * argv[])
   while (rclcpp::ok()) {
     // Initialize a shared pointer to an Image message.
     auto msg = std::make_unique<sensor_msgs::msg::Image>();
+    auto msg_mask = std::make_unique<sensor_msgs::msg::Image>();
     msg->is_bigendian = false;
+    msg_mask->is_bigendian = false;
     // Get the frame from the video capture.
     cap >> frame;
-
     static cv::Rect ROI;
-    static bool Is_ROI_Setted = true;
-    if(Is_ROI_Setted){
+    static bool Is_ROI_Setted = false;
+    if(!Is_ROI_Setted){
       ROI = set_ROI(frame);   //raw_imageを元にROIを決定
-      Is_ROI_Setted = false;
+      Is_ROI_Setted = true;
       printf("(ROI.x,ROI.y) = (%d,%d)\n",ROI.x,ROI.y);
       printf("(ROI.height,ROI.width) = (%d,%d)\n",ROI.height,ROI.width);
     }
-    cv::Mat frame_ROI = frame(ROI);
+    cv::Mat pub_img = frame(ROI); //ROIをかける
+    cv::Mat pub_mask_img = preprocess(pub_img);    
+
+    //cv::imshow("topic", pub_img);
+    //cv::waitKey(1);
     
     // Check if the frame was grabbed correctly
-    if (!frame_ROI.empty()) {
+    if (!pub_img.empty()) {
       // Convert to a ROS image
       if (!is_flipped) {
-        convert_frame_to_message(frame_ROI, i, *msg);
+        convert_frame_to_message(pub_img, i, *msg);
+        convert_frame_to_message(pub_mask_img, i, *msg_mask);
       } else {
         // Flip the frame if needed
-        cv::flip(frame_ROI, flipped_frame, 1);
+        cv::flip(pub_img, flipped_frame, 1);
+        cv::flip(pub_mask_img, flipped_mask_frame, 1);
         convert_frame_to_message(flipped_frame, i, *msg);
+        convert_frame_to_message(flipped_mask_frame, i, *msg_mask);
       }
-      if (show_camera) {
-        cv::Mat cvframe = frame_ROI;
-        // Show the image in a window called "cam2image".
-        cv::imshow("cam2image", cvframe);
-        // Draw the image to the screen and wait 1 millisecond.
+      if (show_camera == 1) {
+        cv::imshow("cap_endoscope", pub_img);
+        cv::waitKey(1);
+      } else if (show_camera == 2){
+        cv::imshow("mask", pub_mask_img);
         cv::waitKey(1);
       }
       // Publish the image message and increment the frame_id.
-      RCLCPP_INFO(node_logger, "Publishing image #%zd", i);
       pub->publish(std::move(msg));
+      RCLCPP_INFO(node_logger, "Publishing image #%zd", i);
+      pub_mask->publish(std::move(msg_mask));
+      RCLCPP_INFO(node_logger, "Publishing mask image #%zd", i);
       ++i;
+    }else {
+      RCLCPP_INFO(node_logger, "pub_img is empty!");
     }
     // Do some work in rclcpp and wait for more to come in.
     rclcpp::spin_some(node);

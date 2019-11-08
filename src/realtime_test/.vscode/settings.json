@@ -1,0 +1,14 @@
+{
+  "python.autoComplete.extraPaths": [
+    "/home/yura/ros2_tutorial/install/my_msgs/lib/python3.6/site-packages",
+    "/home/yura/ros2_tutorial/install/hello_world_msgs/lib/python3.6/site-packages",
+    "/home/yura/ros2/install/hello_world_msgs/lib/python3.6/site-packages",
+    "/home/yura/ros2/install/examples_rclpy_topics/lib/python3.6/site-packages",
+    "/home/yura/ros2/install/examples_rclpy_services/lib/python3.6/site-packages",
+    "/home/yura/ros2/install/examples_rclpy_minimal_action_server/lib/python3.6/site-packages",
+    "/opt/ros/dashing/lib/python3.6/site-packages"
+  ],
+  "files.associations": {
+    "chrono": "cpp"
+  }
+}

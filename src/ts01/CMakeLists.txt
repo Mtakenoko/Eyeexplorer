@@ -24,26 +24,14 @@ add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
-add_executable(test_talker
-  src/test_talker.cpp
-  src/test_talker_main.cpp
-)
-ament_target_dependencies(test_talker
-  "rclcpp"
-  "std_msgs"
-)
-install(TARGETS
-  test_talker
-  DESTINATION lib/${PROJECT_NAME}
-)
-
+#ts01_open_close node
 add_executable(ts01_open_close
   src/ts01_open_close.cpp
 )
 ament_target_dependencies(ts01_open_close
   "rclcpp"
-  "sensor_msgs"
   "std_msgs"
 )
 install(TARGETS
@@ -51,6 +39,21 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 target_link_libraries(ts01_open_close -lts01)
+
+#ts01_sensor node
+add_executable(ts01_sensor
+  src/ts01_sensor.cpp
+)
+ament_target_dependencies(ts01_sensor
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+)
+install(TARGETS
+ts01_sensor
+  DESTINATION lib/${PROJECT_NAME}
+)
+target_link_libraries(ts01_sensor -lts01 -lktl)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

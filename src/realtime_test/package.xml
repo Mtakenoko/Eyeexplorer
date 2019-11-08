@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format2.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <!-- パッケージ名 -->
+  <name>realtime_test</name>
+  <!-- パッケージのバージョン(メジャー.マイナー.パッチ) -->
+  <version>0.1.0</version>
+  <!-- パッケージの中身の説明 -->
+  <description>realtime thread test.</description>
+  <!-- パッケージを維持管理している人たちの名前とメールアドレス -->
+  <maintainer email="yuraa.10345.tenn1s@gmail.com">yura</maintainer>
+  <!-- パッケージのソフトウェアライセンス -->
+  <license>Apache License 2.0</license>
+
+  <!-- パッケージをビルドするために用いるビルドツール -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- パッケージをビルドするために必要な依存パッケージ -->
+  <build_depend>rclcpp</build_depend>
+  <build_depend>rclcpp_components</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>rttest</build_depend>
+  <build_depend>tlsf_cpp</build_depend>
+
+  <!-- パッケージを実行するために必要な依存パッケージ -->
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>rclcpp_components</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>rttest</exec_depend>
+  <exec_depend>tlsf_cpp</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+

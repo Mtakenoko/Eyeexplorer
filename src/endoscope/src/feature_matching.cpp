@@ -86,11 +86,11 @@ void feature_point_extraction(const sensor_msgs::msg::Image::SharedPtr msg, bool
   if (feature == 0){
     // AKAZE特徴抽出
     detector = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f); // 検出器（自分で設定）
-    descriptorExtractor = cv::AKAZE::create();
+    descriptorExtractor = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0001f);
   } else if (feature == 1){
     //ORB特徴量抽出
-    detector = cv::ORB::create(30, 1.25f, 4, 7, 0, 2, 0, 7);
-    descriptorExtractor = cv::ORB::create();      
+    detector = cv::ORB::create(100, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
+    descriptorExtractor = cv::ORB::create(100, 1.2f, 30, 31, 0 , 2, cv::ORB::HARRIS_SCORE, 31, 5);
   } else if (feature == 2){     
     //BRISK特徴量抽出
     detector = cv::BRISK::create(120, 3, 0.6f);
@@ -150,7 +150,7 @@ void feature_point_extraction(const sensor_msgs::msg::Image::SharedPtr msg, bool
 	const int MIN_MATCH_COUNT = 10;
 	if (good_count > MIN_MATCH_COUNT) { //十分対応点が見つかるならば
 		cv::Mat masks;
-		cv::Mat H = cv::findHomography(match_point1, match_point2, masks, cv::RANSAC, 10);
+		cv::Mat H = cv::findHomography(match_point1, match_point2, masks, cv::RANSAC, 0.01);
 
 		//RANSACで使われた対応点のみ抽出
 		for (int i = 0; i < masks.rows; i++) {
@@ -173,7 +173,7 @@ void feature_point_extraction(const sensor_msgs::msg::Image::SharedPtr msg, bool
   keypoints1 = keypoints2;
   descriptor1 = descriptor2;   
   ////    matching 終了   ////
-  
+  /*
   ////    reconstruction 開始   ////
   std::vector<cv::Point2d> p1;
 	std::vector<cv::Point2d> p2;
@@ -224,9 +224,9 @@ void feature_point_extraction(const sensor_msgs::msg::Image::SharedPtr msg, bool
 	
 	cv::Mat point3D;
 	cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point3D);	//三角測量
-  cv::imshow("point3D",point3D);
+  //cv::imshow("point3D",point3D);
   cv::waitKey(1);
-
+  */
   //Publish Image
   RCLCPP_INFO(logger, "Publishing image #%s", msg->header.frame_id.c_str());
   auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
@@ -244,7 +244,8 @@ int main(int argc, char * argv[])
     size_t depth = rmw_qos_profile_default.depth;
     rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
-    std::string topic_sub("ROI_image");   
+    //std::string topic_sub("preprocessed_image");   
+    std::string topic_sub("endoscope_image");   
     std::string topic_pub("feature_point");
     bool show_camera = false;
     size_t feature = 0;
