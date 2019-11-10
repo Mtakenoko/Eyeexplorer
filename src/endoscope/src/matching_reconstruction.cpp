@@ -2,23 +2,26 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "vector"
+#include <vector>
 
 #include <ktl.h>
 
-#include "opencv2/opencv.hpp"
-#include "opencv2/features2d.hpp"
-#include "opencv2/calib3d.hpp"
+#include <opencv2/opencv.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/calib3d.hpp>
 
-#include "rclcpp/rclcpp.hpp"
+#include <rclcpp/rclcpp.hpp>
 
 
-#include "message_filters/subscriber.h"
-#include "message_filters/time_synchronizer.h"
-#include "sensor_msgs/msg/image.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
-#include "geometry_msgs/msg/transform.hpp"
-#include "tf2_ros/static_transform_broadcaster.h"
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <geometry_msgs/msg/transform.hpp>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <pcl-1.8/pcl/point_types.h>
+#include <pcl-1.8/pcl/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include "../include/options_orb_matching.hpp"
 
@@ -70,16 +73,16 @@ void convert_frame_to_message(const cv::Mat & frame, size_t frame_id, sensor_msg
   msg.header.frame_id = std::to_string(frame_id);
 }
 
-void convert_pointcloud_to_PCL(const cv::Mat pointCloud2, size_t frame_id, sensor_msgs::msg::PointCloud2 & msg_cloud_pub){
+void convert_pointcloud_to_PCL(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 & msg_cloud_pub, int dist_count){
   msg_cloud_pub.header = std_msgs::msg::Header();
   msg_cloud_pub.header.stamp = rclcpp::Clock().now();
-  msg_cloud_pub.header.frame_id = frame_id;
+  msg_cloud_pub.header.frame_id = "map";
   
   msg_cloud_pub.is_bigendian = false;
   msg_cloud_pub.is_dense = true;
 
   msg_cloud_pub.height = 1;
-  msg_cloud_pub.width = pointCloud2.cols;
+  msg_cloud_pub.width = pointCloud2.rows;
 
   msg_cloud_pub.fields.resize(3);
   msg_cloud_pub.fields[0].name = "x";
@@ -98,10 +101,11 @@ void convert_pointcloud_to_PCL(const cv::Mat pointCloud2, size_t frame_id, senso
   msg_cloud_pub.data.resize(msg_cloud_pub.row_step * msg_cloud_pub.height);
 
   auto floatData = reinterpret_cast<float *>(msg_cloud_pub.data.data());
-  for (uint32_t i = 0; i < msg_cloud_pub.width; ++i) {
-    for (uint32_t j = 0; j < 3; ++j)
-    floatData[i * (msg_cloud_pub.point_step / sizeof(float)) + j] = pointCloud2.at<cv::Vec3f>(i)[j];
-  }
+  for (uint32_t i = 0; i < msg_cloud_pub.width - dist_count; ++i) {
+    for (uint32_t j = 0; j < 3; ++j){
+      floatData[i * (msg_cloud_pub.point_step / sizeof(float)) + j] = pointCloud2.at<cv::Vec3f>(i)[j];
+    }
+  } 
 }
 
 void transformQuaternionToRotMat(
@@ -194,7 +198,7 @@ void convertCVMattoKtlMatrix2(
 }
 
 void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, const std::shared_ptr<const sensor_msgs::msg::Image> & msg_mask
-  , bool show_camera, size_t feature, size_t match, bool mask, cv::viz::Viz3d visualizeWindow, cv::Mat arm_trans, cv::Mat arm_rot, rclcpp::Logger logger 
+  , bool show_camera, size_t feature, size_t match, bool mask, cv::Mat arm_trans, cv::Mat arm_rot, rclcpp::Logger logger 
   , std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud, std::shared_ptr<rclcpp::Node> node)
   {
   RCLCPP_INFO(logger, "Received image #%s", msg_image->header.frame_id.c_str());
@@ -430,41 +434,45 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     msg.child_frame_id = "camera_5point";
     broadcaster.sendTransform(msg);
 
-    /*
-    //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
+    
+    /*//正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
+    cv::Mat prjMat1, prjMat2;
+    cv::Mat tt(3, 1, CV_32FC1), rr(3, 3, CV_32FC1);
+    t.convertTo(tt, CV_32FC1);
+    r.convertTo(rr, CV_32FC1);
+    prjMat1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
+    prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
+    for (int i = 0; i < 3; i++) {
+      prjMat2.at<float>(i, 3) = tt.at<float>(i);
+      for (int j = 0; j < 3; j++) {
+        prjMat2.at<float>(i, j) = rr.at<float>(i, j);
+      }
+    }*/
+    /*//正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
     cv::Mat prjMat1, prjMat2;
     prjMat1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
     prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
     for (int i = 0; i < 3; i++) {
-      prjMat2.at<float>(i, 3) = t.at<float>(i);
+      prjMat2.at<float>(i, 3) = t_arm.at<float>(i);
       for (int j = 0; j < 3; j++) {
-        prjMat2.at<float>(i, j) = r.at<float>(i, j);
-      }
-    }
-    //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
-    cv::Mat prjMat3, prjMat4;
-    prjMat3 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
-    prjMat4 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
-    for (int i = 0; i < 3; i++) {
-      prjMat4.at<float>(i, 3) = t_arm.at<float>(i);
-      for (int j = 0; j < 3; j++) {
-        prjMat4.at<float>(i, j) = r_arm.at<float>(i, j);
+        prjMat2.at<float>(i, j) = r_arm.at<float>(i, j);
       }
     }*/
     //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
-    cv::Mat prjMat5, prjMat6;
-    prjMat5 = cv::Mat(3, 4, CV_32FC1); //片方は回転、並進ともに0
-    prjMat6 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
+    cv::Mat prjMat1, prjMat2;
+    prjMat1 = cv::Mat(3, 4, CV_32FC1); 
+    prjMat2 = cv::Mat(3, 4, CV_32FC1); 
     for (int i = 0; i < 3; i++) {
-      prjMat5.at<float>(i, 3) = x1.at<float>(i);
-      prjMat6.at<float>(i, 3) = x2.at<float>(i);
+      prjMat1.at<float>(i, 3) = x1.at<float>(i);
+      prjMat2.at<float>(i, 3) = x2.at<float>(i);
       for (int j = 0; j < 3; j++) {
-        prjMat5.at<float>(i, j) = r1.at<float>(i, j);
-        prjMat6.at<float>(i, j) = r2.at<float>(i, j);
+        prjMat1.at<float>(i, j) = r1.at<float>(i, j);
+        prjMat2.at<float>(i, j) = r2.at<float>(i, j);
       }
     }
+
     cv::Mat point4D;
-    cv::triangulatePoints(prjMat5, prjMat6, p1, p2, point4D);	//三角測量
+    cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point4D);	//三角測量
     
     // viz用に並べ替え&距離が長すぎるのは削除
     cv::Mat pointCloud(point4D.cols, 1, CV_32FC3);
@@ -474,41 +482,29 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
           pointCloud.at<cv::Vec3f>(i)[j] = point4D.at<float>(j, i);
       }
     }
-    //平均距離を表示
-    float dist = 0.0;
+    //おかしな値は除去
     int dist_count = 0;
     for (int i = 0; i < point4D.cols; i++){
-      if(pointCloud.at<cv::Vec3f>(i)[2] < 10.0 && pointCloud.at<cv::Vec3f>(i)[2] > -10.0){
+      if(cv::norm(pointCloud.row(i)) < 10){
         for(int j = 0; j < 3; j++){
           pointCloud2.at<cv::Vec3f>(i - dist_count)[j] = pointCloud.at<cv::Vec3f>(i)[j];
         }
       } else {
         dist_count++;
       }
-      dist += pointCloud2.at<cv::Vec3f>(i - dist_count)[2];
-    }
-    dist = dist / (point4D.cols - dist_count);
-    printf("average_dist = %0.2f, cols,rows = [%d, %d]\n", dist, point4D.cols, pointCloud2.rows);
-    
-    // 点群の描画
-    if(show_camera){
-      cv::viz::WCloud cloud(pointCloud2);
-      visualizeWindow.showWidget("CLOUD", cloud);
-      visualizeWindow.spinOnce(1, true);
-      //visualizeWindow.spin();
-    }
-    
+      //printf("p(%d) = [%0.2f %0.2f %0.2f]\n", i, pointCloud2.at<cv::Vec3f>(i - dist_count)[0], pointCloud2.at<cv::Vec3f>(i - dist_count)[1], pointCloud2.at<cv::Vec3f>(i - dist_count)[2]);
+    }   
     ////    reconstruction 終了     ////
 
     //Publish Image
     RCLCPP_INFO(logger, "Publishing image #%s", msg_image->header.frame_id.c_str());
     auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
-    auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    auto msg_cloud_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
     convert_frame_to_message(cvframe, atoi(msg_image->header.frame_id.c_str()), *msg_pub);  //cv → msg
-    convert_pointcloud_to_PCL(pointCloud2, atoi(msg_cloud_pub->header.frame_id.c_str()), *msg_cloud_pub);
-    
+    convert_pointcloud_to_PCL(pointCloud2, *msg_cloud_pub, dist_count);
+
     pub->publish(std::move(msg_pub)); 
-    pub_pointcloud->publish(std::move(msg_cloud_pub));
+    pub_pointcloud->publish(*msg_cloud_pub);
   }
 
   // 1つめのフレームに代入
@@ -557,10 +553,6 @@ int main(int argc, char * argv[])
       // Initialize an OpenCV named window called "cvframe".
       cv::namedWindow("cvframe", cv::WINDOW_AUTOSIZE);
     }
-    //viz用
-    cv::viz::Viz3d visualizeWindow("3Dview");
-    cv::waitKey(1);
-
     // Initialize a ROS node.
     auto node = rclcpp::Node::make_shared("reconstruction");
     rclcpp::Logger node_logger = node->get_logger();
@@ -597,7 +589,7 @@ int main(int argc, char * argv[])
     message_filters::Subscriber<sensor_msgs::msg::Image> mask_image_sub(node.get(), topic_sub_mask);
     message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync(image_sub, mask_image_sub, 10);
     auto sub_arm = node->create_subscription<geometry_msgs::msg::Transform>(topic_sub_arm, qos, callback_arm_trans);  
-    sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, mask, visualizeWindow, arm_trans, arm_rot, node_logger, pub, pub_pointcloud, node));
+    sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, mask, arm_trans, arm_rot, node_logger, pub, pub_pointcloud, node));
 
     rclcpp::spin(node);
     rclcpp::shutdown();

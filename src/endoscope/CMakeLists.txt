@@ -29,6 +29,11 @@ find_package(message_filters)
 find_package(OpenCV REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(rcutils REQUIRED)
+find_package(Boost COMPONENTS system REQUIRED)
+find_package(PCL COMPONENTS common REQUIRED)
 
 # cap_endoscope node
 add_executable(cap_endoscope
@@ -100,19 +105,26 @@ add_executable(reconstruction
   option/options_orb_matching.cpp
 )
 # 実行ファイルをリンクする
-target_link_libraries(reconstruction ktl ktlrt)
+target_link_libraries(reconstruction
+  ktl 
+  ktlrt
+  ${Boost_SYSTEM_LIBRARY}
+)
 
 ament_target_dependencies(reconstruction
-"rclcpp"
-"sensor_msgs"
-"std_msgs"
-"OpenCV"
-"message_filters"
-"tf2_msgs"
-"tf2_geometry_msgs"
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+  "tf2_msgs"
+  "tf2_geometry_msgs"
+  "rcl_interfaces"
+  "rcutils"
+  "pcl_conversions"
+
 )
-install(TARGETS
-  reconstruction
+install(TARGETS reconstruction
   DESTINATION lib/${PROJECT_NAME}
 )
 if(BUILD_TESTING)
