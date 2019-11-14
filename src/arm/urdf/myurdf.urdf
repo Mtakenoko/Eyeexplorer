@@ -3,10 +3,10 @@
     <color rgba="1.0 0.0 0.0 2.0"/>
   </material>
 
-  <link name="base_link"/>
+  <link name="map"/>
 
   <joint name="body1_joint" type="fixed">
-    <parent link="base_link"/>
+    <parent link="map"/>
     <child  link="body1_link"/>
   </joint>
   <link name="body1_link">

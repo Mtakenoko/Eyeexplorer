@@ -197,12 +197,43 @@ void convertCVMattoKtlMatrix2(
     R31 = r31; R32 = r32; R33 = r33;
 }
 
+void display_tf(cv::Mat t_sum, cv::Mat r_sum, std::shared_ptr<rclcpp::Node> node
+){
+  tf2_ros::StaticTransformBroadcaster broadcaster(node);
+  geometry_msgs::msg::TransformStamped msg;
+  float qx, qy, qz, qw; 
+    transformRotMatToQuaternion(qx, qy, qz, qw,
+          r_sum.at<float>(0,0), r_sum.at<float>(1,0), r_sum.at<float>(2,0),
+          r_sum.at<float>(0,1), r_sum.at<float>(1,1), r_sum.at<float>(2,1),
+          r_sum.at<float>(0,2), r_sum.at<float>(1,2), r_sum.at<float>(2,2)
+    );
+    msg.transform.translation.x = t_sum.at<float>(0);
+    msg.transform.translation.y = t_sum.at<float>(1);
+    msg.transform.translation.z = t_sum.at<float>(2);
+    msg.transform.rotation.x = qx;
+    msg.transform.rotation.y = qy;
+    msg.transform.rotation.z = qz;
+    msg.transform.rotation.w = qw;
+    msg.header.frame_id = "map";
+    msg.child_frame_id = "camera_5point";
+    broadcaster.sendTransform(msg);
+}
+
 void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, const std::shared_ptr<const sensor_msgs::msg::Image> & msg_mask
   , bool show_camera, size_t feature, size_t match, bool mask, cv::Mat arm_trans, cv::Mat arm_rot, rclcpp::Logger logger 
   , std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud, std::shared_ptr<rclcpp::Node> node)
   {
   RCLCPP_INFO(logger, "Received image #%s", msg_image->header.frame_id.c_str());
   
+  //frame間隔をあける
+  int frame_span;
+  static int frame1 = 0, frame2;
+  frame2 = atoi(msg_image->header.frame_id.c_str());
+  frame_span = frame2 - frame1;
+  if(frame2 < 10 || frame_span < 30){
+    return;
+  }
+
   //Subscribe
   cv::Mat frame_image(msg_image->height, msg_image->width, encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
   cv::Mat frame_mask(msg_mask->height, msg_mask->width, encoding2mat_type(msg_mask->encoding), const_cast<unsigned char *>(msg_mask->data.data()), msg_mask->step);
@@ -248,6 +279,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
   detector->detect(dst2, keypoints2);
   descriptorExtractor->compute(dst2, keypoints2, descriptor2);
 
+
   static int loop_count = 0; loop_count++;
   if(loop_count < 3){
       dst1 = dst2.clone();
@@ -256,6 +288,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
       mask1 = mask2.clone();
       x1 = x2.clone();
       r1 = r2.clone();
+      frame1 = frame2;
       return;
   }
   ////    detection 終了  ////
@@ -365,7 +398,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
 
       ip.at<double>(0) = keypoints1[dmatch[i].queryIdx].pt.x;	//1枚目の画像の特徴点のx座標を取得
       ip.at<double>(1) = keypoints1[dmatch[i].queryIdx].pt.y;	//1枚目の画像の特徴点のy座標を取得
-      ip.at<double>(2) = 1.0;	//同次座標(焦点距離入れたほうがいいかも？)
+      ip.at<double>(2) = 1.0;	//同次座標用
 
       ip = cameraMatrix.inv()*ip;	//カメラのキャリブレーション行列により画像平面からカメラ平面へ写像
       p.x = ip.at<double>(0);
@@ -386,6 +419,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     cv::Mat maskmask; //RANSACの結果を保持するためのマスク
     cv::Mat essentialMat = cv::findEssentialMat(p1, p2, 1.0, cv::Point2f(0, 0), cv::RANSAC, 0.9999, 0.003, maskmask);	//RANSACによって
     cv::recoverPose(essentialMat, p1, p2, r, t);
+    //printf("t = [%lf %lf %lf]\n", t.at<double>(0), t.at<double>(1), t.at<double>(2));
 
     //アームの運動学で求めた位置・姿勢
     cv::Mat r_arm(3, 3, CV_32FC1), t_arm(3, 1, CV_32FC1), r_32(3, 3, CV_32FC1), t_32(3, 1, CV_32FC1);
@@ -403,40 +437,24 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     }else{
       t_sum += t_32;
       r_sum = r_32 * r_sum;
-    }/*
-    printf("loop_count #%d\n", loop_count);
-    printf("t_32  = [%0.2f %0.2f %0.2f]\n", t_32.at<float>(0), t_32.at<float>(1), t_32.at<float>(2));
-    printf("t_arm = [%0.2f %0.2f %0.2f]\n", t_arm.at<float>(0), t_arm.at<float>(1), t_arm.at<float>(2));
-    printf("t_sum = [%0.2f %0.2f %0.2f]\n", t_sum.at<float>(0), t_sum.at<float>(1), t_sum.at<float>(2));
-    printf("r_32  = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_32.at<float>(0,0), r_32.at<float>(0,1), r_32.at<float>(0,2), r_32.at<float>(1,0), r_32.at<float>(1,1), r_32.at<float>(1,2), r_32.at<float>(2,0), r_32.at<float>(2,1), r_32.at<float>(2,2));
-    printf("r1    = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r1.at<float>(0,0), r1.at<float>(0,1), r1.at<float>(0,2), r1.at<float>(1,0), r1.at<float>(1,1), r1.at<float>(1,2), r1.at<float>(2,0), r1.at<float>(2,1), r1.at<float>(2,2));
-    printf("r_arm = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_arm.at<float>(0,0), r_arm.at<float>(0,1), r_arm.at<float>(0,2), r_arm.at<float>(1,0), r_arm.at<float>(1,1), r_arm.at<float>(1,2), r_arm.at<float>(2,0), r_arm.at<float>(2,1), r_arm.at<float>(2,2));
-    printf("r_sum = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_sum.at<float>(0,0), r_sum.at<float>(0,1), r_sum.at<float>(0,2), r_sum.at<float>(1,0), r_sum.at<float>(1,1), r_sum.at<float>(1,2), r_sum.at<float>(2,0), r_sum.at<float>(2,1), r_sum.at<float>(2,2));
-    */
-
-    //tfで5点アルゴリズムで推定したカメラ座標系をtfにしてRVizにて表示
-    tf2_ros::StaticTransformBroadcaster broadcaster(node);
-    geometry_msgs::msg::TransformStamped msg;
-    float qx, qy, qz, qw; 
-    transformRotMatToQuaternion(qx, qy, qz, qw,
-          r_sum.at<float>(0,0), r_sum.at<float>(1,0), r_sum.at<float>(2,0),
-          r_sum.at<float>(0,1), r_sum.at<float>(1,1), r_sum.at<float>(2,1),
-          r_sum.at<float>(0,2), r_sum.at<float>(1,2), r_sum.at<float>(2,2)
-    );
-    msg.transform.translation.x = t_sum.at<float>(0);
-    msg.transform.translation.y = t_sum.at<float>(1);
-    msg.transform.translation.z = t_sum.at<float>(2);
-    msg.transform.rotation.x = qx;
-    msg.transform.rotation.y = qy;
-    msg.transform.rotation.z = qz;
-    msg.transform.rotation.w = qw;
-    msg.header.frame_id = "map";
-    msg.child_frame_id = "camera_5point";
-    broadcaster.sendTransform(msg);
-
+    }
+    //printf("loop_count #%d\n", loop_count);
+    //printf("t_32  = [%0.2f %0.2f %0.2f]\n", t_32.at<float>(0), t_32.at<float>(1), t_32.at<float>(2));
+    //printf("t_arm = [%0.2f %0.2f %0.2f]\n", t_arm.at<float>(0), t_arm.at<float>(1), t_arm.at<float>(2));
+    //printf("t_sum = [%0.2f %0.2f %0.2f]\n", t_sum.at<float>(0), t_sum.at<float>(1), t_sum.at<float>(2));
+    //printf("t     = [%0.2lf %0.2lf %0.2lf]\n", t.at<double>(0), t.at<double>(1), t.at<double>(2));
+    //printf("r_32  = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_32.at<float>(0,0), r_32.at<float>(0,1), r_32.at<float>(0,2), r_32.at<float>(1,0), r_32.at<float>(1,1), r_32.at<float>(1,2), r_32.at<float>(2,0), r_32.at<float>(2,1), r_32.at<float>(2,2));
+    //printf("r1    = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r1.at<float>(0,0), r1.at<float>(0,1), r1.at<float>(0,2), r1.at<float>(1,0), r1.at<float>(1,1), r1.at<float>(1,2), r1.at<float>(2,0), r1.at<float>(2,1), r1.at<float>(2,2));
+    //printf("r_arm = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_arm.at<float>(0,0), r_arm.at<float>(0,1), r_arm.at<float>(0,2), r_arm.at<float>(1,0), r_arm.at<float>(1,1), r_arm.at<float>(1,2), r_arm.at<float>(2,0), r_arm.at<float>(2,1), r_arm.at<float>(2,2));
+    //printf("r_sum = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_sum.at<float>(0,0), r_sum.at<float>(0,1), r_sum.at<float>(0,2), r_sum.at<float>(1,0), r_sum.at<float>(1,1), r_sum.at<float>(1,2), r_sum.at<float>(2,0), r_sum.at<float>(2,1), r_sum.at<float>(2,2));
     
-    /*//正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
-    cv::Mat prjMat1, prjMat2;
+
+    //tfで5点アルゴリズムで推定したカメラff座標をtfに変換およびパブリッシュ
+    display_tf(t_sum, r_sum, node); 
+    
+    //三角測量のためのカメラの透視射影行列
+     cv::Mat prjMat1(3, 4, CV_32FC1), prjMat2(3, 4, CV_32FC1), prjMat1_d(3, 4, CV_64FC1), prjMat2_d(3, 4, CV_64FC1);
+    /*//５点アルゴリズムで推定したカメラの位置姿勢から三角測量をする（カメラ空間）
     cv::Mat tt(3, 1, CV_32FC1), rr(3, 3, CV_32FC1);
     t.convertTo(tt, CV_32FC1);
     r.convertTo(rr, CV_32FC1);
@@ -448,8 +466,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
         prjMat2.at<float>(i, j) = rr.at<float>(i, j);
       }
     }*/
-    /*//正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
-    cv::Mat prjMat1, prjMat2;
+    //運動学から求めたカメラの位置姿勢から三角測量をする（カメラ空間）
     prjMat1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
     prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
     for (int i = 0; i < 3; i++) {
@@ -457,11 +474,8 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
       for (int j = 0; j < 3; j++) {
         prjMat2.at<float>(i, j) = r_arm.at<float>(i, j);
       }
-    }*/
-    //正規化座標系で計算しているのでProjection matrix = 外部カメラパラメータ行列
-    cv::Mat prjMat1, prjMat2;
-    prjMat1 = cv::Mat(3, 4, CV_32FC1); 
-    prjMat2 = cv::Mat(3, 4, CV_32FC1); 
+    }
+    /*//運動学から求めたカメラの位置姿勢から三角測量をする（ワールド座標）
     for (int i = 0; i < 3; i++) {
       prjMat1.at<float>(i, 3) = x1.at<float>(i);
       prjMat2.at<float>(i, 3) = x2.at<float>(i);
@@ -469,17 +483,25 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
         prjMat1.at<float>(i, j) = r1.at<float>(i, j);
         prjMat2.at<float>(i, j) = r2.at<float>(i, j);
       }
-    }
+    }*/
+    prjMat1.convertTo(prjMat1_d, CV_64FC1);
+    prjMat2.convertTo(prjMat2_d, CV_64FC1);
 
+    //三角測量
     cv::Mat point4D;
-    cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point4D);	//三角測量
-    
+    cv::triangulatePoints(prjMat1_d, prjMat2_d, p1, p2, point4D);
+    //prjMat1_d : 運動学で求めたワールド空間上での動作前のカメラの位置・姿勢行列
+    //prjMat2_d : 運動学で求めたワールド空間上での動作後のカメラの位置・姿勢行列
+    //p1        : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間にで表現したもの
+    //p2        : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間で表現したもの
+    //point4d   : 三角測量で求めた各特徴点座標をワールド空間にて表現したもの
+
     // viz用に並べ替え&距離が長すぎるのは削除
     cv::Mat pointCloud(point4D.cols, 1, CV_32FC3);
     cv::Mat pointCloud2(point4D.cols, 1, CV_32FC3);
     for (int i = 0; i < point4D.cols; i++) {
       for (int j = 0; j <  3; j++) {
-          pointCloud.at<cv::Vec3f>(i)[j] = point4D.at<float>(j, i);
+          pointCloud.at<cv::Vec3f>(i)[j] = point4D.at<double>(j, i);
       }
     }
     //おかしな値は除去
@@ -514,6 +536,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
   mask1 = mask2.clone();  
   x1 = x2.clone();
   r1 = r2.clone();
+  frame1 = frame2;
 }
 
 int main(int argc, char * argv[])
