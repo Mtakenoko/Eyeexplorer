@@ -102,7 +102,7 @@ install(TARGETS
 # matching & reconstruction node
 add_executable(reconstruction
   src/matching_reconstruction.cpp
-  option/options_orb_matching.cpp
+  option/options_reconstruction.cpp
 )
 # 実行ファイルをリンクする
 target_link_libraries(reconstruction

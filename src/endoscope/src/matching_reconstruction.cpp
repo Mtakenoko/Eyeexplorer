@@ -23,7 +23,7 @@
 #include <pcl-1.8/pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include "../include/options_orb_matching.hpp"
+#include "../include/options_reconstruction.hpp"
 
 int encoding2mat_type(const std::string & encoding)
 {
@@ -220,7 +220,7 @@ void display_tf(cv::Mat t_sum, cv::Mat r_sum, std::shared_ptr<rclcpp::Node> node
 }
 
 void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, const std::shared_ptr<const sensor_msgs::msg::Image> & msg_mask
-  , bool show_camera, size_t feature, size_t match, bool mask, cv::Mat arm_trans, cv::Mat arm_rot, rclcpp::Logger logger 
+  , bool show_camera, size_t feature, size_t match, bool mask, cv::Mat arm_trans, cv::Mat arm_rot, size_t prjMat, rclcpp::Logger logger 
   , std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud, std::shared_ptr<rclcpp::Node> node)
   {
   RCLCPP_INFO(logger, "Received image #%s", msg_image->header.frame_id.c_str());
@@ -230,7 +230,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
   static int frame1 = 0, frame2;
   frame2 = atoi(msg_image->header.frame_id.c_str());
   frame_span = frame2 - frame1;
-  if(frame2 < 10 || frame_span < 30){
+  if(frame2 < 10 || frame_span < 10){
     return;
   }
 
@@ -389,7 +389,9 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
   //カメラ座標にて三角測量
   if(dmatch.size() > 5){
     std::vector<cv::Point2d> p1;
+    cv::Mat p1_cv(1, dmatch.size(), CV_64FC2);
     std::vector<cv::Point2d> p2;
+    cv::Mat p2_cv(1, dmatch.size(), CV_64FC2);
 
     //対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
     for (size_t i = 0; i < dmatch.size(); i++) {	//特徴点の数だけ処理
@@ -448,74 +450,109 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     //printf("r_arm = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_arm.at<float>(0,0), r_arm.at<float>(0,1), r_arm.at<float>(0,2), r_arm.at<float>(1,0), r_arm.at<float>(1,1), r_arm.at<float>(1,2), r_arm.at<float>(2,0), r_arm.at<float>(2,1), r_arm.at<float>(2,2));
     //printf("r_sum = [%0.2f %0.2f %0.2f \n          %0.2f %0.2f %0.2f\n          %0.2f %0.2f %0.2f]\n", r_sum.at<float>(0,0), r_sum.at<float>(0,1), r_sum.at<float>(0,2), r_sum.at<float>(1,0), r_sum.at<float>(1,1), r_sum.at<float>(1,2), r_sum.at<float>(2,0), r_sum.at<float>(2,1), r_sum.at<float>(2,2));
     
-
-    //tfで5点アルゴリズムで推定したカメラff座標をtfに変換およびパブリッシュ
-    display_tf(t_sum, r_sum, node); 
-    
     //三角測量のためのカメラの透視射影行列
-     cv::Mat prjMat1(3, 4, CV_32FC1), prjMat2(3, 4, CV_32FC1), prjMat1_d(3, 4, CV_64FC1), prjMat2_d(3, 4, CV_64FC1);
-    /*//５点アルゴリズムで推定したカメラの位置姿勢から三角測量をする（カメラ空間）
-    cv::Mat tt(3, 1, CV_32FC1), rr(3, 3, CV_32FC1);
-    t.convertTo(tt, CV_32FC1);
-    r.convertTo(rr, CV_32FC1);
-    prjMat1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
-    prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
-    for (int i = 0; i < 3; i++) {
-      prjMat2.at<float>(i, 3) = tt.at<float>(i);
-      for (int j = 0; j < 3; j++) {
-        prjMat2.at<float>(i, j) = rr.at<float>(i, j);
+     cv::Mat prjMat1(3, 4, CV_64FC1), prjMat2(3, 4, CV_64FC1);
+    if(prjMat == 0){//５点アルゴリズムで推定したカメラの位置姿勢から三角測量をする（カメラ空間）
+      prjMat1 = cv::Mat::eye(3, 4, CV_64FC1); //片方は回転、並進ともに0
+      for (int i = 0; i < 3; i++) {
+        prjMat2.at<double>(i, 3) = t.at<double>(i);
+        for (int j = 0; j < 3; j++) {
+          prjMat2.at<double>(i, j) = r.at<double>(i, j);
+        }
       }
-    }*/
-    //運動学から求めたカメラの位置姿勢から三角測量をする（カメラ空間）
-    prjMat1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
-    prjMat2 = cv::Mat(3, 4, CV_32FC1);  //そこからどれだけ回転、並進したか
-    for (int i = 0; i < 3; i++) {
-      prjMat2.at<float>(i, 3) = t_arm.at<float>(i);
-      for (int j = 0; j < 3; j++) {
-        prjMat2.at<float>(i, j) = r_arm.at<float>(i, j);
+    } else if(prjMat == 1){//運動学から求めたカメラの位置姿勢から三角測量をする（カメラ空間）
+      prjMat1 = cv::Mat::eye(3, 4, CV_64FC1); //片方は回転、並進ともに0
+      for (int i = 0; i < 3; i++) {
+        prjMat2.at<double>(i, 3) = t_arm.at<float>(i);
+        for (int j = 0; j < 3; j++) {
+          prjMat2.at<double>(i, j) = r_arm.at<float>(i, j);
+        }
+      }
+    } else if(prjMat == 2){//運動学から求めたカメラの位置姿勢から三角測量をする（ワールド座標）
+      for (int i = 0; i < 3; i++) {
+        prjMat1.at<double>(i, 3) = x1.at<float>(i);
+        prjMat2.at<double>(i, 3) = x2.at<float>(i);
+        for (int j = 0; j < 3; j++) {
+          prjMat1.at<double>(i, j) = r1.at<float>(i, j);
+          prjMat2.at<double>(i, j) = r2.at<float>(i, j);
+        }
       }
     }
-    /*//運動学から求めたカメラの位置姿勢から三角測量をする（ワールド座標）
-    for (int i = 0; i < 3; i++) {
-      prjMat1.at<float>(i, 3) = x1.at<float>(i);
-      prjMat2.at<float>(i, 3) = x2.at<float>(i);
-      for (int j = 0; j < 3; j++) {
-        prjMat1.at<float>(i, j) = r1.at<float>(i, j);
-        prjMat2.at<float>(i, j) = r2.at<float>(i, j);
+
+    //三角測量(triangulatepoints()に一つ一つ点を与えるとき)
+    cv::Mat point3D;
+    cv::Mat point4D_1;
+    cv::Mat pointCloud(dmatch.size(), 1, CV_32FC3);
+    cv::Mat pointCloud2(dmatch.size(), 1, CV_32FC3);
+    for(size_t i = 0; i < dmatch.size(); i++){
+      cv::Mat ip;
+      cv::Mat point4D(1, 1, CV_64FC4);
+      cv::triangulatePoints(prjMat1, prjMat2, cv::Mat(p1[i]), cv::Mat(p2[i]), point4D);
+      //prjMat1 : 運動学で求めたカメラ空間上での動作前のカメラの位置・姿勢行列
+      //prjMat2 : 運動学で求めたカメラ空間上での動作後のカメラの位置・姿勢行列
+      //p1      : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間にで表現したもの
+      //p2      : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間で表現したもの
+      //point4D : 三角測量で求めた各特徴点座標をカメラ空間にて表現したもの
+      //printf("p1 = %lf %lf %d %d\n", p1[i].y, cv::Mat(p1[i]).at<double>(1, 0), cv::Mat(p1[i]).rows, cv::Mat(p1[i]).cols);
+      
+      //Homogeneus座標からEuclid座標系への変換
+      cv::convertPointsFromHomogeneous(point4D.t(), ip); //point4D(4*1,1CH)→(1*1,4CH) ip(1, 1, 3)
+      point3D.push_back(ip);
+      //printf("point4D: %d %d %d\n", point4D.rows, point4D.cols, point4D.channels());
+      //printf("ip: %d %d %d\n", ip.rows, ip.cols, ip.channels());
+      point4D_1.push_back(point4D.reshape(4, 1));
+      for (size_t j = 0; j <  3; j++) {
+        pointCloud.at<cv::Vec3f>(i)[j] = ip.at<cv::Vec3d>(0)[j];
       }
-    }*/
-    prjMat1.convertTo(prjMat1_d, CV_64FC1);
-    prjMat2.convertTo(prjMat2_d, CV_64FC1);
-
-    //三角測量
-    cv::Mat point4D;
-    cv::triangulatePoints(prjMat1_d, prjMat2_d, p1, p2, point4D);
-    //prjMat1_d : 運動学で求めたワールド空間上での動作前のカメラの位置・姿勢行列
-    //prjMat2_d : 運動学で求めたワールド空間上での動作後のカメラの位置・姿勢行列
-    //p1        : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間にで表現したもの
-    //p2        : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間で表現したもの
-    //point4d   : 三角測量で求めた各特徴点座標をワールド空間にて表現したもの
-
-    // viz用に並べ替え&距離が長すぎるのは削除
-    cv::Mat pointCloud(point4D.cols, 1, CV_32FC3);
-    cv::Mat pointCloud2(point4D.cols, 1, CV_32FC3);
-    for (int i = 0; i < point4D.cols; i++) {
+    }
+    //printf("point3D : %d %d %d\n", point3D.rows, point3D.cols, point3D.channels());
+    
+    //三角測量（triangulatePoints()に一気に点を与えるとき）
+    cv::Mat point4D_2;
+    cv::triangulatePoints(prjMat1, prjMat2, p1, p2, point4D_2);
+    //prjMat1 : 運動学で求めたカメラ空間上での動作前のカメラの位置・姿勢行列
+    //prjMat2 : 運動学で求めたカメラ空間上での動作後のカメラの位置・姿勢行列
+    //p1      : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間にで表現したもの
+    //p2      : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間で表現したもの
+    //point4D : 三角測量で求めた各特徴点座標をカメラ空間にて表現したもの
+    
+    //Homogeneus座標からEuclid座標系への変換
+    cv::Mat point3D_2;
+    cv::convertPointsFromHomogeneous(point4D_2.t(), point3D_2); //point4D(N*4,1CH)→(1*N,4CH)
+    /*
+    // RViz2用に並べ替えmatcmatc
+    cv::Mat pointCloud(point3D.rows, 1, CV_32FC3);
+    cv::Mat pointCloud2(point3D.rows, 1, CV_32FC3);
+    for (int i = 0; i < point3D.rows; i++) {
       for (int j = 0; j <  3; j++) {
-          pointCloud.at<cv::Vec3f>(i)[j] = point4D.at<double>(j, i);
+          pointCloud.at<cv::Vec3f>(i)[j] = point3D.at<cv::Vec3d>(i)[j];
       }
+    }*/
+    //printf("dmatch: %zu\n", dmatch.size());
+    //printf("point4D_1: %d %d %d\n", point4D_1.rows, point4D_1.cols, point4D_1.channels());
+    //printf("point4D_2: %d %d %d\n", point4D_2.rows, point4D_2.cols, point4D_2.channels());
+    //printf("point3D_1: %d %d %d\n", point3D.rows, point3D.cols, point3D.channels());
+    //printf("point3D_2: %d %d %d\n", point3D_2.rows, point3D_2.cols, point3D_2.channels());
+    
+    for (int i = 0; i < point3D.rows; i++) {
+      //printf("point4D_1 #%d =[%0.4lf %0.4lf %0.4lf %0.4lf]\n", i, point4D_1.at<cv::Vec3d>(i)[0], point4D_1.at<cv::Vec3d>(i)[1], point4D_1.at<cv::Vec3d>(i)[2], point4D_1.at<cv::Vec3d>(i)[3]);
+      //printf("point4D_2 #%d =[%0.4lf %0.4lf %0.4lf %0.4lf]\n", i, point4D_2.reshape(4, 1).at<cv::Vec3d>(i)[0], point4D_2.reshape(4, 1).at<cv::Vec3d>(i)[1], point4D_2.reshape(4, 1).at<cv::Vec3d>(i)[2], point4D_2.reshape(4, 1).at<cv::Vec3d>(i)[3]);
+      //printf("point3D    #%d =[%0.4lf %0.4lf %0.4lf]\n", i, point3D.at<cv::Vec3d>(i)[0], point3D.at<cv::Vec3d>(i)[1], point3D.at<cv::Vec3d>(i)[2]);
+      //printf("point3D_2  #%d =[%0.4lf %0.4lf %0.4lf]\n", i, point3D_2.at<cv::Vec3d>(i)[0], point3D_2.at<cv::Vec3d>(i)[1], point3D_2.at<cv::Vec3d>(i)[2]);
     }
-    //おかしな値は除去
+    //距離（ノルム）が大きすぎる値は除去
     int dist_count = 0;
-    for (int i = 0; i < point4D.cols; i++){
-      if(cv::norm(pointCloud.row(i)) < 10){
+    for (int i = 0; i < point3D.rows; i++){
+      if(pointCloud.at<cv::Vec3f>(i)[2] < 0){
         for(int j = 0; j < 3; j++){
-          pointCloud2.at<cv::Vec3f>(i - dist_count)[j] = pointCloud.at<cv::Vec3f>(i)[j];
+          //pointCloud2.at<cv::Vec3f>(i - dist_count)[j] = pointCloud.at<cv::Vec3f>(i)[j];
+          pointCloud2.at<cv::Vec3f>(i - dist_count)[j] = pointCloud.at<cv::Vec3f>(i)[j] + x1.at<float>(j);
         }
       } else {
         dist_count++;
       }
       //printf("p(%d) = [%0.2f %0.2f %0.2f]\n", i, pointCloud2.at<cv::Vec3f>(i - dist_count)[0], pointCloud2.at<cv::Vec3f>(i - dist_count)[1], pointCloud2.at<cv::Vec3f>(i - dist_count)[2]);
-    }   
+    }
     ////    reconstruction 終了     ////
 
     //Publish Image
@@ -523,10 +560,12 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
     auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
     auto msg_cloud_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
     convert_frame_to_message(cvframe, atoi(msg_image->header.frame_id.c_str()), *msg_pub);  //cv → msg
-    convert_pointcloud_to_PCL(pointCloud2, *msg_cloud_pub, dist_count);
+    //convert_pointcloud_to_PCL(pointCloud2, *msg_cloud_pub, dist_count);
+    convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
 
     pub->publish(std::move(msg_pub)); 
     pub_pointcloud->publish(*msg_cloud_pub);
+    display_tf(t_sum, r_sum, node); //tfで5点アルゴリズムで推定したカメラff座標をtfに変換およびパブリッシュ
   }
 
   // 1つめのフレームに代入
@@ -553,6 +592,7 @@ int main(int argc, char * argv[])
     size_t feature = 0;
     size_t match = 0;
     bool mask = false;
+    size_t prjMat = 1;
 
     std::string topic_sub("endoscope_image");   
     std::string topic_sub_mask("mask_image");   
@@ -567,7 +607,7 @@ int main(int argc, char * argv[])
 
     // Configure demo parameters with command line options.
     if (!parse_command_options(
-        argc, argv, &depth, &reliability_policy, &history_policy, &show_camera, &feature, &match, &mask))
+        argc, argv, &depth, &reliability_policy, &history_policy, &show_camera, &feature, &match, &mask, &prjMat))
     {
         return 0;
     }
@@ -612,7 +652,7 @@ int main(int argc, char * argv[])
     message_filters::Subscriber<sensor_msgs::msg::Image> mask_image_sub(node.get(), topic_sub_mask);
     message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync(image_sub, mask_image_sub, 10);
     auto sub_arm = node->create_subscription<geometry_msgs::msg::Transform>(topic_sub_arm, qos, callback_arm_trans);  
-    sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, mask, arm_trans, arm_rot, node_logger, pub, pub_pointcloud, node));
+    sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, mask, arm_trans, arm_rot, prjMat, node_logger, pub, pub_pointcloud, node));
 
     rclcpp::spin(node);
     rclcpp::shutdown();
