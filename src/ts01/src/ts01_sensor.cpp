@@ -82,7 +82,7 @@ int init_module(void)
 
     //--- SSI -----------------------------------------------
     short ssi_clock = 16;      // 16 * 100 ns
-    short ssi_timeout = 40000; // / 8; // 40000ns / 8ns  //30usでは短すぎる
+    short ssi_timeout = 32767; // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
     for (int j = 0; j < ADOF; j++)
     {
         ts01.setup_ssi(j, ssi_clock, ARM_BIT[j] + 1, ssi_timeout);
@@ -141,14 +141,17 @@ int main(int argc, char * argv[]){
     auto msg_status_ = std::make_shared<std_msgs::msg::Bool>();
     msg_status_->data = false;
 
-
-    //エンコーダに関するmsg
-    std_msgs::msg::Float32MultiArray msg_encoder_;
-    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_encoder_;
-    publisher_encoder_ = node->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_encoder", qos);
-    msg_encoder_.data.resize(ADOF);
+    //エンコーダーに関するmsg
+    sensor_msgs::msg::JointState msg_encoder_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_encoder_;
+    publisher_encoder_ = node->create_publisher<sensor_msgs::msg::JointState>("ts01_encoder", qos);
+    msg_encoder_.name.push_back("arm_joint1");
+    msg_encoder_.name.push_back("arm_joint2");
+    msg_encoder_.name.push_back("arm_joint3");
+    msg_encoder_.name.push_back("arm_joint4");
+    msg_encoder_.name.push_back("arm_joint5");
     for(int i=0; i<ADOF;i++){
-      msg_encoder_.data[i] = 0.0;
+      msg_encoder_.position[i] = 0.0;
     }
     Ktl::Vector<ADOF> qoffset;
     ReadEncoderOffset(qoffset);
@@ -184,15 +187,15 @@ int main(int argc, char * argv[]){
         ts01.read_autosampling_data(&input); 
 
         //エンコーダのカウント
-        int enc[5];
+        int enc[ADOF];
         enc[0] = shift_range(input.ssi[0] >> 1, 0x0000fffff); //-2^19~2^19
         enc[1] = shift_range(input.ssi[1] >> 1, 0x00007ffff); //-2^17~2^17
         enc[2] = shift_range(input.ssi[2] >> 1, 0x00007ffff); 
         enc[3] = shift_range(input.ssi[3] >> 1, 0x00003ffff); //
         enc[4] = shift_range(input.ssi[4] >> 1, 0x00003ffff); //
-        for(size_t i=0; i<msg_encoder_.data.size(); i++){
+        for(size_t i = 0;i < ADOF; i++){
           //RCLCPP_INFO(node_logger, "Encoder #%d:enc = %f", i, RQ[i] * enc[i] - qoffset[i]);
-          msg_encoder_.data[i] = RQ[i] * enc[i];
+          msg_encoder_.position[i] = RQ[i] * enc[i];
         }
 
         //DI

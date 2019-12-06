@@ -8,7 +8,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time_source.hpp"
 
-#include "std_msgs/msg/float32_multi_array.hpp"
 #include "geometry_msgs/msg/transform.hpp"
 #include "tf2_ros/static_transform_broadcaster.h"
 

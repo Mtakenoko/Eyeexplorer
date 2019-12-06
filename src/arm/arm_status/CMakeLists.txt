@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(arm)
+project(arm_status)
 
 
 # Default to C99
@@ -30,26 +30,26 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
-# arm_forward_kinematics node
+# forward_kinematics node
 # スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(arm_forward_kinematics
+add_executable(forward_kinematics
   src/forward_kinematics.cpp
   src/encoder.cpp
   src/arm.cpp
 )
 # 実行ファイルをリンクする
-target_link_libraries(arm_forward_kinematics ts01 ktl ktlrt)
+target_link_libraries(forward_kinematics ts01 ktl ktlrt)
 # コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(arm_forward_kinematics
+ament_target_dependencies(forward_kinematics
   "rclcpp"
-  "std_msgs"
+  "sensor_msgs"
   "geometry_msgs"
   "tf2_msgs"
   "tf2_geometry_msgs"
 )
 # 実行ファイルをインストール
 install(TARGETS
-  arm_forward_kinematics
+  forward_kinematics
   DESTINATION lib/${PROJECT_NAME}
 )
 
