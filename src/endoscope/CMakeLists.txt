@@ -50,6 +50,21 @@ install(TARGETS
 cap_endoscope
 DESTINATION lib/${PROJECT_NAME}
 )
+# cap_endoscope_large node
+add_executable(cap_endoscope_large
+src/cap_endoscope_large.cpp
+option/options_cap_endoscope_large.cpp
+)
+ament_target_dependencies(cap_endoscope_large
+"rclcpp"
+"sensor_msgs"
+"std_msgs"
+"OpenCV"
+)
+install(TARGETS
+cap_endoscope_large
+DESTINATION lib/${PROJECT_NAME}
+)
 
 # matching node
 add_executable(matching
@@ -96,6 +111,22 @@ ament_target_dependencies(opticalflow
 )
 install(TARGETS
   opticalflow
+  DESTINATION lib/${PROJECT_NAME}
+)
+# stereo node
+add_executable(stereo_endoscope
+  src/stereo_endoscope.cpp
+  option/options_reconstruction.cpp
+)
+ament_target_dependencies(stereo_endoscope
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+)
+install(TARGETS
+  stereo_endoscope
   DESTINATION lib/${PROJECT_NAME}
 )
 

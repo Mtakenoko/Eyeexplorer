@@ -30,17 +30,17 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
-# forward_kinematics node
+# arm_forward_kinematics node
 # スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(arm_fk
-  src/arm_fk_main.cpp
-  src/arm_fk.cpp
+add_executable(arm_forward_kinematics
+  src/forward_kinematics.cpp
+  src/encoder.cpp
   src/arm.cpp
 )
 # 実行ファイルをリンクする
-target_link_libraries(arm_fk ts01 ktl ktlrt)
+target_link_libraries(arm_forward_kinematics ts01 ktl ktlrt)
 # コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(arm_fk
+ament_target_dependencies(arm_forward_kinematics
   "rclcpp"
   "std_msgs"
   "geometry_msgs"
@@ -49,7 +49,7 @@ ament_target_dependencies(arm_fk
 )
 # 実行ファイルをインストール
 install(TARGETS
-  arm_fk
+  arm_forward_kinematics
   DESTINATION lib/${PROJECT_NAME}
 )
 
