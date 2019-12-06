@@ -112,7 +112,6 @@ int main(int argc, char * argv[]){
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
-
     //Set QoS to Publish
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
     auto pub = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
@@ -120,6 +119,7 @@ int main(int argc, char * argv[]){
     auto callback = [qoffset, pub, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub){
         forward_kinematics(msg_sub, qoffset, pub, node->get_logger(), node);
     };
+
     //Set QoS to Subscribe
     RCLCPP_INFO(node->get_logger(), "Subscribing to topic '%s'", topic_sub.c_str());
     auto sub = node->create_subscription<sensor_msgs::msg::JointState>(topic_sub, qos, callback);  // Initialize a subscriber that will receive the ROS Image message to be displayed.

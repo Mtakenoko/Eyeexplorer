@@ -8,32 +8,33 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time_source.hpp"
 
-#include "std_msgs/msg/float32_multi_array.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 #include "geometry_msgs/msg/transform.hpp"
 #include "tf2_ros/static_transform_broadcaster.h"
 
 #include <ktl.h>
 
-#include "../include/arm/arm_fk.h"
+#include "../include/arm/encoder.h"
 #include "../include/arm/arm.h"
 
 #define ENC_OFFSET_FILE  "enc_offset.dat"  ///< エンコーダオフセットファイルのパス
 
-
 using namespace std::chrono_literals;
+
 ReadEncoder readencoder;
 PassiveArm passivearm;
-std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> g_pub;
 
-void compensation(Ktl::Vector<3> &Ptip, Ktl::Vector<5> q){
-    
+void compensation(Ktl::Vector<3> Pgim, Ktl::Vector<3> n, Ktl::Vector<3> &Pest){
+    //内視鏡先端位置と
+    const double l_RCM = 50.0;
+    Pest = Pgim + l_RCM * (n - n) + ENDOSCOPE_LENGTH * n;
 }
 
-void forward_kinematics(const std_msgs::msg::Float32MultiArray::SharedPtr sub_msg, Ktl::Vector<ADOF> qoffset,
-    rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node){
+void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, Ktl::Vector<ADOF> qoffset,
+    std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> pub, rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node){
     //エンコーダーの値を読んで運動学を解く
     for(int i=0; i<ADOF; i++){
-            passivearm.q[i] = sub_msg->data[i] - qoffset[i];
+            passivearm.q[i] = sub_msg->position[i] - qoffset[i];
     }
     passivearm.forward_kinematics();
     
@@ -51,7 +52,8 @@ void forward_kinematics(const std_msgs::msg::Float32MultiArray::SharedPtr sub_ms
     Ktl::Vector<3> Ptip = passivearm.Pr() + ENDOSCOPE_LENGTH * n;
     
     //姿勢変化を利用して補正を行う
-    compensation(Ptip, passivearm.q);
+    Ktl::Vector<3> Pest;
+    compensation(passivearm.Pr(), n, Pest);
 
     //並進成分
     pub_msg->translation.x = Ptip[0];
@@ -91,7 +93,7 @@ void forward_kinematics(const std_msgs::msg::Float32MultiArray::SharedPtr sub_ms
     }
     
     //Publish
-    g_pub->publish(std::move(pub_msg));
+    pub->publish(std::move(pub_msg));
     broadcaster.sendTransform(msg);
 }
 
@@ -118,14 +120,14 @@ int main(int argc, char * argv[]){
     // Set quality of service profile based on command line options.
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
-
-    auto callback = [qoffset, &node](const std_msgs::msg::Float32MultiArray::SharedPtr msg_sub){
-        forward_kinematics(msg_sub, qoffset, node->get_logger(), node);
-    };
-
+    
     //Set QoS to Publish
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
-    g_pub = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
+    auto pub = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
+
+    auto callback = [qoffset, pub, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub){
+        forward_kinematics(msg_sub, qoffset, pub, node->get_logger(), node);
+    };
 
     //Set QoS to Subscribe
     RCLCPP_INFO(node->get_logger(), "Subscribing to topic '%s'", topic_sub.c_str());

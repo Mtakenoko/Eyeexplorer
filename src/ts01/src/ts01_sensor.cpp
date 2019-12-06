@@ -22,7 +22,6 @@ TS01InputData input;
 TS01OutputData output;
 
 #define ADOF 5
-#define ENC_OFFSET_FILE "enc_offset.dat"
 
 //アブソエンコーダのビット数の設定
 static const short ARM_BIT[5] = {
@@ -57,21 +56,6 @@ int shift_range(unsigned int val, unsigned int range)
     return (int)val - (int)range;
 }
 
-/**
- * @brief エンコーダオフセット設定の読み込み
- * 
- * @param offset エンコーダオフセット格納先
- */
-void ReadEncoderOffset(Ktl::Vector<ADOF> &offset){
-  std::ifstream ifs(ENC_OFFSET_FILE);
-  //double DEG = 10;
-  for( int i = 0; i < ADOF; i++ )
-    ifs >> offset[i];
-
-  ifs.close();
-  offset.print();
-  offset *= 1.0 / DEG; //deg -> rad
-}
 
 /*******************************************************************
  *     init_module
@@ -153,8 +137,6 @@ int main(int argc, char * argv[]){
     for(int i=0; i<ADOF;i++){
       msg_encoder_.position[i] = 0.0;
     }
-    Ktl::Vector<ADOF> qoffset;
-    ReadEncoderOffset(qoffset);
 
     //DIに関するmsg
     std_msgs::msg::Int32MultiArray msg_di_;
@@ -194,7 +176,7 @@ int main(int argc, char * argv[]){
         enc[3] = shift_range(input.ssi[3] >> 1, 0x00003ffff); //
         enc[4] = shift_range(input.ssi[4] >> 1, 0x00003ffff); //
         for(size_t i = 0;i < ADOF; i++){
-          //RCLCPP_INFO(node_logger, "Encoder #%d:enc = %f", i, RQ[i] * enc[i] - qoffset[i]);
+          //RCLCPP_INFO(node_logger, "Encoder #%d:enc = %f", i, RQ[i] * enc[i]);
           msg_encoder_.position[i] = RQ[i] * enc[i];
         }
 
