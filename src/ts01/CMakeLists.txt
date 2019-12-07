@@ -30,16 +30,16 @@ find_package(sensor_msgs REQUIRED)
 add_executable(ts01_sensor
   src/ts01_sensor.cpp
 )
+target_link_libraries(ts01_sensor -lts01 -lktl)
 ament_target_dependencies(ts01_sensor
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
 )
 install(TARGETS
-ts01_sensor
+  ts01_sensor
   DESTINATION lib/${PROJECT_NAME}
 )
-target_link_libraries(ts01_sensor -lts01 -lktl)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

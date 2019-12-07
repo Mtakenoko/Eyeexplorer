@@ -25,7 +25,6 @@ ReadEncoder readencoder;
 PassiveArm passivearm;
 
 void compensation(Ktl::Vector<3> Pgim, Ktl::Vector<3> n, Ktl::Vector<3> &Pest){
-    //内視鏡先端位置と
     const double l_RCM = 50.0;
     Pest = Pgim + l_RCM * (n - n) + ENDOSCOPE_LENGTH * n;
 }
@@ -120,7 +119,7 @@ int main(int argc, char * argv[]){
     // Set quality of service profile based on command line options.
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
-    
+
     //Set QoS to Publish
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
     auto pub = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.

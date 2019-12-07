@@ -29,7 +29,8 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, K
     std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> pub, rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node){
     //エンコーダーの値を読んで運動学を解く
     for(int i=0; i<ADOF; i++){
-            passivearm.q[i] = sub_msg->position[i] - qoffset[i];
+        passivearm.q[i] = sub_msg->position[i] - qoffset[i];
+        //RCLCPP_INFO(logger, "Encoder #%d:enc = %f", i, sub_msg->position[i]);
     }
     passivearm.forward_kinematics();
     
@@ -76,11 +77,11 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, K
     
     //表示
     double rall, pitch, yaw;
-    readencoder.QuaternionToEulerAngles(qx, qy,qz, qw, rall, pitch, yaw);
+    readencoder.QuaternionToEulerAngles(qx, qy, qz, qw, rall, pitch, yaw);
     static int count = 0;
     count++;
     if(count % 10 == 0){
-        RCLCPP_INFO(logger, "Ptip = [%0.2f %0.2f %0.2f] Prot = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        //RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f] R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
     }
     
     //Publish
@@ -96,7 +97,7 @@ int main(int argc, char * argv[]){
     rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
     std::string topic_sub("ts01_encoder");   
-    std::string topic_pub_tip("arm_trans");
+    std::string topic_pub("arm_trans");
 
     //エンコーダーオフセット
     Ktl::Vector<ADOF> qoffset;
@@ -113,8 +114,8 @@ int main(int argc, char * argv[]){
     qos.reliability(reliability_policy);
 
     //Set QoS to Publish
-    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
-    auto pub = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
+    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub.c_str());
+    auto pub = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub, qos); // Create the image publisher with our custom QoS profile.
 
     auto callback = [qoffset, pub, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub){
         forward_kinematics(msg_sub, qoffset, pub, node->get_logger(), node);
