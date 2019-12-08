@@ -36,7 +36,7 @@ int main(int argc, char * argv[])
   rclcpp::WallRate loop_rate(1);
 
   nav_msgs::msg::OccupancyGrid msg;
-  msg.header.frame_id = "map";
+  msg.header.frame_id = "world";
 
   msg.info.resolution = 0.1f;
   msg.info.width = 100;

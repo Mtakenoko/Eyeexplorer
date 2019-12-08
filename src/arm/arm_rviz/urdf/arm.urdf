@@ -44,7 +44,7 @@
 
   <link name="arm_link1">
     <collision>
-      <origin rpy="0 0 0" xyz="0.02 0 0.02"/>
+      <origin rpy="0 0 0" xyz="0.02 0 0"/>
       <geometry>
         <box size="0.1 0.1 2"/>
       </geometry>
@@ -150,7 +150,7 @@
 
   <joint name="arm_joint4" type="continuous">
     <axis xyz="0.707106781 0 0.707106781"/>
-    <origin rpy="0 0 0" xyz="0.05 0 0.9"/>
+    <origin rpy="0 0 0" xyz="0.03982 0 -0.02239"/>
     <parent link="arm_link4"/>
     <child link="arm_link5"/>
   </joint>
@@ -176,6 +176,34 @@
     </inertial>
   </link>
   
+  <joint name="arm_joint5" type="continuous">
+    <axis xyz="0.707106781 0 0.707106781"/>
+    <origin rpy="0 0 0" xyz="0.03982 0 -0.02239"/>
+    <parent link="arm_link5"/>
+    <child link="arm_link6"/>
+  </joint>
+
+  <link name="arm_link6">
+    <collision>
+      <origin rpy="0 0 0" xyz="0.03982 0 -0.02239"/>
+      <geometry>
+        <box size="0.05 0.05 0.05"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.05 0.05"/>
+      </geometry>
+      <material name="ARM/red"/>
+    </visual>
+    <inertial>
+      <mass value="1e-5"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+    </inertial>
+  </link>
+
   <transmission name="arm_trans1">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="arm_joint1">
@@ -252,6 +280,16 @@
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
     <material>Gazebo/Black</material>
+  </gazebo>
+  <gazebo reference="arm_link5">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/Red</material>
+  </gazebo>
+  <gazebo reference="arm_link6">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/Red</material>
   </gazebo>
 </robot>
 

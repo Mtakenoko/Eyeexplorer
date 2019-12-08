@@ -69,7 +69,7 @@ int init_module(void)
 
     //--- SSI -----------------------------------------------
     short ssi_clock = 16;      // 16 * 100 ns
-    short ssi_timeout = 32767; // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
+    short ssi_timeout = 40000; // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
     for (int j = 0; j < ADOF; j++)
     {
         ts01.setup_ssi(j, ssi_clock, ARM_BIT[j] + 1, ssi_timeout);
@@ -135,12 +135,6 @@ int main(int argc, char * argv[]){
   //エンコーダーに関するmsg
   sensor_msgs::msg::JointState msg_encoder_;
   auto publisher_encoder_ = node->create_publisher<sensor_msgs::msg::JointState>("ts01_encoder", qos);
-  msg_encoder_.name.resize(ADOF);
-  msg_encoder_.name.push_back("arm_joint1");
-  msg_encoder_.name.push_back("arm_joint2");
-  msg_encoder_.name.push_back("arm_joint3");
-  msg_encoder_.name.push_back("arm_joint4");
-  msg_encoder_.name.push_back("arm_joint5");
   msg_encoder_.position.resize(ADOF);
   for(size_t i = 0; i< ADOF; ++i){  
     msg_encoder_.position.push_back(0.0);
@@ -184,6 +178,7 @@ int main(int argc, char * argv[]){
     enc[4] = shift_range(input.ssi[4] >> 1, 0x00003ffff); //
     for(size_t i = 0; i < ADOF; ++i){
       msg_encoder_.position[i] = RQ[i] * enc[i];
+      //RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
     }
     msg_encoder_.header.stamp = clock->now();
 
