@@ -37,11 +37,18 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, K
     tf2_ros::StaticTransformBroadcaster broadcaster(node);
     
     //エンコーダーの値を読んで運動学を解く
-    q_msg.position.resize(ADOF);
     for(int i=0; i<ADOF; i++){
         passivearm.q[i] = sub_msg->position[i] - qoffset[i];
-        q_msg.position[i] = passivearm.q[i];
+        
     }
+    q_msg.position.resize(ADOF+1);
+    q_msg.position[0] = passivearm.q[0];
+    q_msg.position[1] = passivearm.q[1];
+    q_msg.position[2] = passivearm.q[2];
+    q_msg.position[3] = PI / 4 - (passivearm.q[1] + passivearm.q[2]);
+    q_msg.position[4] = passivearm.q[3];
+    q_msg.position[5] = passivearm.q[4];
+    
     q_msg.header.stamp = clock->now();
     passivearm.forward_kinematics();
 
@@ -131,12 +138,16 @@ int main(int argc, char * argv[]){
     auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
     auto pub_q = node->create_publisher<sensor_msgs::msg::JointState>(topic_pub_q, 10); // Create the image publisher with our custom QoS profile.
 
-    //set q_msg
+    //setting q_msg
+    //q_msg.name.resize(6);
     q_msg.name.push_back("arm_joint1");
     q_msg.name.push_back("arm_joint2");
     q_msg.name.push_back("arm_joint3");
+    q_msg.name.push_back("arm_joint_horiz");
     q_msg.name.push_back("arm_joint4");
     q_msg.name.push_back("arm_joint5");
+    //q_msg.position.resize(6);
+    q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
