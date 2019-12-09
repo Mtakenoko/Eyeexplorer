@@ -1,0 +1,4 @@
+[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/ts01/src/ts01_sensor.cpp:[m[K In function ‘[01m[Kint init_module()[m[K’:
+[01m[K/home/takeyama/workspace/ros2_eyeexplorer/src/ts01/src/ts01_sensor.cpp:72:25:[m[K [01;35m[Kwarning: [m[Koverflow in implicit constant conversion [[01;35m[K-Woverflow[m[K]
+     short ssi_timeout = [01;35m[K40000[m[K; // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
+                         [01;35m[K^~~~~[m[K

@@ -1,0 +1,44 @@
+-- The C compiler identification is GNU 7.4.0
+-- The CXX compiler identification is GNU 7.4.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 0.7.3 (/home/takeyama/workspace/ros2_ws/install/ament_cmake/share/ament_cmake/cmake)
+-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.6.8", minimum required is "3") 
+-- Using PYTHON_EXECUTABLE: /usr/bin/python3
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Found nav_msgs: 0.7.0 (/home/takeyama/workspace/ros2_ws/install/nav_msgs/share/nav_msgs/cmake)
+-- Found rosidl_adapter: 0.7.6 (/home/takeyama/workspace/ros2_ws/install/rosidl_adapter/share/rosidl_adapter/cmake)
+-- Found rclcpp: 0.7.10 (/home/takeyama/workspace/ros2_ws/install/rclcpp/share/rclcpp/cmake)
+-- Found rmw_implementation_cmake: 0.7.2 (/home/takeyama/workspace/ros2_ws/install/rmw_implementation_cmake/share/rmw_implementation_cmake/cmake)
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Looking for pthread_create
+-- Looking for pthread_create - not found
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - found
+-- Found Threads: TRUE  
+-- Found ament_lint_auto: 0.7.10 (/home/takeyama/workspace/ros2_ws/install/ament_lint_auto/share/ament_lint_auto/cmake)
+-- Added test 'copyright' to check for copyright in CMake / C / C++ / Python code
+-- Added test 'cppcheck' to perform static code analysis on C / C++ code
+-- Configured cppcheck include dirs: 
+-- Added test 'cpplint' to check C / C++ code against the Google style
+-- Added test 'lint_cmake' to check CMake code style
+-- Added test 'uncrustify' to check C / C++ code style
+-- Added test 'xmllint' to check XML markup files
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/takeyama/workspace/ros2_eyeexplorer/src/build/map_server
+[35m[1mScanning dependencies of target map_server[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/map_server.dir/src/map_server.cpp.o[0m

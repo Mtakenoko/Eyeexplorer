@@ -181,7 +181,7 @@
   
   <joint name="arm_joint5" type="continuous">
     <axis xyz="0 1 0"/>
-    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <origin rpy="0 0 0" xyz="0.04 0 0"/>
     <parent link="arm_link5"/>
     <child link="arm_link6"/>
   </joint>

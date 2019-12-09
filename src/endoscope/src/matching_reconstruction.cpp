@@ -475,7 +475,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> & msg_image, 
       Rt1 = cv::Mat::eye(3, 4, CV_64FC1); //片方は回転、並進ともに0の外部パラメータ
       for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-          Rt2.at<double>(i, j) = r_arm.at<float>(i, j)*1000;
+          Rt2.at<double>(i, j) = r_arm.at<float>(i, j);
         }
         Rt2.at<double>(i, 3) = t_arm.at<float>(i)*1000;
       }

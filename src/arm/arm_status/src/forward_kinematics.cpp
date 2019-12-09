@@ -32,7 +32,6 @@ geometry_msgs::msg::TransformStamped tf_msg;
 void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, Ktl::Vector<ADOF> qoffset,
     std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> pub_tip, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::JointState>> pub_q, rclcpp::Clock::SharedPtr clock,
     rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node){
-    
     //送信するメッセージ
     tf2_ros::StaticTransformBroadcaster broadcaster(node);
     
@@ -64,9 +63,9 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, K
     tip_msg.translation.x = Ptip[0];
     tip_msg.translation.y = Ptip[1];
     tip_msg.translation.z = Ptip[2];
-    tf_msg.transform.translation.x = Ptip[0];
-    tf_msg.transform.translation.y = Ptip[1];
-    tf_msg.transform.translation.z = Ptip[2];        
+    tf_msg.transform.translation.x = Ptip[0] / 1000.;
+    tf_msg.transform.translation.y = Ptip[1] / 1000.;
+    tf_msg.transform.translation.z = Ptip[2] / 1000.;        
 
     //回転行列
     float qx, qy, qz, qw; 
@@ -91,6 +90,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg, K
     //表示
     double rall, pitch, yaw;
     readencoder.QuaternionToEulerAngles(qx, qy, qz, qw, rall, pitch, yaw);
+    
     static int count = 0;
     count++;
     if(count % 10 == 0){
@@ -135,6 +135,7 @@ int main(int argc, char * argv[]){
 
     //Set QoS to Publish
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
+    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_q.c_str());
     auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
     auto pub_q = node->create_publisher<sensor_msgs::msg::JointState>(topic_pub_q, 10); // Create the image publisher with our custom QoS profile.
 
