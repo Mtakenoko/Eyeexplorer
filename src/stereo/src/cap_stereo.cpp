@@ -31,7 +31,6 @@
 
 #include "../include/option_cap_stereo.hpp"
 
-
 /// Convert an OpenCV matrix encoding type to a string format recognized by sensor_msgs::Image.
 /**
  * \param[in] mat_type The OpenCV encoding type.
@@ -40,17 +39,18 @@
 std::string
 mat_type2encoding(int mat_type)
 {
-  switch (mat_type) {
-    case CV_8UC1:
-      return "mono8";
-    case CV_8UC3:
-      return "bgr8";
-    case CV_16SC1:
-      return "mono16";
-    case CV_8UC4:
-      return "rgba8";
-    default:
-      throw std::runtime_error("Unsupported encoding type");
+  switch (mat_type)
+  {
+  case CV_8UC1:
+    return "mono8";
+  case CV_8UC3:
+    return "bgr8";
+  case CV_16SC1:
+    return "mono16";
+  case CV_8UC4:
+    return "rgba8";
+  default:
+    throw std::runtime_error("Unsupported encoding type");
   }
 }
 
@@ -61,7 +61,7 @@ mat_type2encoding(int mat_type)
  * \param[out] Allocated shared pointer for the ROS Image message.
  */
 void convert_frame_to_message(
-  const cv::Mat & frame, size_t frame_id, sensor_msgs::msg::Image & msg)
+    const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg)
 {
   // copy cv information into ros message
   msg.height = frame.rows;
@@ -74,7 +74,7 @@ void convert_frame_to_message(
   msg.header.frame_id = std::to_string(frame_id);
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
   // Pass command line arguments to rclcpp.
   rclcpp::init(argc, argv);
@@ -100,8 +100,8 @@ int main(int argc, char * argv[])
 
   // Configure demo parameters with command line options.
   if (!parse_command_options(
-      argc, argv, &depth, &reliability_policy, &history_policy, &show_camera, &freq, &width,
-      &height, &device_L, &device_R, &movie_mode, &topic_image_L, &topic_image_R))
+          argc, argv, &depth, &reliability_policy, &history_policy, &show_camera, &freq, &width,
+          &height, &device_L, &device_R, &movie_mode, &topic_image_L, &topic_image_R))
   {
     return 0;
   }
@@ -128,11 +128,10 @@ int main(int argc, char * argv[])
   // Subscribe to a message that will toggle flipping or not flipping, and manage the state in a
   // callback.
   auto callback =
-    [&is_flipped, &node_logger](const std_msgs::msg::Bool::SharedPtr msg) -> void
-    {
-      is_flipped = msg->data;
-      RCLCPP_INFO(node_logger, "Set flip mode to: %s", is_flipped ? "on" : "off");
-    };
+      [&is_flipped, &node_logger](const std_msgs::msg::Bool::SharedPtr msg) -> void {
+    is_flipped = msg->data;
+    RCLCPP_INFO(node_logger, "Set flip mode to: %s", is_flipped ? "on" : "off");
+  };
 
   // Set the QoS profile for the subscription to the flip message.
   auto sub = node->create_subscription<std_msgs::msg::Bool>("flip_image", rclcpp::SensorDataQoS(), callback);
@@ -141,10 +140,13 @@ int main(int argc, char * argv[])
   rclcpp::WallRate loop_rate(freq);
 
   cv::VideoCapture cap_L, cap_R;
-  if(!movie_mode){
+  if (!movie_mode)
+  {
     cap_L.open(device_L);
     cap_R.open(device_R);
-  }else{
+  }
+  else
+  {
     cv::String filepath_L = "/home/takeyama/workspace/ros2_ws/src/ros2/demos/image_tools/src/000001-001_Trim.mp4";
     cv::String filepath_R = "/home/takeyama/workspace/ros2_ws/src/ros2/demos/image_tools/src/000001-001_Trim.mp4";
     cap_L.open(filepath_L);
@@ -155,22 +157,25 @@ int main(int argc, char * argv[])
   cap_L.set(cv::CAP_PROP_FRAME_HEIGHT, static_cast<double>(height));
   cap_R.set(cv::CAP_PROP_FRAME_WIDTH, static_cast<double>(width));
   cap_R.set(cv::CAP_PROP_FRAME_HEIGHT, static_cast<double>(height));
-  if (!cap_L.isOpened()) {
+  if (!cap_L.isOpened())
+  {
     RCLCPP_ERROR(node_logger, "Could not open video stream(L cam)");
     return 1;
   }
-  if (!cap_R.isOpened()) {
+  if (!cap_R.isOpened())
+  {
     RCLCPP_ERROR(node_logger, "Could not open video stream(R cam)");
     return 1;
   }
-  
+
   // Initialize OpenCV image matrices.
   cv::Mat frame_L, frame_R;
   cv::Mat flipped_frame_L, flipped_frame_R;
 
   RCLCPP_INFO(node_logger, "Loop Start!");
   // Our main event loop will spin until the user presses CTRL-C to exit.
-  while (rclcpp::ok()) {
+  while (rclcpp::ok())
+  {
     static size_t i = 1;
     // Initialize a shared pointer to an Image message.
     auto msg_L = std::make_unique<sensor_msgs::msg::Image>();
@@ -181,22 +186,27 @@ int main(int argc, char * argv[])
     cap_L >> frame_L;
     cap_R >> frame_R;
     cv::Mat pub_img_L = frame_L;
-    cv::Mat pub_img_R = frame_R;    
+    cv::Mat pub_img_R = frame_R;
 
     // Check if the frame was grabbed correctly
-    if (!pub_img_L.empty() && !pub_img_R.empty()) {
+    if (!pub_img_L.empty() && !pub_img_R.empty())
+    {
       // Convert to a ROS image
-      if (!is_flipped) {
+      if (!is_flipped)
+      {
         convert_frame_to_message(pub_img_L, i, *msg_L);
         convert_frame_to_message(pub_img_R, i, *msg_R);
-      } else {
+      }
+      else
+      {
         // Flip the frame if needed
         cv::flip(pub_img_L, flipped_frame_L, 1);
         cv::flip(pub_img_R, flipped_frame_R, 1);
         convert_frame_to_message(flipped_frame_L, i, *msg_L);
         convert_frame_to_message(flipped_frame_R, i, *msg_R);
       }
-      if (!show_camera == 0) {
+      if (!show_camera == 0)
+      {
         cv::Mat show_image;
         cv::hconcat(pub_img_L, pub_img_R, show_image);
         cv::imshow("cap_image_LR", show_image);
@@ -208,7 +218,9 @@ int main(int argc, char * argv[])
       RCLCPP_INFO(node_logger, "Publishing image_L #%zd", i);
       RCLCPP_INFO(node_logger, "Publishing image_R #%zd", i);
       ++i;
-    }else {
+    }
+    else
+    {
       RCLCPP_INFO(node_logger, "pub_img is empty!");
     }
 

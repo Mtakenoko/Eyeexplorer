@@ -55,7 +55,7 @@ bool parse_command_options(
   size_t * depth,
   rmw_qos_reliability_policy_t * reliability_policy,
   rmw_qos_history_policy_t * history_policy, 
-  bool * show_camera = nullptr, float * ransaq = nullptr,
+  bool * show_camera = nullptr, 
   size_t * feature = nullptr, size_t * match = nullptr, size_t * prjMat = nullptr);
 
 #endif  // IMAGE_TOOLS__OPTIONS_HPP_

@@ -87,11 +87,11 @@ bool parse_command_options(
     }
     if (device_L != nullptr){
       ss << " -cl: Camera device" << std::endl;
-      ss << "    Please type number of camera device."  << std::endl;
+      ss << "    Please type number of camera left device."  << std::endl;
     }
     if (device_R != nullptr){
       ss << " -cr: Camera device" << std::endl;
-      ss << "    Please type number of camera device."  << std::endl;
+      ss << "    Please type number of camera right device."  << std::endl;
     }
     if (movie_mode != nullptr) {
       ss << " -m: produce images of endoscope's movie rather than connecting to a camera" << std::endl;
@@ -154,14 +154,14 @@ bool parse_command_options(
   }
 
   if (device_L != nullptr) {
-    auto device_str = get_command_option(args, "-c");
+    auto device_str = get_command_option(args, "-cl");
     if (!device_str.empty()){
       *device_L = std::stoul(device_str.c_str());
     }
   }
 
   if (device_R != nullptr) {
-    auto device_str = get_command_option(args, "-c");
+    auto device_str = get_command_option(args, "-cr");
     if (!device_str.empty()){
       *device_R = std::stoul(device_str.c_str());
     }

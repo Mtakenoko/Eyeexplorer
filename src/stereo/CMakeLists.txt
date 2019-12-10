@@ -86,7 +86,7 @@ install(TARGETS stereo_reconstruction
 # stereo_vision node
 add_executable(stereo_vision
   src/stereo_vision.cpp
-  option/options_stereo_reconstruction.cpp
+  option/options_stereo_vision.cpp
 )
 ament_target_dependencies(stereo_vision
   "rclcpp"

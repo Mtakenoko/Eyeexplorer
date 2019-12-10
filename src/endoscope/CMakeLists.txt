@@ -158,6 +158,36 @@ ament_target_dependencies(reconstruction
 install(TARGETS reconstruction
   DESTINATION lib/${PROJECT_NAME}
 )
+
+# StereoRectify node
+add_executable(StereoRectify
+  src/StereoRectify.cpp
+  option/options_reconstruction.cpp
+)
+# 実行ファイルをリンクする
+target_link_libraries(StereoRectify
+  ktl 
+  ktlrt
+  ${Boost_SYSTEM_LIBRARY}
+)
+
+ament_target_dependencies(StereoRectify
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+  "tf2_msgs"
+  "tf2_geometry_msgs"
+  "rcl_interfaces"
+  "rcutils"
+  "pcl_conversions"
+
+)
+install(TARGETS StereoRectify
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
