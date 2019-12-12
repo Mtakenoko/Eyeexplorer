@@ -48,7 +48,7 @@ bool parse_command_options(
   size_t * depth,
   rmw_qos_reliability_policy_t * reliability_policy,
   rmw_qos_history_policy_t * history_policy, 
-  bool * show_camera, float * ransaq,
+  bool * show_camera, size_t * ransaq,
   size_t * feature, size_t * match, size_t * prjMat)
 {
   std::vector<std::string> args(argv, argv + argc);
@@ -72,8 +72,8 @@ bool parse_command_options(
       ss << "    1 - Show the camera stream" << std::endl;
     }
     if (ransaq != nullptr) {
-      ss << " -q: ransacReprojThreshold .  " << std::endl;
-      ss << "   0 - 0.001 (default)" << std::endl;
+      ss << " -q: 1 / ransacReprojThreshold .  " << std::endl;
+      ss << "   (nothing) - 20　convert to　0.05 (default)" << std::endl;
     }
     if (feature != nullptr) {
       ss << " -e: Feature point detector.  " << std::endl;
@@ -99,6 +99,11 @@ bool parse_command_options(
   if (!show_camera_str.empty()) {
     *show_camera = std::stoul(show_camera_str.c_str()) != 0 ? true : false;
   }
+  auto ransaq_str = get_command_option(args, "-q");
+  if (!ransaq_str.empty()) {
+    *ransaq = std::stoul(ransaq_str.c_str());
+  }
+
 
   auto depth_str = get_command_option(args, "-d");
   if (!depth_str.empty()) {
@@ -116,11 +121,6 @@ bool parse_command_options(
   if (!history_str.empty()) {
     unsigned int r = std::stoul(history_str.c_str());
     *history_policy = r ? RMW_QOS_POLICY_HISTORY_KEEP_ALL : RMW_QOS_POLICY_HISTORY_KEEP_LAST;
-  }
-
-  auto ransaq_str = get_command_option(args, "-q");
-  if (!ransaq_str.empty()) {
-    *feature = std::stoul(ransaq_str.c_str());
   }
 
   auto feature_str = get_command_option(args, "-e");

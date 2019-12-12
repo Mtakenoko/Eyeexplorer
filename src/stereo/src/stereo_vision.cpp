@@ -71,10 +71,10 @@ std::string mat_type2encoding(int mat_type)
   }
 }
 
-void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image_L, const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image_R, rclcpp::Logger logger)
+void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image_L, const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image_R, bool show_camera, rclcpp::Logger logger)
 {
-  RCLCPP_INFO(logger, "Received image #%s", msg_image_L->header.frame_id.c_str());
-  RCLCPP_INFO(logger, "Received image #%s", msg_image_R->header.frame_id.c_str());
+  RCLCPP_INFO(logger, "Received LEFT image #%s", msg_image_L->header.frame_id.c_str());
+  RCLCPP_INFO(logger, "Received RIGHT image #%s", msg_image_R->header.frame_id.c_str());
 
   //Subscribe
   cv::Mat frame_image_L(msg_image_L->height, msg_image_L->width, encoding2mat_type(msg_image_L->encoding), const_cast<unsigned char *>(msg_image_L->data.data()), msg_image_L->step);
@@ -126,8 +126,11 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image_L,
   dis_data.convertTo(dis_map, CV_8UC1, 255 / (max - min), -255 * min / (max - min));
   cv::Mat show_map;
   cv::hconcat(disparity_map, dis_map, show_map);
-  cv::imshow("stereo_vision_map", show_map);
-  cv::waitKey(1);
+  if (show_camera)
+  {
+    cv::imshow("stereo_vision_map", show_map);
+    cv::waitKey(1);
+  }
 }
 
 int main(int argc, char *argv[])
@@ -140,10 +143,8 @@ int main(int argc, char *argv[])
   rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
   rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
 
-  bool show_camera = false;
-  size_t feature = 0;
-  size_t match = 0;
-  size_t prjMat = 1;
+  //default setup
+  bool show_camera = true;
 
   std::string topic_sub_image_L("stereo_image_L");
   std::string topic_sub_image_R("stereo_image_R");
@@ -155,7 +156,7 @@ int main(int argc, char *argv[])
 
   // Configure demo parameters with command line options.
   if (!parse_command_options(
-          argc, argv, &depth, &reliability_policy, &history_policy, &show_camera, &feature, &match, &prjMat))
+          argc, argv, &depth, &reliability_policy, &history_policy, &show_camera))
   {
     return 0;
   }
@@ -163,7 +164,7 @@ int main(int argc, char *argv[])
   if (show_camera)
   {
     // Initialize an OpenCV named window called "cvframe".
-    cv::namedWindow("cvframe", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("stereo_vision_map", cv::WINDOW_AUTOSIZE);
   }
   // Initialize a ROS node.
   auto node = rclcpp::Node::make_shared("stereo_vision");
@@ -172,7 +173,7 @@ int main(int argc, char *argv[])
   message_filters::Subscriber<sensor_msgs::msg::Image> image_sub_L(node.get(), topic_sub_image_L);
   message_filters::Subscriber<sensor_msgs::msg::Image> image_sub_R(node.get(), topic_sub_image_R);
   message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync(image_sub_L, image_sub_R, 10);
-  sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, node_logger));
+  sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, node_logger));
 
   rclcpp::spin(node);
   rclcpp::shutdown();

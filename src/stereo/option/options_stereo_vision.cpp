@@ -48,8 +48,7 @@ bool parse_command_options(
   size_t * depth,
   rmw_qos_reliability_policy_t * reliability_policy,
   rmw_qos_history_policy_t * history_policy, 
-  bool * show_camera,
-  size_t * feature, size_t * match, size_t * prjMat)
+  bool * show_camera)
 {
   std::vector<std::string> args(argv, argv + argc);
 
@@ -70,22 +69,6 @@ bool parse_command_options(
       ss << " -s: Camera stream:" << std::endl;
       ss << "    0 - Do not show the camera stream (default)" << std::endl;
       ss << "    1 - Show the camera stream" << std::endl;
-    }
-    if (feature != nullptr) {
-      ss << " -e: Feature point detector.  " << std::endl;
-      ss << "   0 - AKAZE (default)" << std::endl;
-      ss << "   1 - ORB" << std::endl;
-      ss << "   2 - BRISK" << std::endl;
-    }
-    if (match != nullptr) {
-      ss << " -m: Matching Feature point.  " << std::endl;
-      ss << "   0 - Brute-Force matcher (default)" << std::endl;
-      ss << "   1 - FLANN" << std::endl;
-    }
-    if (prjMat != nullptr) {
-      ss << " -p: Projection Matrix  " << std::endl;
-      ss << "   0 - 5点アルゴリズム " << std::endl;
-      ss << "   1 - 運動学(default)" << std::endl;
     }
     std::cout << ss.str();
     return false;
@@ -113,23 +96,5 @@ bool parse_command_options(
     unsigned int r = std::stoul(history_str.c_str());
     *history_policy = r ? RMW_QOS_POLICY_HISTORY_KEEP_ALL : RMW_QOS_POLICY_HISTORY_KEEP_LAST;
   }
-
-  auto feature_str = get_command_option(args, "-e");
-  if (!feature_str.empty()) {
-    *feature = std::stoul(feature_str.c_str());
-  }
-
-  auto match_str = get_command_option(args, "-m");
-  if (!match_str.empty()) {
-    if (!match_str.empty()) {
-      *match = std::stoul(match_str.c_str());
-    }
-  }
-
-  auto prjMat_str = get_command_option(args, "-p");
-  if (!prjMat_str.empty()) {
-    *prjMat = std::stoul(prjMat_str.c_str());  
-  }
-
   return true;
 }
