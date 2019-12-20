@@ -113,22 +113,6 @@ install(TARGETS
   opticalflow
   DESTINATION lib/${PROJECT_NAME}
 )
-# stereo node
-add_executable(stereo_endoscope
-  src/stereo_endoscope.cpp
-  option/options_reconstruction.cpp
-)
-ament_target_dependencies(stereo_endoscope
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-)
-install(TARGETS
-  stereo_endoscope
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 # matching & reconstruction node
 add_executable(reconstruction
@@ -159,34 +143,6 @@ install(TARGETS reconstruction
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# StereoRectify node
-add_executable(StereoRectify
-  src/StereoRectify.cpp
-  option/options_reconstruction.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(StereoRectify
-  ktl 
-  ktlrt
-  ${Boost_SYSTEM_LIBRARY}
-)
-
-ament_target_dependencies(StereoRectify
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-  "rcl_interfaces"
-  "rcutils"
-  "pcl_conversions"
-
-)
-install(TARGETS StereoRectify
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -49,7 +49,7 @@ bool parse_command_options(
   rmw_qos_reliability_policy_t * reliability_policy,
   rmw_qos_history_policy_t * history_policy, 
   bool * show_camera,
-  size_t * feature, size_t * match, bool * mask, size_t * prjMat)
+  size_t * feature, size_t * match, size_t * prjMat)
 {
   std::vector<std::string> args(argv, argv + argc);
 
@@ -81,11 +81,6 @@ bool parse_command_options(
       ss << " -m: Matching Feature point.  " << std::endl;
       ss << "   0 - Brute-Force matcher (default)" << std::endl;
       ss << "   1 - FLANN" << std::endl;
-    }
-    if (mask != nullptr) {
-      ss << " -a: Mask On/Off.  " << std::endl;
-      ss << "   0 - OFF (default)" << std::endl;
-      ss << "   1 - ON" << std::endl;
     }
     if (prjMat != nullptr) {
       ss << " -p: Projection Matrix  " << std::endl;
@@ -129,11 +124,6 @@ bool parse_command_options(
     if (!match_str.empty()) {
       *match = std::stoul(match_str.c_str());
     }
-  }
-
-  auto mask_str = get_command_option(args, "-a");
-  if (!mask_str.empty()) {
-    *mask = std::stoul(mask_str.c_str()) != 0 ? true : false;
   }
 
   auto prjMat_str = get_command_option(args, "-p");
