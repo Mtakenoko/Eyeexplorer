@@ -36,7 +36,9 @@ find_package(tf2_geometry_msgs REQUIRED)
 add_executable(forward_kinematics
   src/forward_kinematics.cpp
   src/encoder.cpp
-  src/arm.cpp
+  src/transform.cpp
+  src/arm_ver3.cpp
+  src/enc_offset.dat
 )
 # 実行ファイルをリンクする
 target_link_libraries(forward_kinematics ts01 ktl ktlrt)
@@ -54,28 +56,6 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# position_compensation node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(position_compensation
-  src/position_compensation.cpp
-  src/encoder.cpp
-  src/arm.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(position_compensation ts01 ktl ktlrt)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(position_compensation
-  "rclcpp"
-  "sensor_msgs"
-  "geometry_msgs"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-)
-# 実行ファイルをインストール
-install(TARGETS
-  position_compensation
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

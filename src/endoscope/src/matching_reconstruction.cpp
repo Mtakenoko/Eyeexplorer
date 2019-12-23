@@ -277,9 +277,9 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   arm_trans.at<float>(1) = msg_arm->translation.y;
   arm_trans.at<float>(2) = msg_arm->translation.z;
   //回転成分
-  transformQuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(1, 0), arm_rot.at<float>(2, 0),
-                              arm_rot.at<float>(0, 1), arm_rot.at<float>(1, 1), arm_rot.at<float>(2, 1),
-                              arm_rot.at<float>(0, 2), arm_rot.at<float>(1, 2), arm_rot.at<float>(2, 2),
+  transformQuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(0, 1), arm_rot.at<float>(0, 2),
+                              arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
+                              arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
                               msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
 
   //// Key Frame 挿入 START ////
@@ -310,7 +310,10 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   float phi = 2 * std::acos(qw);
 
   //frame間隔
-  static int frame1 = 0;
+  static int frame1;
+  if(loop_count == 1){
+    frame1 = atoi(msg_image->header.frame_id.c_str());
+  }
   int frame2 = atoi(msg_image->header.frame_id.c_str());
   int frame_span = frame2 - frame1;
 
@@ -441,7 +444,6 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   
   ////    reconstruction 開始     ////
   size_t match_num = good_dmatch.size();
-  printf("match_num = %zd\n", dmatch12.size());
   if (match_num > 5) //５点アルゴリズムが行えるのに十分対応点があれば
   {
     //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
@@ -658,7 +660,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
       else
       {
         cv::Mat t_endo(3, 1, CV_32FC1), r_endo(3, 3, CV_32FC1);
-        r_endo = r1 * rot_x * rot_y * rot_z;
+        r_endo = rot_x * rot_z * r1;
         t_endo = r_endo.t() * t_arm;
         center_t_arm = cv::Point2f(t_endo.at<float>(0) * 30 + p1.x, t_endo.at<float>(1) * 30 + p1.y);
         cv::arrowedLine(cvframe, p1, center_t_arm, color, 2, 8, 0, 0.5);
@@ -691,7 +693,6 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     //printf("out_prjMat2   = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", out_prjMat2_32.at<float>(0,0), out_prjMat2_32.at<float>(0,1), out_prjMat2_32.at<float>(0,2), out_prjMat2_32.at<float>(0,3), out_prjMat2_32.at<float>(1,0), out_prjMat2_32.at<float>(1,1), out_prjMat2_32.at<float>(1,2), out_prjMat2_32.at<float>(1,3), out_prjMat2_32.at<float>(2,0), out_prjMat2_32.at<float>(2,1), out_prjMat2_32.at<float>(2,2), out_prjMat2_32.at<float>(2,3));
     //printf("t_arm         = [%0.4f %0.4f %0.4f]\n", t_arm.at<float>(0, 0), t_arm.at<float>(1, 0), t_arm.at<float>(2, 0));
     //printf("t             = [%0.4f %0.4f %0.4f]\n", t.at<float>(0, 0), t.at<float>(1, 0), t.at<float>(2, 0));
-    printf("showimage = %d\n", show_camera);
     for (size_t i = 0; i < match_num; ++i)
     {
       //printf("point4D       #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D.at<float>(0, i), point4D.at<float>(1, i), point4D.at<float>(2, i), point4D.at<float>(3, i));
@@ -700,8 +701,8 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
       //printf("point3D_      #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_.at<cv::Vec3f>(i, 0)[0], point3D_.at<cv::Vec3f>(i, 0)[1], point3D_.at<cv::Vec3f>(i, 0)[2]);
       //printf("pointCloud    #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud.at<cv::Vec3f>(i, 0)[0], pointCloud.at<cv::Vec3f>(i, 0)[1], pointCloud.at<cv::Vec3f>(i, 0)[2]);
       //printf("point3D_w    #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_w.at<cv::Vec3f>(i, 0)[0], point3D_w.at<cv::Vec3f>(i, 0)[1], point3D_w.at<cv::Vec3f>(i, 0)[2]);
-      if (i < pointCloud_arm.rows)
-        printf("pointCloud_arm #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud_arm.at<cv::Vec3f>(i, 0)[0], pointCloud_arm.at<cv::Vec3f>(i, 0)[1], pointCloud_arm.at<cv::Vec3f>(i, 0)[2]);
+      //if (i < pointCloud_arm.rows)
+        //printf("pointCloud_arm #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud_arm.at<cv::Vec3f>(i, 0)[0], pointCloud_arm.at<cv::Vec3f>(i, 0)[1], pointCloud_arm.at<cv::Vec3f>(i, 0)[2]);
 
       //printf("t_w         #%zd = [%0.4f %0.4f %0.4f]\n", i, t_w.at<float>(0, i), t_w.at<float>(1, i), t_w.at<float>(2, i));
     }

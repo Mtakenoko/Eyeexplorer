@@ -1,25 +1,23 @@
-#include <ktl.h>
-
 #ifndef __ARM_
 #define __ARM_
 
+#include <ktl.h>
+
 #define ADOF 5
-#define ENDOSCOPE_LENGTH 110.0
+#define ENDOSCOPE_LENGTH 0.0
 
-class Gimbal : public Ktl::SerialMechanism<3>{
- public:
+class PassiveArm : public Ktl::SerialMechanism<ADOF>
+{
+public:
+  PassiveArm();
+  int Getversion();
+  void Setversion(int val);
+  Ktl::Matrix<3, 3> Tw; //gimbal の設置角度
 
-  Gimbal();
-  void forward_kinematics(const Ktl::Vector<3>& P0=Ktl::o(),
-			  const Ktl::Matrix<3,3>& R0=Ktl::I());
-};
+  void inverse_kinematics() override;
 
-class PassiveArm :public Ktl::SerialMechanism<ADOF>{
-  public:
-    PassiveArm();
-    Ktl::Matrix<3,3> Tw; //gimbal の設置角度
-
-    void inverse_kinematics()override;
+private:
+  int arm_version;
 };
 
 #endif

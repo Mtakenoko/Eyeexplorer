@@ -143,6 +143,28 @@ install(TARGETS reconstruction
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# camera_vector node
+add_executable(camera_vector
+  src/camera_vector.cpp
+  option/options_reconstruction.cpp
+)
+# 実行ファイルをリンクする
+target_link_libraries(camera_vector
+  ktl 
+  ktlrt
+  ${Boost_SYSTEM_LIBRARY}
+)
+
+ament_target_dependencies(camera_vector
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+)
+install(TARGETS camera_vector
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

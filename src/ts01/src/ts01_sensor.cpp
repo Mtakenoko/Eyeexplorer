@@ -14,7 +14,6 @@
 #include "std_msgs/msg/int32_multi_array.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 
-
 #include <ktl.h>
 #include <libts01.h>
 
@@ -25,11 +24,12 @@ TS01InputData input;
 TS01OutputData output;
 
 #define ADOF 5
+#define ssi_clock 16      // 16 * 100 ns
+#define ssi_timeout 40000 // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
 
 //アブソエンコーダのビット数の設定
 static const short ARM_BIT[5] = {
-    20, 19, 19, 18, 18
-};
+    20, 19, 19, 18, 18};
 
 //分解能（パルス数）
 unsigned int res(int n)
@@ -41,7 +41,7 @@ unsigned int res(int n)
   //右に（32-18）bitシフト
   //00..0->14個　11..1->18個　=>2の18乗
   return 0xffffffff >> (32 - n);
-}  
+}
 static const double RQ[ADOF] = {
     // カウント方向込
     -2 * PI / res(ARM_BIT[0]),
@@ -59,24 +59,21 @@ int shift_range(unsigned int val, unsigned int range)
     return (int)val - (int)range;
 }
 
-
 /*******************************************************************
  *     init_module
  ****************************************************************** */
 int init_module(void)
 {
-    ts01.open("192.168.1.100");
+  ts01.open("192.168.1.100");
 
-    //--- SSI -----------------------------------------------
-    short ssi_clock = 16;      // 16 * 100 ns
-    short ssi_timeout = 40000; // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
-    for (int j = 0; j < ADOF; j++)
-    {
-        ts01.setup_ssi(j, ssi_clock, ARM_BIT[j] + 1, ssi_timeout);
-    }
-    //各 dizital out channel に pulse 生成準備-----------------------------------------
-    //true:パルス入力　false:デジタル入力（非パルス）
-    /*ts01.set_dout_mode(0, true);  //パルス
+  //--- SSI -----------------------------------------------
+  for (int j = 0; j < ADOF; j++)
+  {
+    ts01.setup_ssi(j, ssi_clock, ARM_BIT[j] + 1, ssi_timeout);
+  }
+  //各 dizital out channel に pulse 生成準備-----------------------------------------
+  //true:パルス入力　false:デジタル入力（非パルス）
+  /*ts01.set_dout_mode(0, true);  //パルス
     ts01.set_dout_mode(1, true);  //パルス
     ts01.set_dout_mode(2, true);  //パルス
     ts01.set_dout_mode(3, false); //デジタル入力（非パルス）
@@ -85,11 +82,15 @@ int init_module(void)
     ts01.set_dout_mode(6, true);  //パルス
     ts01.set_dout_mode(7, false); //デジタル入力（非パルス）*/
 
-    //--- counter ---------------------------
-    ts01.set_count(0);
-    ts01.start_count();
-    
-    return 1;
+  //--- counter ---------------------------
+  ts01.set_count(0);
+  ts01.start_count();
+
+  //--- AO ---------------------------
+  for (int j = 0; j < TS01_AO_CH_NUM; j++)
+    output.u[j] = 5.0;
+  ts01.write_data(&output);
+  return 1;
 }
 
 /*******************************************************************
@@ -100,14 +101,15 @@ void cleanup_module(void)
   ts01.stop_sampling();
   for (int j = 0; j < TS01_DO_CH_NUM; j++)
     output.dout[j] = false;
-  for (int j = 0; j < ADOF; j++)
-    output.u[j] = 5.0;
+  for (int j = 0; j < TS01_AO_CH_NUM; j++)
+    output.u[j] = 0.0;
   ts01.write_data(&output);
   ts01.close();
   rt_print("control module has been removed.\n");
 }
-  
-int main(int argc, char * argv[]){
+
+int main(int argc, char *argv[])
+{
   rclcpp::init(argc, argv);
   rclcpp::WallRate loop_rate(1000);
   auto node = rclcpp::Node::make_shared("ts01_sensor");
@@ -121,14 +123,14 @@ int main(int argc, char * argv[]){
   // Set quality of service profile based on command line options.
   auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
   qos.reliability(reliability_policy);
-  
+
   //時間管理
   rclcpp::TimeSource ts(node);
   rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
   ts.attachClock(clock);
 
   //TS01の状態に関するmsg
-  auto publisher_status_ = node->create_publisher<std_msgs::msg::Bool>("ts01_status",qos);
+  auto publisher_status_ = node->create_publisher<std_msgs::msg::Bool>("ts01_status", qos);
   auto msg_status_ = std::make_shared<std_msgs::msg::Bool>();
   msg_status_->data = false;
 
@@ -136,7 +138,8 @@ int main(int argc, char * argv[]){
   sensor_msgs::msg::JointState msg_encoder_;
   auto publisher_encoder_ = node->create_publisher<sensor_msgs::msg::JointState>("ts01_encoder", qos);
   msg_encoder_.position.resize(ADOF);
-  for(size_t i = 0; i< ADOF; ++i){  
+  for (size_t i = 0; i < ADOF; ++i)
+  {
     msg_encoder_.position.push_back(0.0);
   }
 
@@ -144,7 +147,8 @@ int main(int argc, char * argv[]){
   std_msgs::msg::Int32MultiArray msg_di_;
   auto publisher_di_ = node->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_di", qos);
   msg_di_.data.resize(ADOF);
-  for(size_t i=0; i<10; ++i){
+  for (size_t i = 0; i < 10; ++i)
+  {
     msg_di_.data[i] = 0;
   }
 
@@ -153,7 +157,8 @@ int main(int argc, char * argv[]){
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ai_;
   publisher_ai_ = node->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
   msg_ai_.data.resize(ADOF);
-  for(size_t i=0; i<5; ++i){
+  for (size_t i = 0; i < 5; ++i)
+  {
     msg_ai_.data[i] = 0.0;
   }
 
@@ -163,42 +168,46 @@ int main(int argc, char * argv[]){
   //~~~~~~~接続待ち~~~~~~~//
   RCLCPP_INFO(node_logger, "TS01 is opened");
   ts01.start_sampling(1000);
-  
+
   msg_status_->data = true;
 
-  while (rclcpp::ok()) {
-    ts01.read_autosampling_data(&input); 
+  while (rclcpp::ok())
+  {
+    ts01.read_autosampling_data(&input);
 
     //エンコーダ
     int enc[ADOF];
     enc[0] = shift_range(input.ssi[0] >> 1, 0x0000fffff); //-2^19~2^19
     enc[1] = shift_range(input.ssi[1] >> 1, 0x00007ffff); //-2^17~2^17
-    enc[2] = shift_range(input.ssi[2] >> 1, 0x00007ffff); 
+    enc[2] = shift_range(input.ssi[2] >> 1, 0x00007ffff);
     enc[3] = shift_range(input.ssi[3] >> 1, 0x00003ffff); //
     enc[4] = shift_range(input.ssi[4] >> 1, 0x00003ffff); //
-    for(size_t i = 0; i < ADOF; ++i){
+    for (size_t i = 0; i < ADOF; ++i)
+    {
       msg_encoder_.position[i] = RQ[i] * enc[i];
       //RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
     }
     msg_encoder_.header.stamp = clock->now();
 
     //DI
-    for(size_t i=0; i<msg_di_.data.size(); i++){
+    for (size_t i = 0; i < msg_di_.data.size(); i++)
+    {
       //RCLCPP_INFO(node_logger, "DI #%zd = %d",i, input.din[i]);
       msg_di_.data[i] = input.din[i];
     }
 
     //AI
-    for(size_t i=0; i<msg_ai_.data.size(); i++){
+    for (size_t i = 0; i < msg_ai_.data.size(); i++)
+    {
       //RCLCPP_INFO(node_logger, "AI #%zd = %f", i, input.v[i]);
       msg_ai_.data[i] = input.v[i];
     }
 
     //publish
     publisher_status_->publish(*msg_status_);
-    publisher_encoder_ -> publish(msg_encoder_);
-    publisher_di_ -> publish(msg_di_);
-    publisher_ai_ -> publish(msg_ai_);
+    publisher_encoder_->publish(msg_encoder_);
+    publisher_di_->publish(msg_di_);
+    publisher_ai_->publish(msg_ai_);
 
     rclcpp::spin_some(node);
     loop_rate.sleep();
