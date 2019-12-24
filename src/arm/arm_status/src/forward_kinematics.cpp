@@ -37,20 +37,20 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     //送信するメッセージ
     tf2_ros::StaticTransformBroadcaster broadcaster(node);
 
-    //各回転関節の向き調整
-    Ktl::Vector<ADOF> q_vel;
-    q_vel[0] = sub_msg->position[0];
-    q_vel[1] = sub_msg->position[1];
-    q_vel[2] = sub_msg->position[2];
-    q_vel[3] = sub_msg->position[3];
-    q_vel[4] = sub_msg->position[4];
-
+    //エンコーダの値の向きをあわせる
+    Ktl::Vector<ADOF> enc_pos;
+    enc_pos[0] = sub_msg->position[0];
+    enc_pos[1] = sub_msg->position[1];
+    enc_pos[2] = -sub_msg->position[2];
+    enc_pos[3] = sub_msg->position[3];
+    enc_pos[4] = sub_msg->position[4];
+        
     //エンコーダーの値を読んで運動学を解く
     Ktl::Vector<ADOF> qoffset;
     qoffset = readencoder.GetOffset();
     for (int i = 0; i < ADOF; i++)
     {
-        passivearm.q[i] = q_vel[i] - readencoder.GetOffset()[i];
+        passivearm.q[i] = enc_pos[i] - readencoder.GetOffset()[i];
     }
     q_msg.position.resize(ADOF + 1);
     q_msg.position[0] = passivearm.q[0];
@@ -64,9 +64,8 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     passivearm.forward_kinematics();
 
     //位置・姿勢計算
-    Ktl::Matrix<3, 3> Escope = passivearm.Tw *
-                               Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
-                               Ktl::Matrix<3, 3>(Ktl::Z, -90.0 / DEG);
+    Ktl::Matrix<3, 3> Escope =  Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
+                                Ktl::Matrix<3, 3>(Ktl::Z, -180.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
     Ktl::Matrix<3, 3> endoscope_pose = passivearm.Rr() * Escope; // 内視鏡姿勢行列
     Ktl::Vector<3> n = endoscope_pose.column(2);                 // 内視鏡の向き
     Ktl::Vector<3> Ptip = passivearm.Pr() + ENDOSCOPE_LENGTH * n;
@@ -107,7 +106,8 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     count++;
     if (count % 10 == 0)
     {
-        RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f] R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        //printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
     }
 
     //Publish

@@ -46,8 +46,8 @@ static const double RQ[ADOF] = {
     // カウント方向込
     -2 * PI / res(ARM_BIT[0]),
     -2 * PI / res(ARM_BIT[1]),
-    -2 * PI / res(ARM_BIT[2]),
-    -2 * PI / res(ARM_BIT[3]),
+    2 * PI / res(ARM_BIT[2]),
+    2 * PI / res(ARM_BIT[3]),
     2 * PI / res(ARM_BIT[4]),
 };
 //「0〜max」から「-max/2〜max/2」に変更

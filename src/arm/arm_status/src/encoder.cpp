@@ -33,9 +33,9 @@ Ktl::Vector<ADOF> ReadEncoder::GetOffset()
 }
 
 void ReadEncoder::SetOffset(){
-    offset[0] = 8.30911;
-    offset[1] = -7.06148;
-    offset[2] = 46.2615;
-    offset[3] = 146.826;
-    offset[4] = -39.8613;
+    offset[0] = -50.4918;//-18.4375 + 17.677004;
+    offset[1] = -75.5922;//-81.3766 + 79.902502;
+    offset[2] = -19.8393;//53.5832 - 56.141618;
+    offset[3] = -179.646;//177.849 - 174.721681;
+    offset[4] = -124.325;//144.96 - 142.300355;
 }

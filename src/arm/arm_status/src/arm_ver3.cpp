@@ -9,26 +9,21 @@
 
 PassiveArm::PassiveArm()
 {
-  double offsetAngle = 0.0 / DEG;
-  Tw.setRot(Ktl::Y, offsetAngle);
-
-  setup_link(0, Ktl::Vector<3>(0.0, 0.0, 32.0), Ktl::Vector<3>(9.0, 0.0, 0.0));
+  //土台部
+  setup_link(0, Ktl::Vector<3>(9.0, 0.0, 32.0));
   setup_axis(0, Ktl::Z, 0);
-
-  setup_link(1, Ktl::Vector<3>(200.0, 0.0, 0.0), Ktl::Vector<3>(18.18, 0.0, 3.54));
+  //第１リンク
+  setup_link(1, Ktl::Vector<3>(200.0, 0.0, 0.0), Ktl::Vector<3>(32.32, 0.0, 17.68));
   setup_axis(1, Ktl::Y, 2);
-
-  setup_link(2, Ktl::Vector<3>(0.0, 0.0, -200.0), Ktl::Vector<3>(56.54, 0.5, -4.86));
+  //第２リンク
+  setup_link(2, Ktl::Vector<3>(0.0, 0.0, -200.0), Ktl::Vector<3>(41.5, 0.5, -19.0));
   setup_axis(2, Ktl::Y, 2);
-
-  setup_link(3, Tw * Ktl::Vector<3>(94.0, 0.0, 0.0));
-  setup_axis(3, Tw * Ktl::ex(), 0);
-
+  //ジンバルアルファ軸回転
+  setup_link(3, Ktl::Vector<3>(94.9, 0.0, 0.0));
+  setup_axis(3, Ktl::ex(), 0);
+  //ジンバルベータ回転
   setup_link(4, 0.0, Ktl::Z);
-  setup_axis(4, Tw * Ktl::ey(), 0);
-
-  setup_link(5, 0.0, Ktl::X);
-  setup_axis(5, -Tw * Ktl::ez(), 0);
+  setup_axis(4, Ktl::ez(), 0);
 }
 
 void PassiveArm::inverse_kinematics()
