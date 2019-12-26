@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # TODO(wjwwood): Use a substitution to find share directory once this is implemented in launch
-    urdf = os.path.join(get_package_share_directory('arm_rviz'), 'urdf', 'eyeexplorer_ver3.urdf')
+    urdf = os.path.join(get_package_share_directory('arm_rviz'), 'urdf', 'eyeexplorer3.urdf')
     return LaunchDescription([
         Node(package='map_server', node_executable='map_server', output='screen'),
         Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf]),

@@ -10,6 +10,7 @@ class ReadEncoder
 public:
   explicit ReadEncoder();
   void ReadOffsetdat();
+  void WriteOffsetdat();
   void ResetOffset(Ktl::Vector<ADOF> qoffset);
   Ktl::Vector<ADOF> GetOffset();
   void SetOffset();
