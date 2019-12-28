@@ -22,8 +22,8 @@ PassiveArm::PassiveArm()
   setup_link(3, Ktl::Vector<3>(94.9, 0.0, 0.0));
   setup_axis(3, Ktl::X, 0);
   //ジンバルベータ回転
-  setup_link(4, 0.0, Ktl::Z);
-  setup_axis(4, Ktl::Z, 0);
+  setup_link(4, 0.0, Ktl::Y);
+  setup_axis(4, Ktl::Y, 0);
 }
 
 void PassiveArm::inverse_kinematics()

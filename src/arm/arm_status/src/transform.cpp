@@ -43,22 +43,22 @@ bool Transform::RotMatToQuaternion(
     case 0: // x
         *q[1] = (m12 + m21) * mult;
         *q[2] = (m31 + m13) * mult;
-        *q[3] = (m23 - m32) * mult;
+        *q[3] = (m32 - m23) * mult;
         break;
     case 1: // y
         *q[0] = (m12 + m21) * mult;
         *q[2] = (m23 + m32) * mult;
-        *q[3] = (m31 - m13) * mult;
+        *q[3] = (m13 - m31) * mult;
         break;
     case 2: // z
         *q[0] = (m31 + m13) * mult;
         *q[1] = (m23 + m32) * mult;
-        *q[3] = (m12 - m21) * mult;
+        *q[3] = (m21 - m12) * mult;
         break;
     case 3: // w
-        *q[0] = (m23 - m32) * mult;
-        *q[1] = (m31 - m13) * mult;
-        *q[2] = (m12 - m21) * mult;
+        *q[0] = (m32 - m23) * mult;
+        *q[1] = (m13 - m31) * mult;
+        *q[2] = (m21 - m12) * mult;
         break;
     }
 

@@ -7,7 +7,8 @@
                 "/opt/ros/dashing/include",
                 "/usr/include",
                 "/usr/include/eigen3",
-                "/usr/include/pcl-1.8"
+                "/usr/include/pcl-1.8",
+                "/opt/ros/dashing/opt/rviz_ogre_vendor/include/OGRE"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

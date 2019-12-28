@@ -41,16 +41,14 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     Ktl::Vector<ADOF> enc_pos;
     enc_pos[0] = sub_msg->position[0];
     enc_pos[1] = sub_msg->position[1];
-    enc_pos[2] = -sub_msg->position[2];
+    enc_pos[2] = sub_msg->position[2];
     enc_pos[3] = sub_msg->position[3];
     enc_pos[4] = sub_msg->position[4];
         
     //エンコーダーの値を読んで運動学を解く
-    Ktl::Vector<ADOF> qoffset;
-    qoffset = readencoder.GetOffset();
     for (int i = 0; i < ADOF; i++)
     {
-        passivearm.q[i] = enc_pos[i] - readencoder.GetOffset()[i];
+        passivearm.q[i] = enc_pos[i] - readencoder.offset[i];
     }
     q_msg.position[0] = passivearm.q[0];
     q_msg.position[1] = passivearm.q[1];
@@ -75,7 +73,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     tip_msg.translation.z = Ptip[2];
     tf_msg.transform.translation.x = Ptip[0] / 1000.;
     tf_msg.transform.translation.y = Ptip[1] / 1000.;
-    tf_msg.transform.translation.z = Ptip[2] / 1000.;
+    tf_msg.transform.translation.z = Ptip[2] / 1000.;    
 
     //回転行列
     float qx, qy, qz, qw;
@@ -105,8 +103,9 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     count++;
     if (count % 10 == 0)
     {
-        RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
-        //printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
+         RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        // printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
+        //printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
     }
 
     //Publish
@@ -163,8 +162,8 @@ int main(int argc, char *argv[])
     q_msg.position.push_back(0.0);
 
     //エンコーダのオフセット設定
-    //readencoder.SetOffset();
-    readencoder.ReadOffsetdat();
+    readencoder.SetOffset();
+    // readencoder.ReadOffsetdat();
 
     auto callback = [pub_tip, pub_q, clock, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
         forward_kinematics(msg_sub, pub_tip, pub_q, clock, node->get_logger(), node);

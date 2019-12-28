@@ -12,15 +12,19 @@
 
 ReadEncoder::ReadEncoder()
 {
+    for (int i = 0; i < ADOF; i++)
+        offset[i] = 0.0;
 }
 void ReadEncoder::ReadOffsetdat()
 {
     std::ifstream ifs(ENC_OFFSET_FILE);
 
     for (int i = 0; i < ADOF; i++)
+    {
         ifs >> offset[i];
+        offset[i] *= 1.0 / DEG; //deg -> rad
+    }
     ifs.close();
-    offset *= 1.0 / DEG; //deg -> rad
 }
 
 void ReadEncoder::WriteOffsetdat()
@@ -28,9 +32,10 @@ void ReadEncoder::WriteOffsetdat()
     std::ofstream ofs(ENC_OFFSET_FILE);
 
     for (int i = 0; i < ADOF; i++)
-        ofs << offset[i];
+    {
+        ofs << offset[i] * DEG;
+    }
     ofs.close();
-    offset *= 1.0 / DEG; //deg -> rad
 }
 
 void ReadEncoder::ResetOffset(Ktl::Vector<ADOF> qoffset)
@@ -44,10 +49,11 @@ Ktl::Vector<ADOF> ReadEncoder::GetOffset()
     return offset;
 }
 
-void ReadEncoder::SetOffset(){
-    offset[0] = -50.4918;//-18.4375 + 17.677004;
-    offset[1] = -65.5922;//-81.3766 + 79.902502;
-    offset[2] = -19.8393;//53.5832 - 56.141618;
-    offset[3] = -179.646;//177.849 - 174.721681;
-    offset[4] = -124.325;//144.96 - 142.300355;
+void ReadEncoder::SetOffset()
+{
+    offset[0] = -0.599469; //-46.2371; //-18.4375 + 17.677004;
+    offset[1] = -1.342200; //-75.242;  //-81.3766 + 79.902502;
+    offset[2] = -0.252688; //-18.9048; //53.5832 - 56.141618;
+    offset[3] = 2.498481;  //54.4841;  //177.849 - 174.721681;
+    offset[4] = -1.277739; //76.7439;  //144.96 - 142.300355;
 }

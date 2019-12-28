@@ -30,6 +30,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(message_filters REQUIRED)
 
 # forward_kinematics node
 # スタンドアローンノードの実行ファイルをコンパイルする
@@ -49,6 +50,7 @@ ament_target_dependencies(forward_kinematics
   "geometry_msgs"
   "tf2_msgs"
   "tf2_geometry_msgs"
+  "message_filters"
 )
 # 実行ファイルをインストール
 install(TARGETS
