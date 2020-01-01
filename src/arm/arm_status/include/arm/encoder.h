@@ -1,7 +1,5 @@
-#ifndef __ENCODER_
-#define __ENCODER_
-
-#include <ktl.h>
+#ifndef ARM_STATUS__ENCODER_
+#define ARM_STATUS__ENCODER_
 
 #define ADOF 5
 

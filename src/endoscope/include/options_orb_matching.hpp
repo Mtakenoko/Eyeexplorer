@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef IMAGE_TOOLS__OPTIONS_HPP_
-#define IMAGE_TOOLS__OPTIONS_HPP_
+#ifndef ORB_MATCHING__OPTIONS_HPP_
+#define ORB_MATCHING__OPTIONS_HPP_
 
 #include <string>
 #include <vector>
@@ -58,4 +58,4 @@ bool parse_command_options(
   bool * show_camera = nullptr, 
   size_t * feature = nullptr, size_t * match = nullptr, bool * mask = nullptr);
 
-#endif  // IMAGE_TOOLS__OPTIONS_HPP_
+#endif  // ORB_MATCHING__OPTIONS_HPP

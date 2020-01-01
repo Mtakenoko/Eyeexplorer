@@ -32,11 +32,8 @@ geometry_msgs::msg::TransformStamped tf_msg;
 
 void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
                         std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> pub_tip, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::JointState>> pub_q, rclcpp::Clock::SharedPtr clock,
-                        rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node)
+                        rclcpp::Logger logger)
 {
-    //送信するメッセージ
-    tf2_ros::StaticTransformBroadcaster broadcaster(node);
-
     //エンコーダの値の向きをあわせる
     Ktl::Vector<ADOF> enc_pos;
     enc_pos[0] = sub_msg->position[0];
@@ -62,7 +59,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     //位置・姿勢計算
     Ktl::Matrix<3, 3> Escope =  Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
-                                Ktl::Matrix<3, 3>(Ktl::Z, -180.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
+                                Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
     Ktl::Matrix<3, 3> endoscope_pose = passivearm.Rr() * Escope; // 内視鏡姿勢行列
     Ktl::Vector<3> n = endoscope_pose.column(2);                 // 内視鏡の向き
     Ktl::Vector<3> Ptip = passivearm.Pr() + ENDOSCOPE_LENGTH * n;
@@ -111,7 +108,6 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     //Publish
     pub_tip->publish(tip_msg);
     pub_q->publish(q_msg);
-    broadcaster.sendTransform(tf_msg);
 }
 
 int main(int argc, char *argv[])
@@ -166,7 +162,7 @@ int main(int argc, char *argv[])
     // readencoder.ReadOffsetdat();
 
     auto callback = [pub_tip, pub_q, clock, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
-        forward_kinematics(msg_sub, pub_tip, pub_q, clock, node->get_logger(), node);
+        forward_kinematics(msg_sub, pub_tip, pub_q, clock, node->get_logger());
     };
 
     //Set QoS to Subscribe

@@ -1,7 +1,5 @@
-#ifndef __ARM_
-#define __ARM_
-
-#include <ktl.h>
+#ifndef ARM_STATUS__ARM_
+#define ARM_STATUS__ARM_
 
 #define ADOF 5
 #define ENDOSCOPE_LENGTH 90.0

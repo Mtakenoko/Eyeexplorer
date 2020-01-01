@@ -1,5 +1,5 @@
-#ifndef __TRANSFORM_
-#define __TRANSFORM_
+#ifndef ARM_STATUS__TRANSFORM_
+#define ARM_STATUS__TRANSFORM_
 
 class Transform
 {

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef IMAGE_TOOLS__OPTIONS_HPP_
-#define IMAGE_TOOLS__OPTIONS_HPP_
+#ifndef CAP_ENDOSCOPE_LARGE__OPTIONS_HPP_
+#define CAP_ENDOSCOPE_LARGE__OPTIONS_HPP_
 
 #include <string>
 #include <vector>
@@ -57,4 +57,4 @@ bool parse_command_options(
   size_t * width = nullptr, size_t * height = nullptr, size_t * roi_width = nullptr, size_t * roi_height = nullptr, size_t * device = nullptr, bool * movie_mode = nullptr,
   std::string * topic = nullptr);
 
-#endif  // IMAGE_TOOLS__OPTIONS_HPP_
+#endif  // CAP_ENDOSCOPE_LARGE__OPTIONS_HPP_

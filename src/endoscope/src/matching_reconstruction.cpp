@@ -192,22 +192,22 @@ bool transformRotMatToQuaternion(
   case 0: // x
     *q[1] = (m12 + m21) * mult;
     *q[2] = (m31 + m13) * mult;
-    *q[3] = (m23 - m32) * mult;
+    *q[3] = (m32 - m23) * mult;
     break;
   case 1: // y
     *q[0] = (m12 + m21) * mult;
     *q[2] = (m23 + m32) * mult;
-    *q[3] = (m31 - m13) * mult;
+    *q[3] = (m13 - m31) * mult;
     break;
   case 2: // z
     *q[0] = (m31 + m13) * mult;
     *q[1] = (m23 + m32) * mult;
-    *q[3] = (m12 - m21) * mult;
+    *q[3] = (m21 - m12) * mult;
     break;
   case 3: // w
-    *q[0] = (m23 - m32) * mult;
-    *q[1] = (m31 - m13) * mult;
-    *q[2] = (m12 - m21) * mult;
+    *q[0] = (m32 - m23) * mult;
+    *q[1] = (m13 - m31) * mult;
+    *q[2] = (m21 - m12) * mult;
     break;
   }
   return true;
@@ -311,14 +311,15 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
 
   //frame間隔
   static int frame1;
-  if(loop_count == 1){
+  if (loop_count == 1)
+  {
     frame1 = atoi(msg_image->header.frame_id.c_str());
   }
   int frame2 = atoi(msg_image->header.frame_id.c_str());
   int frame_span = frame2 - frame1;
 
   //KeyFrame挿入タイミング
-  if (!(frame_span > 10 && (cv::norm(t_arm) > 20. || phi > PI / 18.)))
+  if (!(frame_span > 10 && (cv::norm(t_arm) > 8. || phi > PI / 180.)))
   {
     printf("frame_span = %d, t_norm = %lf, phi = %f\n", frame_span, cv::norm(t_arm), phi * 180. / PI);
     return;
@@ -404,7 +405,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   std::vector<cv::DMatch> dmatch, good_dmatch;
   std::vector<cv::DMatch> dmatch12, dmatch21;
   std::vector<cv::Point2f> match_point1, match_point2;
-  
+
   //マッチング
   matcher->match(descriptor1, descriptor2, dmatch12); //dst1 -> dst2
   matcher->match(descriptor2, descriptor1, dmatch21); //dst2 -> dst1
@@ -441,7 +442,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     }
   }
   ////    matching 終了   ////
-  
+
   ////    reconstruction 開始     ////
   size_t match_num = good_dmatch.size();
   if (match_num > 5) //５点アルゴリズムが行えるのに十分対応点があれば
@@ -641,15 +642,13 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
       cv::Point2f center_t, center_t_arm;
       cv::Point2f p1 = cv::Point2f(msg_image->height / 2., msg_image->width / 2.);
       cv::Scalar color = cv::Scalar(0, 255, 0);
-      float rotation_x = -PI / 2., rotation_y = 0.0, rotation_z = -PI / 2.;
-      cv::Mat rot_x = (cv::Mat_<float>(3, 3) << 1., 0., 0., 0., std::cos(rotation_x), -std::sin(rotation_x), 0.0, std::sin(rotation_x), std::cos(rotation_x));
-      cv::Mat rot_y = (cv::Mat_<float>(3, 3) << std::cos(rotation_y), 0.0, std::sin(rotation_y), 0.0, 1., 0., -std::sin(rotation_y), 0.0, std::cos(rotation_y));
-      cv::Mat rot_z = (cv::Mat_<float>(3, 3) << std::cos(rotation_z), -std::sin(rotation_z), 0., std::sin(rotation_z), std::cos(rotation_z), 0., 0., 0., 1.);
+      cv::Mat t_endo(3, 1, CV_32FC1);
+      t_endo = r1 * t_arm;
+      center_t = cv::Point2f(t.at<float>(0, 0) * 5 + p1.x, t.at<float>(1, 0) * 5 + p1.y);
+      center_t_arm = cv::Point2f(t_endo.at<float>(0) * 5 + p1.x, t_endo.at<float>(1) * 5 + p1.y);
       if (prjMat == 0)
       {
         cvframe_t = cvframe_.clone();
-        center_t = cv::Point2f(t.at<float>(0, 0) * 10 + p1.x, t.at<float>(1, 0) * 10 + p1.y);
-        center_t_arm = cv::Point2f(t_arm.at<float>(0) * 10 + p1.x, t_arm.at<float>(1) * 10 + p1.y);
         cv::arrowedLine(cvframe, p1, center_t_arm, color, 2, 8, 0, 0.5);
         cv::arrowedLine(cvframe_, p1, center_t_arm, color, 2, 8, 0, 0.5);
         cv::arrowedLine(cvframe_t, p1, center_t, color, 2, 8, 0, 0.5);
@@ -659,10 +658,6 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
       }
       else
       {
-        cv::Mat t_endo(3, 1, CV_32FC1), r_endo(3, 3, CV_32FC1);
-        r_endo = rot_x * rot_z * r1;
-        t_endo = r_endo.t() * t_arm;
-        center_t_arm = cv::Point2f(t_endo.at<float>(0) * 30 + p1.x, t_endo.at<float>(1) * 30 + p1.y);
         cv::arrowedLine(cvframe, p1, center_t_arm, color, 2, 8, 0, 0.5);
         cv::arrowedLine(cvframe_, p1, center_t_arm, color, 2, 8, 0, 0.5);
         cv::imshow("cvframe", cvframe);
@@ -695,14 +690,14 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     //printf("t             = [%0.4f %0.4f %0.4f]\n", t.at<float>(0, 0), t.at<float>(1, 0), t.at<float>(2, 0));
     for (size_t i = 0; i < match_num; ++i)
     {
-      //printf("point4D       #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D.at<float>(0, i), point4D.at<float>(1, i), point4D.at<float>(2, i), point4D.at<float>(3, i));
-      //printf("point4D_      #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D_.at<float>(0, i), point4D_.at<float>(1, i), point4D_.at<float>(2, i), point4D_.at<float>(3, i));
-      //printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
-      //printf("point3D_      #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_.at<cv::Vec3f>(i, 0)[0], point3D_.at<cv::Vec3f>(i, 0)[1], point3D_.at<cv::Vec3f>(i, 0)[2]);
-      //printf("pointCloud    #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud.at<cv::Vec3f>(i, 0)[0], pointCloud.at<cv::Vec3f>(i, 0)[1], pointCloud.at<cv::Vec3f>(i, 0)[2]);
+      printf("point4D       #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D.at<float>(0, i), point4D.at<float>(1, i), point4D.at<float>(2, i), point4D.at<float>(3, i));
+      printf("point4D_      #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D_.at<float>(0, i), point4D_.at<float>(1, i), point4D_.at<float>(2, i), point4D_.at<float>(3, i));
+      printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
+      printf("point3D_      #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_.at<cv::Vec3f>(i, 0)[0], point3D_.at<cv::Vec3f>(i, 0)[1], point3D_.at<cv::Vec3f>(i, 0)[2]);
+      printf("pointCloud    #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud.at<cv::Vec3f>(i, 0)[0], pointCloud.at<cv::Vec3f>(i, 0)[1], pointCloud.at<cv::Vec3f>(i, 0)[2]);
       //printf("point3D_w    #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_w.at<cv::Vec3f>(i, 0)[0], point3D_w.at<cv::Vec3f>(i, 0)[1], point3D_w.at<cv::Vec3f>(i, 0)[2]);
       //if (i < pointCloud_arm.rows)
-        //printf("pointCloud_arm #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud_arm.at<cv::Vec3f>(i, 0)[0], pointCloud_arm.at<cv::Vec3f>(i, 0)[1], pointCloud_arm.at<cv::Vec3f>(i, 0)[2]);
+      //printf("pointCloud_arm #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud_arm.at<cv::Vec3f>(i, 0)[0], pointCloud_arm.at<cv::Vec3f>(i, 0)[1], pointCloud_arm.at<cv::Vec3f>(i, 0)[2]);
 
       //printf("t_w         #%zd = [%0.4f %0.4f %0.4f]\n", i, t_w.at<float>(0, i), t_w.at<float>(1, i), t_w.at<float>(2, i));
     }

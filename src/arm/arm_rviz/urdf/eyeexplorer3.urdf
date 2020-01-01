@@ -213,7 +213,7 @@
   <joint name="endoscope_camera" type="fixed">
     <parent link="endoscope_link2"/>
     <child link="endoscope"/>
-    <origin rpy="0 3.14 -3.14" xyz="0 0 0"/>
+    <origin rpy="0 3.14 0" xyz="0 0 0"/>
   </joint>
 
   <link name="endoscope">
