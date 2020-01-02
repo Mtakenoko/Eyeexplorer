@@ -644,8 +644,8 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
       cv::Scalar color = cv::Scalar(0, 255, 0);
       cv::Mat t_endo(3, 1, CV_32FC1);
       t_endo = r1 * t_arm;
-      center_t = cv::Point2f(t.at<float>(0, 0) * 5 + p1.x, t.at<float>(1, 0) * 5 + p1.y);
-      center_t_arm = cv::Point2f(t_endo.at<float>(0) * 5 + p1.x, t_endo.at<float>(1) * 5 + p1.y);
+      center_t = cv::Point2f(t.at<float>(0, 0) * 20 + p1.x, t.at<float>(1, 0) * 20 + p1.y);
+      center_t_arm = cv::Point2f(t_endo.at<float>(0) * 20 + p1.x, t_endo.at<float>(1) * 20 + p1.y);
       if (prjMat == 0)
       {
         cvframe_t = cvframe_.clone();
