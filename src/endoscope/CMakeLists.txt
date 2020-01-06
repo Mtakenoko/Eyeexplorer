@@ -166,6 +166,22 @@ install(TARGETS camera_vector
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# test_triangulatepoints node
+add_executable(triangulate
+src/test_triangulate.cpp
+option/options_cap_endoscope.cpp
+)
+ament_target_dependencies(triangulate
+"rclcpp"
+"sensor_msgs"
+"std_msgs"
+"OpenCV"
+)
+install(TARGETS
+  triangulate
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
