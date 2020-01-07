@@ -452,8 +452,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
     cv::Mat cameraMatrix(3, 3, CV_32FC1), cameraMatrix_64(3, 3, CV_64FC1);
     float fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
-    cameraMatrix = (cv::Mat_<float>(3, 3) << 
-                    fovx, 0.0, u0,
+    cameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
                     0.0, fovy, v0,
                     0.0, 0.0, 1.0);
     cameraMatrix.convertTo(cameraMatrix_64, CV_64FC1);
@@ -461,50 +460,20 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     //対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
     std::vector<cv::Point2f> p1, p2;
     for (size_t i = 0; i < match_num; i++)
-    {                             //特徴点の数だけ処理
-      cv::Mat ip(3, 1, CV_32FC1); //3×1のベクトル
+    { //特徴点の数だけ処理
       cv::Point2f p_1, p_2;
-
-      // ip.at<float>(0) = keypoints1[dmatch[i].queryIdx].pt.x; //1枚目の画像の特徴点のx座標を取得
-      // ip.at<float>(1) = keypoints1[dmatch[i].queryIdx].pt.y; //1枚目の画像の特徴点のy座標を取得
-      // ip.at<float>(2) = 1.0;                                 //同次座標用
-
-      // ip = cameraMatrix.inv() * ip; //カメラのキャリブレーション行列により画像平面からカメラ平面へ写像
-      // p_1.x = ip.at<float>(0);
-      // p_1.y = ip.at<float>(1);
-
       p_1.x = keypoints1[good_dmatch[i].queryIdx].pt.x;
       p_1.y = keypoints1[good_dmatch[i].queryIdx].pt.y;
-      p1.push_back(p_1);
-
-      // ip.at<float>(0) = keypoints2[dmatch[i].trainIdx].pt.x; //2枚目の画像の特徴点のx座標を取得
-      // ip.at<float>(1) = keypoints2[dmatch[i].trainIdx].pt.y; //2枚目の画像の特徴点のy座標を取得
-      // ip.at<float>(2) = 1.0;
-
-      // ip = cameraMatrix.inv() * ip; //カメラのキャリブレーション行列により画像平面からカメラ平面へ写像
-      // p_2.x = ip.at<float>(0);
-      // p_2.y = ip.at<float>(1);
       p_2.x = keypoints2[good_dmatch[i].trainIdx].pt.x;
       p_2.y = keypoints2[good_dmatch[i].trainIdx].pt.y;
+      p1.push_back(p_1);
       p2.push_back(p_2);
-      printf("p_1 = [%0.4f %0.4f], p_2 = [%0.4f %0.4f]\n", p_1.x, p_1.y, p_2.x, p_2.y);
     }
 
     //三角測量のためのカメラの透視射影行列
-    cv::Mat prjMat1(3, 4, CV_32FC1), prjMat2(3, 4, CV_32FC1), out_prjMat1(3, 4, CV_64FC1), out_prjMat2(3, 4, CV_64FC1);
+    cv::Mat prjMat1(3, 4, CV_32FC1), prjMat2(3, 4, CV_32FC1);
     cv::Mat Rt1(3, 4, CV_32FC1), Rt2(3, 4, CV_32FC1);
-    cv::Mat R_endo_64(3, 3, CV_64FC1), t_endo_64(3, 1, CV_64FC1);
-    cv::Mat out_R1, out_R2, out_Q;
-    cv::Mat out_prjMat1_32, out_prjMat2_32;
-    cv::Mat k(5, 1, CV_64FC1);
     cv::Mat r_32(3, 3, CV_32FC1), t_32(3, 1, CV_32FC1);
-    int flags = 1024;
-    double alpha = -1.0;
-    cv::Size newImageSize;
-    cv::Rect validPixROI1, validPixROI2;
-
-    R_endo.convertTo(R_endo_64, CV_64FC1);
-    t_endo.convertTo(t_endo_64, CV_64FC1);
 
     if (prjMat == 0)
     {
@@ -513,119 +482,35 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
       cv::Mat r(3, 3, CV_64FC1), t(3, 1, CV_64FC1);
       cv::Mat essentialMat = cv::findEssentialMat(p1, p2, 1.0, cv::Point2f(0, 0), cv::RANSAC, 0.9999, 0.003); //RANSACによって
       cv::recoverPose(essentialMat, p1, p2, r, t);
-      // //5点アルゴリズムで求めた座標をtfで表示するために移動量を累積する
-      // static cv::Mat t_sum(3, 1, CV_32FC1), r_sum(3, 3, CV_32FC1);
-      // r.convertTo(r_32, CV_32FC1);
-      // t.convertTo(t_32, CV_32FC1);
-      // static bool sum_state = false;
-      // if (!sum_state)
-      // {
-      //   r_sum = r2.clone();
-      //   t_sum = x2.clone();
-      //   sum_state = true;
-      // }
-      // else
-      // {
-      //   t_sum += t_32;
-      //   r_sum = r_32 * r_sum;
-      // }                                   //５点アルゴリズムで推定したカメラの位置姿勢から三角測量をする（カメラ空間）
       Rt1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0
       cv::hconcat(r_32, t_32, Rt2);
-
-      //k = (cv::Mat_<double>(5, 1) << 0.0, 0.0, 0.0, 0.0, 0.0);
-      k = (cv::Mat_<double>(5, 1) << -0.303, -0.200272, -0.004333, -0.002127, 0.0);
-      cv::stereoRectify(cameraMatrix_64, k, cameraMatrix_64, k, cv::Size(320, 320), r, t, out_R1, out_R2, out_prjMat1, out_prjMat2, out_Q, flags, alpha, newImageSize, &validPixROI1, &validPixROI2);
-      out_prjMat1.convertTo(out_prjMat1_32, CV_32FC1);
-      out_prjMat2.convertTo(out_prjMat2_32, CV_32FC1);
     }
     else if (prjMat == 1)
     {                                     //運動学から求めたカメラの位置姿勢から三角測量をする（カメラ空間）
       Rt1 = cv::Mat::eye(3, 4, CV_32FC1); //片方は回転、並進ともに0の外部パラメータ
       cv::hconcat(R_endo.t(), -t_endo, Rt2);
-
-      //k = (cv::Mat_<double>(5, 1) << 0.0, 0.0, 0.0, 0.0, 0.0);
-      k = (cv::Mat_<double>(5, 1) << -0.303, -0.200272, -0.004333, -0.002127, 0.0);
-      cv::stereoRectify(cameraMatrix_64, k, cameraMatrix_64, k, cv::Size(320, 320), R_endo_64, t_endo_64, out_R1, out_R2, out_prjMat1, out_prjMat2, out_Q, flags, alpha, newImageSize, &validPixROI1, &validPixROI2);
-      out_prjMat1.convertTo(out_prjMat1_32, CV_32FC1);
-      out_prjMat2.convertTo(out_prjMat2_32, CV_32FC1);
     }
-
     prjMat1 = cameraMatrix * Rt1; //内部パラメータと外部パラメータをかけて透視射影行列
     prjMat2 = cameraMatrix * Rt2; //内部パラメータと外部パラメータをかけて透視射影行列
 
-    //dst1, dst2を生成
-    // cv::Mat recty;
-    // cv::Mat rec1 = dst1(validPixROI1);
-    // cv::Mat rec2 = dst2(validPixROI2);
-    // cv::hconcat(rec1, rec2, recty);
-
     //三角測量（triangulatePoints()に一気に点を与えるとき）
-    //prjMat1 : 運動学で求めたカメラ空間上での動作前のカメラの位置・姿勢行列
-    //prjMat2 : 運動学で求めたカメラ空間上での動作後のカメラの位置・姿勢行列
-    //p1      : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間にで表現したもの
-    //p2      : 画像平面上の特徴点座標に内部パラメータ行列をかけてカメラ空間で表現したもの
-    //point4D : 三角測量で求めた各特徴点座標をカメラ空間にて表現したもの
-    cv::Mat point4D(4, match_num, CV_32FC1), point4D_(4, match_num, CV_32FC1), point3D, point3D_;
-    // cv::triangulatePoints(prjMat1, prjMat2, cv::Mat(p1), cv::Mat(p2), point4D);
-    // cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D);
-    // cv::triangulatePoints(out_prjMat1_32, out_prjMat2_32, p1, p2, point4D_);
-    // cv::convertPointsFromHomogeneous(point4D_.reshape(4, 1), point3D_);
+    cv::Mat point3D, point3D_arm;
+    cv::Mat point4D(4, match_num, CV_32FC1);
     for (size_t i = 0; i < match_num; ++i)
     {
-      std::vector<cv::Point3f> point3D_result;
-      cv::triangulatePoints(prjMat1, prjMat2, cv::Mat(p1[i]), cv::Mat(p2[i]), point4D_);
-      cv::convertPointsFromHomogeneous(point4D_.reshape(4, 1), point3D_result);
-      std::cout << point3D_result << std::endl;
-      // point3D_.push_back(point3D_result);
+      // std::vector<cv::Point3f> point3D_result;
+      cv::Mat point3D_result, point3D_result_arm;
+      cv::triangulatePoints(prjMat1, prjMat2, cv::Mat(p1[i]), cv::Mat(p2[i]), point4D);
+      cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
+      point3D_result_arm = (r1 * point3D_result.reshape(1, 3) + x1) / 1000.;
+      point3D.push_back(point3D_result);
+      point3D_arm.push_back(point3D_result_arm);
     }
 
     // RViz2用に並べ替え
-    // cv::Mat pointCloud(match_num, 1, CV_32FC3);
-    // cv::Mat pointCloud_arm(match_num, 1, CV_32FC3);
-    // point3D.convertTo(pointCloud, CV_32FC3);
-    /*
-    //カメラ座標系　→　ワールド座標系
-    cv::Mat point3D_shoih;
-    std::vector<cv::Point3f> point3D_wa;
-    for (size_t i = 0; i < match_num; ++i)
-    {    
-      cv::Point3f point_world;
-      point_world.x = pointCloud.at<cv::Vec3f>(i, 0)[0] + t_arm.at<float>(0, 0);
-      point_world.y = pointCloud.at<cv::Vec3f>(i, 0)[1] + t_arm.at<float>(1, 0);
-      point_world.z = pointCloud.at<cv::Vec3f>(i, 0)[2] + t_arm.at<float>(2, 0);
-
-      cv::Mat point3D_w_ = R_arm.t() * pointCloud.at<float>(i);// + t_arm; //カメラ座標系　→　ワールド座標系に変換
-      point3D_shoih.push_back(point3D_w_);
-      point3D_wa.push_back(point_world);
-    }
-    cv::Mat point3D_w = point3D_shoih.reshape(3, match_num);*/
-    /*
-    //カメラ座標系　→　ワールド座標系
-    cv::Mat point3D_cam = pointCloud.reshape(1, 3);
-    cv::Mat t_w(3, match_num, CV_32FC1);
-    for (size_t i = 0; i < match_num; ++i)
-    {
-      t_w.at<cv::Vec3f>(i) = t_arm.at<cv::Vec3f>(0);
-    }
-    cv::Mat point3D_w = R_arm * point3D_cam + t_w; //カメラ座標系　→　ワールド座標系に変換
-    cv::Mat pointCloud_W = point3D_w.reshape(3, match_num);
-    */
-    //距離（ノルム）が大きすぎる&負の値は誤対応と判断し除去
-    // int dist_count = 0;
-    // for (size_t i = 0; i < match_num; ++i)
-    // {
-    //   if (pointCloud.at<cv::Vec3f>(i, 0)[2] > 0. && pointCloud.at<cv::Vec3f>(i, 0)[2] < 1000.)
-    //   {
-    //     for (size_t j = 0; j < 3; ++j)
-    //     {
-    //       pointCloud_arm.at<cv::Vec3f>(i - dist_count, 0)[j] = pointCloud.at<cv::Vec3f>(i, 0)[j] / 1000.;
-    //     }
-    //   }
-    //   else
-    //   {
-    //     dist_count++;
-    //   }
-    // }
+    cv::Mat pointCloud(match_num, 1, CV_32FC3), pointCloud_arm(match_num, 1, CV_32FC3);
+    point3D.convertTo(pointCloud, CV_32FC3);
+    point3D_arm.convertTo(pointCloud_arm, CV_32FC3);
 
     //cv::imshow
     cv::Mat cvframe, cvframe_, cvframe_t;
@@ -664,41 +549,23 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     // printf("Rt1           : %d %d %d\n", Rt1.rows, Rt1.cols, Rt1.channels());
     // printf("point4D       : %d %d %d\n", point4D.rows, point4D.cols, point4D.channels());
     // printf("point3D       : %d %d %d\n", point3D.rows, point3D.cols, point3D.channels());
-    // printf("point3D_      : %d %d %d\n", point3D_.rows, point3D_.cols, point3D_.channels());
     // printf("pointCloud    : %d %d %d\n", pointCloud.rows, pointCloud.cols, pointCloud.channels());
-    // printf("point3D_cam   : %d %d %d\n", point3D_cam.rows, point3D_cam.cols, point3D_cam.channels());
-    // printf("t_w       h    : %d %d %d\n", t_w.rows, t_w.cols, t_w.channels());
-    // printf("point3D_w     : %d %d %d\n", point3D_w.rows, point3D_w.cols, point3D_w.channels());
-    // printf("pointCloud_w  : %d %d %d\n", pointCloud_W.rows, pointCloud_W.cols, pointCloud_W.channels());
-    // printf("point3D_shoih  : %d %d %d\n", point3D_shoih.rows, point3D_shoih.cols, point3D_shoih.channels());
-    // printf("validROI1   : [%d, %d][%d %d]\n", validPixROI1.width, validPixROI1.height, validPixROI1.x, validPixROI1.y);
-    // printf("validROI2   : [%d, %d][%d %d]\n", validPixROI2.width, validPixROI2.height, validPixROI2.x, validPixROI2.y);
-    // printf("rec1,2      : [%d, %d][%d %d]\n", rec1.rows, rec1.cols, rec2.rows, rec2.cols);
 
     // printf
     // printf("cameramatrix  = \n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n", cameraMatrix.at<float>(0, 0), cameraMatrix.at<float>(0, 1), cameraMatrix.at<float>(0, 2), cameraMatrix.at<float>(1, 0), cameraMatrix.at<float>(1, 1), cameraMatrix.at<float>(1, 2), cameraMatrix.at<float>(2, 0), cameraMatrix.at<float>(2, 1), cameraMatrix.at<float>(2, 2));
     // printf("Rt1           = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", Rt1.at<float>(0, 0), Rt1.at<float>(0, 1), Rt1.at<float>(0, 2), Rt1.at<float>(0, 3), Rt1.at<float>(1, 0), Rt1.at<float>(1, 1), Rt1.at<float>(1, 2), Rt1.at<float>(1, 3), Rt1.at<float>(2, 0), Rt1.at<float>(2, 1), Rt1.at<float>(2, 2), Rt1.at<float>(2, 3));
     // printf("Rt2           = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", Rt2.at<float>(0, 0), Rt2.at<float>(0, 1), Rt2.at<float>(0, 2), Rt2.at<float>(0, 3), Rt2.at<float>(1, 0), Rt2.at<float>(1, 1), Rt2.at<float>(1, 2), Rt2.at<float>(1, 3), Rt2.at<float>(2, 0), Rt2.at<float>(2, 1), Rt2.at<float>(2, 2), Rt2.at<float>(2, 3));
     // printf("prjMat1       = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", prjMat1.at<float>(0, 0), prjMat1.at<float>(0, 1), prjMat1.at<float>(0, 2), prjMat1.at<float>(0, 3), prjMat1.at<float>(1, 0), prjMat1.at<float>(1, 1), prjMat1.at<float>(1, 2), prjMat1.at<float>(1, 3), prjMat1.at<float>(2, 0), prjMat1.at<float>(2, 1), prjMat1.at<float>(2, 2), prjMat1.at<float>(2, 3));
-    // printf("out_prjMat1   = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", out_prjMat1_32.at<float>(0, 0), out_prjMat1_32.at<float>(0, 1), out_prjMat1_32.at<float>(0, 2), out_prjMat1_32.at<float>(0, 3), out_prjMat1_32.at<float>(1, 0), out_prjMat1_32.at<float>(1, 1), out_prjMat1_32.at<float>(1, 2), out_prjMat1_32.at<float>(1, 3), out_prjMat1_32.at<float>(2, 0), out_prjMat1_32.at<float>(2, 1), out_prjMat1_32.at<float>(2, 2), out_prjMat1_32.at<float>(2, 3));
     // printf("prjMat2       = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", prjMat2.at<float>(0, 0), prjMat2.at<float>(0, 1), prjMat2.at<float>(0, 2), prjMat2.at<float>(0, 3), prjMat2.at<float>(1, 0), prjMat2.at<float>(1, 1), prjMat2.at<float>(1, 2), prjMat2.at<float>(1, 3), prjMat2.at<float>(2, 0), prjMat2.at<float>(2, 1), prjMat2.at<float>(2, 2), prjMat2.at<float>(2, 3));
-    // printf("out_prjMat2   = \n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n%0.5f %0.5f %0.5f %0.5f\n", out_prjMat2_32.at<float>(0, 0), out_prjMat2_32.at<float>(0, 1), out_prjMat2_32.at<float>(0, 2), out_prjMat2_32.at<float>(0, 3), out_prjMat2_32.at<float>(1, 0), out_prjMat2_32.at<float>(1, 1), out_prjMat2_32.at<float>(1, 2), out_prjMat2_32.at<float>(1, 3), out_prjMat2_32.at<float>(2, 0), out_prjMat2_32.at<float>(2, 1), out_prjMat2_32.at<float>(2, 2), out_prjMat2_32.at<float>(2, 3));
     // printf("t_arm         = [%0.4f %0.4f %0.4f]\n", t_arm.at<float>(0, 0), t_arm.at<float>(1, 0), t_arm.at<float>(2, 0));
-    printf("t_endo         = [%0.4f %0.4f %0.4f]\n", t_endo.at<float>(0, 0), t_endo.at<float>(1, 0), t_endo.at<float>(2, 0));
+    // printf("t_endo         = [%0.4f %0.4f %0.4f]\n", t_endo.at<float>(0, 0), t_endo.at<float>(1, 0), t_endo.at<float>(2, 0));
     // printf("t             = [%0.4f %0.4f %0.4f]\n", t.at<float>(0, 0), t.at<float>(1, 0), t.at<float>(2, 0));
     // printf("R_endo        = \n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n", R_endo.at<float>(0, 0), R_endo.at<float>(0, 1), R_endo.at<float>(0, 2), R_endo.at<float>(1, 0), R_endo.at<float>(1, 1), R_endo.at<float>(1, 2), R_endo.at<float>(2, 0), R_endo.at<float>(2, 1), R_endo.at<float>(2, 2));
     for (size_t i = 0; i < match_num; ++i)
     {
       // printf("point4D       #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D.at<float>(0, i), point4D.at<float>(1, i), point4D.at<float>(2, i), point4D.at<float>(3, i));
-      // printf("point4D_      #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D_.at<float>(0, i), point4D_.at<float>(1, i), point4D_.at<float>(2, i), point4D_.at<float>(3, i));
-      // printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
-      // printf("point3D_      #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_.at<cv::Vec3f>(i, 0)[0], point3D_.at<cv::Vec3f>(i, 0)[1], point3D_.at<cv::Vec3f>(i, 0)[2]);
-      // printf("pointCloud    #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud.at<cv::Vec3f>(i, 0)[0], pointCloud.at<cv::Vec3f>(i, 0)[1], pointCloud.at<cv::Vec3f>(i, 0)[2]);
-      // printf("point3D_w    #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_w.at<cv::Vec3f>(i, 0)[0], point3D_w.at<cv::Vec3f>(i, 0)[1], point3D_w.at<cv::Vec3f>(i, 0)[2]);
-      // if (i < pointCloud_arm.rows)
-      // printf("pointCloud_arm #%zd = [%0.4f %0.4f %0.4f]\n", i, pointCloud_arm.at<cv::Vec3f>(i, 0)[0], pointCloud_arm.at<cv::Vec3f>(i, 0)[1], pointCloud_arm.at<cv::Vec3f>(i, 0)[2]);
-
-      //printf("t_w         #%zd = [%0.4f %0.4f %0.4f]\n", i, t_w.at<float>(0, i), t_w.at<float>(1, i), t_w.at<float>(2, i));
+      printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
+      printf("point3D_arm   #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_arm.at<cv::Vec3f>(i, 0)[0], point3D_arm.at<cv::Vec3f>(i, 0)[1], point3D_arm.at<cv::Vec3f>(i, 0)[2]);
     }
     ////  reconstruction 終了 ////
 
@@ -706,13 +573,12 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     RCLCPP_INFO(logger, "Publishing image #%s", msg_image->header.frame_id.c_str());
     auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    convert_frame_to_message(cvframe, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
-    //convert_pointcloud_to_PCL(pointCloud2, *msg_cloud_pub, dist_count);
-    // convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
+    convert_frame_to_message(cvframe_, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
+    convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
     // convert_pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
 
     pub->publish(std::move(msg_pub));
-    // pub_pointcloud->publish(std::move(msg_cloud_pub));
+    pub_pointcloud->publish(std::move(msg_cloud_pub));
     //display_tf(t_sum, r_sum, node); //tfで5点アルゴリズムで推定したカメラff座標をtfに変換およびパブリッシュ
   }
 
