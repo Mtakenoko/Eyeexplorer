@@ -26,6 +26,15 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(message_filters)
+find_package(OpenCV REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(rcutils REQUIRED)
+find_package(Boost COMPONENTS system REQUIRED)
+find_package(PCL COMPONENTS common REQUIRED)
 
 # eye_ball node
 # スタンドアローンノードの実行ファイルをコンパイルする
@@ -47,6 +56,28 @@ ament_target_dependencies(eye_ball
 # 実行ファイルをインストール
 install(TARGETS
   eye_ball
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# pointcloud_storage node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(pointcloud_storage
+  src/pointcloud_storage.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(pointcloud_storage
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "tf2_msgs"
+  "tf2_geometry_msgs"
+  "rcl_interfaces"
+  "rcutils"
+  "pcl_conversions"
+)
+# 実行ファイルをインストール
+install(TARGETS pointcloud_storage
   DESTINATION lib/${PROJECT_NAME}
 )
 

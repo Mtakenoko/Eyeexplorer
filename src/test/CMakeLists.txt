@@ -23,7 +23,19 @@ add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(message_filters)
+find_package(OpenCV REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(rcutils REQUIRED)
+find_package(Boost COMPONENTS system REQUIRED)
+find_package(PCL COMPONENTS common REQUIRED)
 
 #test_talker node
 add_executable(test_talker
@@ -51,6 +63,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+#test_talker node
+add_executable(test_tf2_listener
+  src/test_tf2_listener.cpp
+)
+ament_target_dependencies(test_tf2_listener
+  "rclcpp"
+  "geometry_msgs"
+  "tf2_msgs"
+  "tf2_ros"
+)
+install(TARGETS
+  test_tf2_listener
+  DESTINATION lib/${PROJECT_NAME}
+)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

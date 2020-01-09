@@ -143,6 +143,36 @@ install(TARGETS reconstruction
   DESTINATION lib/${PROJECT_NAME}
 )
 
+
+# reconstruction_online node
+add_executable(reconstruction_online
+  src/reconstruction_online.cpp
+  option/options_reconstruction_online.cpp
+)
+# 実行ファイルをリンクする
+target_link_libraries(reconstruction_online
+  ktl 
+  ktlrt
+  ${Boost_SYSTEM_LIBRARY}
+)
+
+ament_target_dependencies(reconstruction_online
+  "rclcpp"
+  "sensor_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+  "tf2_msgs"
+  "tf2_geometry_msgs"
+  "rcl_interfaces"
+  "rcutils"
+  "pcl_conversions"
+
+)
+install(TARGETS reconstruction_online
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # camera_vector node
 add_executable(camera_vector
   src/camera_vector.cpp

@@ -2,7 +2,7 @@
 #define ARM_STATUS__ARM_
 
 #define ADOF 5
-#define ENDOSCOPE_LENGTH 0.0
+#define ENDOSCOPE_LENGTH 110.0
 
 class PassiveArm : public Ktl::SerialMechanism<ADOF>
 {

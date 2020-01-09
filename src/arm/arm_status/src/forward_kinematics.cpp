@@ -32,7 +32,7 @@ geometry_msgs::msg::TransformStamped tf_msg;
 
 void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
                         std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> pub_tip, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::JointState>> pub_q, rclcpp::Clock::SharedPtr clock,
-                        rclcpp::Logger logger)
+                        rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node)
 {
     //エンコーダの値の向きをあわせる
     Ktl::Vector<ADOF> enc_pos;
@@ -67,10 +67,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     //並進成分
     tip_msg.translation.x = Ptip[0];
     tip_msg.translation.y = Ptip[1];
-    tip_msg.translation.z = Ptip[2];
-    tf_msg.transform.translation.x = Ptip[0] / 1000.;
-    tf_msg.transform.translation.y = Ptip[1] / 1000.;
-    tf_msg.transform.translation.z = Ptip[2] / 1000.;    
+    tip_msg.translation.z = Ptip[2]; 
 
     //回転行列
     float qx, qy, qz, qw;
@@ -82,15 +79,6 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     tip_msg.rotation.y = qy;
     tip_msg.rotation.z = qz;
     tip_msg.rotation.w = qw;
-    tf_msg.transform.rotation.x = qx;
-    tf_msg.transform.rotation.y = qy;
-    tf_msg.transform.rotation.z = qz;
-    tf_msg.transform.rotation.w = qw;
-
-    //
-    //msg.header.stamp = ;
-    tf_msg.header.frame_id = "world";
-    tf_msg.child_frame_id = "arm_tip";
 
     //表示
     double rall, pitch, yaw;
@@ -108,6 +96,21 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     //Publish
     pub_tip->publish(tip_msg);
     pub_q->publish(q_msg);
+
+    //ここからtf
+    //送信するメッセージ
+    tf2_ros::StaticTransformBroadcaster broadcaster(node);
+
+    tf_msg.transform.translation.x = Ptip[0] / 1000.;
+    tf_msg.transform.translation.y = Ptip[1] / 1000.;
+    tf_msg.transform.translation.z = Ptip[2] / 1000.;   
+    tf_msg.transform.rotation.x = qx;
+    tf_msg.transform.rotation.y = qy;
+    tf_msg.transform.rotation.z = qz;
+    tf_msg.transform.rotation.w = qw;
+    tf_msg.header.frame_id = "world";
+    tf_msg.child_frame_id = "arm_tip";
+    broadcaster.sendTransform(tf_msg);
 }
 
 int main(int argc, char *argv[])
@@ -162,7 +165,7 @@ int main(int argc, char *argv[])
     // readencoder.ReadOffsetdat();
 
     auto callback = [pub_tip, pub_q, clock, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
-        forward_kinematics(msg_sub, pub_tip, pub_q, clock, node->get_logger());
+        forward_kinematics(msg_sub, pub_tip, pub_q, clock, node->get_logger(), node);
     };
 
     //Set QoS to Subscribe
