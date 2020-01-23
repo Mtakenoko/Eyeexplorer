@@ -67,117 +67,12 @@ cap_endoscope_large
 DESTINATION lib/${PROJECT_NAME}
 )
 
-# matching node
-add_executable(matching
-  src/feature_matching.cpp
-  option/options_feature_matching.cpp
-)
-ament_target_dependencies(matching
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-)
-install(TARGETS
-  matching
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# orb matching node
-add_executable(orb_matching
-  src/orb_matching.cpp
-  option/options_orb_matching.cpp
-)
-ament_target_dependencies(orb_matching
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-)
-install(TARGETS
-  orb_matching
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# opticalflow node
-add_executable(opticalflow
-  src/opticalflow.cpp
-)
-ament_target_dependencies(opticalflow
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-)
-install(TARGETS
-  opticalflow
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# matching & reconstruction node
-add_executable(reconstruction
-  src/matching_reconstruction.cpp
-  option/options_reconstruction.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(reconstruction
-  ktl 
-  ktlrt
-  ${Boost_SYSTEM_LIBRARY}
-)
-
-ament_target_dependencies(reconstruction
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-  "rcl_interfaces"
-  "rcutils"
-  "pcl_conversions"
-
-)
-install(TARGETS reconstruction
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-
-# reconstruction_online node
-add_executable(reconstruction_online
-  src/reconstruction_online.cpp
-  option/options_reconstruction_online.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(reconstruction_online
-  ktl 
-  ktlrt
-  ${Boost_SYSTEM_LIBRARY}
-)
-
-ament_target_dependencies(reconstruction_online
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-  "rcl_interfaces"
-  "rcutils"
-  "pcl_conversions"
-
-)
-install(TARGETS reconstruction_online
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 # reconstruction_online_tf2 node
 add_executable(reconstruction_online_tf2
   src/reconstruction_online_tf2.cpp
   option/options_reconstruction_online_tf2.cpp
+  ../HTL/src/transform.cpp
+  ../HTL/src/msg_converter.cpp
 )
 # 実行ファイルをリンクする
 target_link_libraries(reconstruction_online_tf2
@@ -190,54 +85,11 @@ ament_target_dependencies(reconstruction_online_tf2
   "geometry_msgs"
   "sensor_msgs"
   "OpenCV"
-  "message_filters"
   "tf2_ros"
   "tf2_msgs"
   "tf2_geometry_msgs"
-  "rcl_interfaces"
-  "rcutils"
-  "pcl_conversions"
 )
 install(TARGETS reconstruction_online_tf2
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# camera_vector node
-add_executable(camera_vector
-  src/camera_vector.cpp
-  option/options_reconstruction.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(camera_vector
-  ktl 
-  ktlrt
-  ${Boost_SYSTEM_LIBRARY}
-)
-
-ament_target_dependencies(camera_vector
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-)
-install(TARGETS camera_vector
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# test_triangulatepoints node
-add_executable(triangulate
-src/test_triangulate.cpp
-option/options_cap_endoscope.cpp
-)
-ament_target_dependencies(triangulate
-"rclcpp"
-"sensor_msgs"
-"std_msgs"
-"OpenCV"
-)
-install(TARGETS
-  triangulate
   DESTINATION lib/${PROJECT_NAME}
 )
 

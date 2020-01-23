@@ -1,6 +1,8 @@
 #ifndef ARM_STATUS__TRANSFORM_
 #define ARM_STATUS__TRANSFORM_
 
+#include <opencv2/opencv.hpp>
+
 class Transform
 {
 public:
@@ -13,6 +15,12 @@ public:
     void QuaternionToEulerAngles(
         double q0, double q1, double q2, double q3,
         double &roll, double &pitch, double &yaw);
+    void QuaternionToRotMat(
+        float &m11, float &m12, float &m13,
+        float &m21, float &m22, float &m23,
+        float &m31, float &m32, float &m33,
+        float qx, float qy, float qz, float qw);
+    float RevFromRotMat(cv::Mat R_arm);
 
 private:
 };

@@ -14,6 +14,7 @@
 
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <geometry_msgs/msg/transform.hpp>
@@ -23,11 +24,12 @@
 #include "tf2_msgs/msg/tf_message.hpp"
 #include <tf2/buffer_core.h>
 
-#include <pcl-1.8/pcl/point_types.h>
-#include <pcl-1.8/pcl/point_cloud.h>
-#include <pcl_conversions/pcl_conversions.h>
-
 #include "../include/options_reconstruction_online_tf2.hpp"
+#include "../../HTL/include/transform.h"
+#include "../../HTL/include/msg_converter.h"
+
+Transform transform;
+Converter converter;
 
 int encoding2mat_type(const std::string &encoding)
 {
@@ -64,181 +66,11 @@ int encoding2mat_type(const std::string &encoding)
     throw std::runtime_error("Unsupported encoding type");
   }
 }
-std::string mat_type2encoding(int mat_type)
-{
-  switch (mat_type)
-  {
-  case CV_8UC1:
-    return "mono8";
-  case CV_8UC3:
-    return "bgr8";
-  case CV_16SC1:
-    return "mono16";
-  case CV_8UC4:
-    return "rgba8";
-  default:
-    throw std::runtime_error("Unsupported encoding type");
-  }
-}
-void convert_frame_to_message(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg)
-{
-  // copy cv information into ros message
-  msg.height = frame.rows;
-  msg.width = frame.cols;
-  msg.encoding = mat_type2encoding(frame.type());
-  msg.step = static_cast<sensor_msgs::msg::Image::_step_type>(frame.step);
-  size_t size = frame.step * frame.rows;
-  msg.data.resize(size);
-  memcpy(&msg.data[0], frame.data, size);
-  msg.header.frame_id = std::to_string(frame_id);
-}
 
-void convert_pointcloud_to_PCL(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count)
-{
-  msg_cloud_pub.header = std_msgs::msg::Header();
-  msg_cloud_pub.header.stamp = rclcpp::Clock().now();
-  msg_cloud_pub.header.frame_id = "world";
-
-  msg_cloud_pub.is_bigendian = false;
-  msg_cloud_pub.is_dense = true;
-
-  msg_cloud_pub.height = 1;
-  msg_cloud_pub.width = pointCloud2.rows;
-
-  msg_cloud_pub.fields.resize(3);
-  msg_cloud_pub.fields[0].name = "x";
-  msg_cloud_pub.fields[1].name = "y";
-  msg_cloud_pub.fields[2].name = "z";
-
-  sensor_msgs::msg::PointField::_offset_type offset = 0;
-  for (uint32_t i = 0; i < msg_cloud_pub.fields.size(); ++i, offset += sizeof(float))
-  {
-    msg_cloud_pub.fields[i].count = 1;
-    msg_cloud_pub.fields[i].offset = offset;
-    msg_cloud_pub.fields[i].datatype = sensor_msgs::msg::PointField::FLOAT32;
-  }
-
-  msg_cloud_pub.point_step = offset;
-  msg_cloud_pub.row_step = msg_cloud_pub.point_step * msg_cloud_pub.width;
-  msg_cloud_pub.data.resize(msg_cloud_pub.row_step * msg_cloud_pub.height);
-
-  auto floatData = reinterpret_cast<float *>(msg_cloud_pub.data.data());
-  for (uint32_t i = 0; i < msg_cloud_pub.width - dist_count; ++i)
-  {
-    for (uint32_t j = 0; j < 3; ++j)
-    {
-      floatData[i * (msg_cloud_pub.point_step / sizeof(float)) + j] = pointCloud2.at<cv::Vec3f>(i)[j];
-    }
-  }
-}
-
-void transformQuaternionToRotMat(
-    float &m11, float &m12, float &m13,
-    float &m21, float &m22, float &m23,
-    float &m31, float &m32, float &m33,
-    float qx, float qy, float qz, float qw)
-{
-  m11 = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
-  m12 = 2.0f * qx * qy + 2.0f * qw * qz;
-  m13 = 2.0f * qx * qz - 2.0f * qw * qy;
-
-  m21 = 2.0f * qx * qy - 2.0f * qw * qz;
-  m22 = 1.0f - 2.0f * qx * qx - 2.0f * qz * qz;
-  m23 = 2.0f * qy * qz + 2.0f * qw * qx;
-
-  m31 = 2.0f * qx * qz + 2.0f * qw * qy;
-  m32 = 2.0f * qy * qz - 2.0f * qw * qx;
-  m33 = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;
-}
-bool transformRotMatToQuaternion(
-    float &qx, float &qy, float &qz, float &qw,
-    float m11, float m12, float m13,
-    float m21, float m22, float m23,
-    float m31, float m32, float m33)
-{
-  // 最大成分を検索
-  float elem[4]; // 0:x, 1:y, 2:z, 3:w
-  elem[0] = m11 - m22 - m33 + 1.0f;
-  elem[1] = -m11 + m22 - m33 + 1.0f;
-  elem[2] = -m11 - m22 + m33 + 1.0f;
-  elem[3] = m11 + m22 + m33 + 1.0f;
-
-  unsigned biggestIndex = 0;
-  for (int i = 1; i < 4; i++)
-  {
-    if (elem[i] > elem[biggestIndex])
-      biggestIndex = i;
-  }
-
-  if (elem[biggestIndex] < 0.0f)
-    return false; // 引数の行列に間違いあり！
-
-  // 最大要素の値を算出
-  float *q[4] = {&qx, &qy, &qz, &qw};
-  float v = sqrtf(elem[biggestIndex]) * 0.5f;
-  *q[biggestIndex] = v;
-  float mult = 0.25f / v;
-
-  switch (biggestIndex)
-  {
-  case 0: // x
-    *q[1] = (m12 + m21) * mult;
-    *q[2] = (m31 + m13) * mult;
-    *q[3] = (m32 - m23) * mult;
-    break;
-  case 1: // y
-    *q[0] = (m12 + m21) * mult;
-    *q[2] = (m23 + m32) * mult;
-    *q[3] = (m13 - m31) * mult;
-    break;
-  case 2: // z
-    *q[0] = (m31 + m13) * mult;
-    *q[1] = (m23 + m32) * mult;
-    *q[3] = (m21 - m12) * mult;
-    break;
-  case 3: // w
-    *q[0] = (m32 - m23) * mult;
-    *q[1] = (m13 - m31) * mult;
-    *q[2] = (m21 - m12) * mult;
-    break;
-  }
-  return true;
-}
-void QuaternionToEulerAngles(double q0, double q1, double q2, double q3,
-                             double &roll, double &pitch, double &yaw)
-{
-  double q0q0 = q0 * q0;
-  double q0q1 = q0 * q1;
-  double q0q2 = q0 * q2;
-  double q0q3 = q0 * q3;
-  double q1q1 = q1 * q1;
-  double q1q2 = q1 * q2;
-  double q1q3 = q1 * q3;
-  double q2q2 = q2 * q2;
-  double q2q3 = q2 * q3;
-  double q3q3 = q3 * q3;
-  roll = atan2(2.0 * (q2q3 + q0q1), q0q0 - q1q1 - q2q2 + q3q3);
-  pitch = asin(2.0 * (q0q2 - q1q3));
-  yaw = atan2(2.0 * (q1q2 + q0q3), q0q0 + q1q1 - q2q2 - q3q3);
-}
-
-float revdeg(cv::Mat R_arm)
-{
-  //回転行列をクォータニオンに変換
-  float qx, qy, qz, qw;
-  transformRotMatToQuaternion(qx, qy, qz, qw,
-                              R_arm.at<float>(0, 0), R_arm.at<float>(0, 1), R_arm.at<float>(0, 2),
-                              R_arm.at<float>(1, 0), R_arm.at<float>(1, 1), R_arm.at<float>(1, 2),
-                              R_arm.at<float>(2, 0), R_arm.at<float>(2, 1), R_arm.at<float>(2, 2));
-  //クォータニオンの4つめの要素から回転角を取り出す
-  float phi = 2 * std::acos(qw);
-  return phi;
-}
-
-void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-              bool show_camera, size_t feature, size_t match, size_t prjMat, rclcpp::Logger logger,
-              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud,
-              tf2_ros::Buffer *buffer_)
+void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
+                   bool show_camera, size_t feature, size_t match, size_t prjMat, rclcpp::Logger logger,
+                   std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud,
+                   tf2_ros::Buffer *buffer_)
 {
   RCLCPP_INFO(logger, "Received image #%s", msg_image->header.frame_id.c_str());
   //ループカウンタ
@@ -256,15 +88,14 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   arm_trans.at<float>(1) = (float)TransformStamped.transform.translation.y * 1000.;
   arm_trans.at<float>(2) = (float)TransformStamped.transform.translation.z * 1000.;
   //回転成分
-  transformQuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(0, 1), arm_rot.at<float>(0, 2),
-                              arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
-                              arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
-                              (float)TransformStamped.transform.rotation.x, (float)TransformStamped.transform.rotation.y, (float)TransformStamped.transform.rotation.z, (float)TransformStamped.transform.rotation.w);
+  transform.QuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(0, 1), arm_rot.at<float>(0, 2),
+                               arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
+                               arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
+                               (float)TransformStamped.transform.rotation.x, (float)TransformStamped.transform.rotation.y, (float)TransformStamped.transform.rotation.z, (float)TransformStamped.transform.rotation.w);
 
   double rall, pitch, yaw;
-  QuaternionToEulerAngles(TransformStamped.transform.rotation.x, TransformStamped.transform.rotation.y, TransformStamped.transform.rotation.z, TransformStamped.transform.rotation.w, rall, pitch, yaw);
-  printf("position = [%0.4f %0.4f %0.4f] [%0.4f %0.4f %0.4f]\n", arm_trans.at<float>(0), arm_trans.at<float>(1), arm_trans.at<float>(2), rall, pitch, yaw);
-  
+  transform.QuaternionToEulerAngles(TransformStamped.transform.rotation.x, TransformStamped.transform.rotation.y, TransformStamped.transform.rotation.z, TransformStamped.transform.rotation.w, rall, pitch, yaw);
+
   //frame間隔
   static int frame_key1, frame_key2, frame_num;
   frame_num = atoi(msg_image->header.frame_id.c_str());
@@ -373,8 +204,8 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   R_arm2 = R_frame * R_keyframe2.t(); //カメラの回転変化
   t_arm1 = t_frame - t_keyframe1;     //ワールド座標系でのカメラ移動量
   t_arm2 = t_frame - t_keyframe2;     //ワールド座標系でのカメラ移動量
-  float phi1 = revdeg(R_arm1);
-  float phi2 = revdeg(R_arm2);
+  float phi1 = transform.RevFromRotMat(R_arm1);
+  float phi2 = transform.RevFromRotMat(R_arm2);
   float Keyframedetect = std::abs(phi1) - std::abs(phi2);
   if (Keyframedetect > 0)
   {
@@ -572,9 +403,9 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
     RCLCPP_INFO(logger, "Publishing image #%s", msg_image->header.frame_id.c_str());
     auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    convert_frame_to_message(cvframe_, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
+    converter.cvimage_to_msg(cvframe_, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
     // convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
-    convert_pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
+    converter.pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
 
     pub->publish(std::move(msg_pub));
     pub_pointcloud->publish(std::move(msg_cloud_pub));
@@ -637,8 +468,6 @@ int main(int argc, char *argv[])
     // Initialize an OpenCV named window called "cvframe".
     cv::namedWindow("cvframe", cv::WINDOW_AUTOSIZE);
     cv::namedWindow("cvframe_", cv::WINDOW_AUTOSIZE);
-    // cv::namedWindow("rec1", cv::WINDOW_AUTOSIZE);
-    // cv::namedWindow("rec2", cv::WINDOW_AUTOSIZE);
   }
   // Initialize a ROS node.
   auto node = rclcpp::Node::make_shared("reconstruction");
@@ -666,10 +495,11 @@ int main(int argc, char *argv[])
   auto pub = node->create_publisher<sensor_msgs::msg::Image>(topic_pub, qos);                             // Create the image publisher with our custom QoS profile.
   auto pub_pointcloud = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_pointcloud, qos); // Create the image publisher with our custom QoS profile.
 
-  message_filters::Subscriber<sensor_msgs::msg::Image> image_sub(node.get(), topic_sub);
-  message_filters::Subscriber<geometry_msgs::msg::Transform> arm_sub(node.get(), topic_sub_arm);
-  message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync(image_sub, arm_sub, 100);
-  sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, prjMat, node_logger, pub, pub_pointcloud, &buffer_));
+  auto callback = [show_camera, feature, match, prjMat, node_logger, pub, pub_pointcloud, &buffer_, &node](const sensor_msgs::msg::Image::SharedPtr msg_sub) {
+    triangulation(msg_sub, show_camera, feature, match, prjMat, node_logger, pub, pub_pointcloud, &buffer_);
+  };
+
+  auto image_sub = node->create_subscription<sensor_msgs::msg::Image>(topic_sub, qos, callback); // Initialize a subscriber that will receive the ROS Image message to be displayed.
 
   rclcpp::spin(node);
   rclcpp::shutdown();

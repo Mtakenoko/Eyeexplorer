@@ -26,6 +26,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rmw REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
@@ -37,9 +38,8 @@ find_package(message_filters REQUIRED)
 add_executable(forward_kinematics
   src/forward_kinematics.cpp
   src/encoder.cpp
-  src/transform.cpp
+  ../../HTL/src/transform.cpp
   src/arm_ver3.cpp
-  src/enc_offset.dat
 )
 # 実行ファイルをリンクする
 target_link_libraries(forward_kinematics ts01 ktl ktlrt)
@@ -51,29 +51,13 @@ ament_target_dependencies(forward_kinematics
   "tf2_msgs"
   "tf2_geometry_msgs"
   "message_filters"
+  "OpenCV"
 )
 # 実行ファイルをインストール
 install(TARGETS
   forward_kinematics
   DESTINATION lib/${PROJECT_NAME}
 )
-
-# tf2togeomsg node
-add_executable(tf2togeomsg
-  src/tf2togeomsg.cpp
-)
-ament_target_dependencies(tf2togeomsg
-  "rclcpp"
-  "geometry_msgs"
-  "tf2_msgs"
-  "tf2_ros"
-  "tf2_geometry_msgs"
-)
-install(TARGETS
-  tf2togeomsg
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

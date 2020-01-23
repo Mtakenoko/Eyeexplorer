@@ -3,7 +3,7 @@
 #include <string>
 #include <ktl.h>
 
-#include "../include/arm/transform.h"
+#include "../include/transform.h"
 
 Transform::Transform()
 {
@@ -65,7 +65,7 @@ bool Transform::RotMatToQuaternion(
     return true;
 }
 void Transform::QuaternionToEulerAngles(double q0, double q1, double q2, double q3,
-                                          double &roll, double &pitch, double &yaw)
+                                        double &roll, double &pitch, double &yaw)
 {
     double q0q0 = q0 * q0;
     double q0q1 = q0 * q1;
@@ -80,4 +80,36 @@ void Transform::QuaternionToEulerAngles(double q0, double q1, double q2, double 
     roll = atan2(2.0 * (q2q3 + q0q1), q0q0 - q1q1 - q2q2 + q3q3);
     pitch = asin(2.0 * (q0q2 - q1q3));
     yaw = atan2(2.0 * (q1q2 + q0q3), q0q0 + q1q1 - q2q2 - q3q3);
+}
+
+void Transform::QuaternionToRotMat(
+    float &m11, float &m12, float &m13,
+    float &m21, float &m22, float &m23,
+    float &m31, float &m32, float &m33,
+    float qx, float qy, float qz, float qw)
+{
+    m11 = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
+    m12 = 2.0f * qx * qy + 2.0f * qw * qz;
+    m13 = 2.0f * qx * qz - 2.0f * qw * qy;
+
+    m21 = 2.0f * qx * qy - 2.0f * qw * qz;
+    m22 = 1.0f - 2.0f * qx * qx - 2.0f * qz * qz;
+    m23 = 2.0f * qy * qz + 2.0f * qw * qx;
+
+    m31 = 2.0f * qx * qz + 2.0f * qw * qy;
+    m32 = 2.0f * qy * qz - 2.0f * qw * qx;
+    m33 = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;
+}
+
+float Transform::RevFromRotMat(cv::Mat R_arm)
+{
+  //回転行列をクォータニオンに変換
+  float qx, qy, qz, qw;
+  Transform::RotMatToQuaternion(qx, qy, qz, qw,
+                              R_arm.at<float>(0, 0), R_arm.at<float>(0, 1), R_arm.at<float>(0, 2),
+                              R_arm.at<float>(1, 0), R_arm.at<float>(1, 1), R_arm.at<float>(1, 2),
+                              R_arm.at<float>(2, 0), R_arm.at<float>(2, 1), R_arm.at<float>(2, 2));
+  //クォータニオンの4つめの要素から回転角を取り出す
+  float phi = 2 * std::acos(qw);
+  return phi;
 }
