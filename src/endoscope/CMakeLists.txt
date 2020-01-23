@@ -27,6 +27,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(message_filters)
 find_package(OpenCV REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
@@ -170,6 +171,34 @@ ament_target_dependencies(reconstruction_online
 
 )
 install(TARGETS reconstruction_online
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# reconstruction_online_tf2 node
+add_executable(reconstruction_online_tf2
+  src/reconstruction_online_tf2.cpp
+  option/options_reconstruction_online_tf2.cpp
+)
+# 実行ファイルをリンクする
+target_link_libraries(reconstruction_online_tf2
+  ${Boost_SYSTEM_LIBRARY}
+)
+
+ament_target_dependencies(reconstruction_online_tf2
+  "rclcpp"
+  "std_msgs"
+  "geometry_msgs"
+  "sensor_msgs"
+  "OpenCV"
+  "message_filters"
+  "tf2_ros"
+  "tf2_msgs"
+  "tf2_geometry_msgs"
+  "rcl_interfaces"
+  "rcutils"
+  "pcl_conversions"
+)
+install(TARGETS reconstruction_online_tf2
   DESTINATION lib/${PROJECT_NAME}
 )
 

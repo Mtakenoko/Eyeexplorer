@@ -27,10 +27,19 @@ ros2 bag play rosbag2/topic_stereo_cam.bag
 ros2 bag play rosbag2/topic_bandori3.bag
 ros2 bag record -o topic_endoscope_arm9.bag /ts01_encoder /endoscope_image /arm_trans /joint_states
 
-
-
 //roslaunch
 ros2 launch workspace/ros2_eyeexplorer/src/ros2/demos/dummy_robot/dummy_robot_bringup/launch/dummy_robot_bringup.launch.py
 ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_rviz.launch.py
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_rviz_noFK.launch.py
+
 //colcon build
-colcon build --symlink-install --packages-select arm_rviz arm_status map_server endoscope ts01 stereo realtime_test
+colcon build --symlink-install --packages-select arm_rviz arm_status map_server endoscope ts01 stereo realtime_test map test qt
+
+//九大用
+ros2 run ts01 ts01_sensor
+ros2 run endoscope cap_endoscope -c 2 -s 1
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_rviz.launch.py
+ros2 run endoscope reconstruction_online -s 1 -e 0 -p 1
+ros2 run ts01 ts01_AI_listener 
+ros2 bag record -o rosbag2/topic_kyusyu_univ1.bag /ts01_encoder /ts01_ai /ts01_di /tf /tf_static /endoscope_image /arm_trans /joint_states
+ros2 bag record -o rosbag2/topic_kyusyu_univ1.bag /ts01_encoder /endoscope_image /arm_trans /joint_states

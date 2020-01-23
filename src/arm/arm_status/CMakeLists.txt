@@ -58,6 +58,22 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# tf2togeomsg node
+add_executable(tf2togeomsg
+  src/tf2togeomsg.cpp
+)
+ament_target_dependencies(tf2togeomsg
+  "rclcpp"
+  "geometry_msgs"
+  "tf2_msgs"
+  "tf2_ros"
+  "tf2_geometry_msgs"
+)
+install(TARGETS
+  tf2togeomsg
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

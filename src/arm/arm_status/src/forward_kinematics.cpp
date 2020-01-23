@@ -13,6 +13,7 @@
 
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "geometry_msgs/msg/transform.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "tf2_ros/static_transform_broadcaster.h"
 
 #include <ktl.h>
@@ -90,7 +91,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     {
          RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
         // printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
-        //printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
+        // printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
     }
 
     //Publish
@@ -99,18 +100,18 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     //ここからtf
     //送信するメッセージ
-    tf2_ros::StaticTransformBroadcaster broadcaster(node);
+    // tf2_ros::StaticTransformBroadcaster broadcaster(node);
 
-    tf_msg.transform.translation.x = Ptip[0] / 1000.;
-    tf_msg.transform.translation.y = Ptip[1] / 1000.;
-    tf_msg.transform.translation.z = Ptip[2] / 1000.;   
-    tf_msg.transform.rotation.x = qx;
-    tf_msg.transform.rotation.y = qy;
-    tf_msg.transform.rotation.z = qz;
-    tf_msg.transform.rotation.w = qw;
-    tf_msg.header.frame_id = "world";
-    tf_msg.child_frame_id = "arm_tip";
-    broadcaster.sendTransform(tf_msg);
+    // tf_msg.transform.translation.x = Ptip[0] / 1000.;
+    // tf_msg.transform.translation.y = Ptip[1] / 1000.;
+    // tf_msg.transform.translation.z = Ptip[2] / 1000.;   
+    // tf_msg.transform.rotation.x = qx;
+    // tf_msg.transform.rotation.y = qy;
+    // tf_msg.transform.rotation.z = qz;
+    // tf_msg.transform.rotation.w = qw;
+    // tf_msg.header.frame_id = "world";
+    // tf_msg.child_frame_id = "arm_tip";
+    // broadcaster.sendTransform(tf_msg);
 }
 
 int main(int argc, char *argv[])

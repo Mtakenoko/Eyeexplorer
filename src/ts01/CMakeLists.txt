@@ -41,6 +41,36 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+#ts01_AI_listenernode
+add_executable(ts01_AI_listener
+  src/ts01_AI_listener.cpp
+)
+target_link_libraries(ts01_AI_listener)
+ament_target_dependencies(ts01_AI_listener
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+)
+install(TARGETS
+  ts01_AI_listener
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+#ts01_AI_listenernode
+add_executable(ts01_DI_listener
+  src/ts01_DI_listener.cpp
+)
+target_link_libraries(ts01_DI_listener)
+ament_target_dependencies(ts01_DI_listener
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+)
+install(TARGETS
+  ts01_DI_listener
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

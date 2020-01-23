@@ -8,6 +8,7 @@
                 "/usr/include",
                 "/usr/include/eigen3",
                 "/usr/include/pcl-1.8",
+                "/usr/include/vtk-6.3",
                 "/opt/ros/dashing/opt/rviz_ogre_vendor/include/OGRE",
                 "/usr/include/x86_64-linux-gnu/qt5/QtWidgets",
                 "/usr/include/x86_64-linux-gnu/qt5"

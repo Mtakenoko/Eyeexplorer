@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RECONSTRUCTION_ONLINE__OPTIONS_HPP_
-#define RECONSTRUCTION_ONLINE__OPTIONS_HPP_
+#ifndef RECONSTRUCTION_ONLINE_tf2__OPTIONS_HPP_
+#define RECONSTRUCTION_ONLINE_tf2__OPTIONS_HPP_
 
 #include <string>
 #include <vector>

@@ -4,25 +4,30 @@
 #include <string>
 #include <vector>
 
-#include <ktl.h>
-
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/calib3d.hpp>
 
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/time_source.hpp>
+#include <rclcpp/clock.hpp>
 
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <geometry_msgs/msg/transform.hpp>
-#include <tf2_ros/static_transform_broadcaster.h>
+
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include "tf2_msgs/msg/tf_message.hpp"
+#include <tf2/buffer_core.h>
+
 #include <pcl-1.8/pcl/point_types.h>
 #include <pcl-1.8/pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include "../include/options_reconstruction_online.hpp"
+#include "../include/options_reconstruction_online_tf2.hpp"
 
 int encoding2mat_type(const std::string &encoding)
 {
@@ -199,6 +204,23 @@ bool transformRotMatToQuaternion(
   }
   return true;
 }
+void QuaternionToEulerAngles(double q0, double q1, double q2, double q3,
+                             double &roll, double &pitch, double &yaw)
+{
+  double q0q0 = q0 * q0;
+  double q0q1 = q0 * q1;
+  double q0q2 = q0 * q2;
+  double q0q3 = q0 * q3;
+  double q1q1 = q1 * q1;
+  double q1q2 = q1 * q2;
+  double q1q3 = q1 * q3;
+  double q2q2 = q2 * q2;
+  double q2q3 = q2 * q3;
+  double q3q3 = q3 * q3;
+  roll = atan2(2.0 * (q2q3 + q0q1), q0q0 - q1q1 - q2q2 + q3q3);
+  pitch = asin(2.0 * (q0q2 - q1q3));
+  yaw = atan2(2.0 * (q1q2 + q0q3), q0q0 + q1q1 - q2q2 - q3q3);
+}
 
 float revdeg(cv::Mat R_arm)
 {
@@ -213,8 +235,10 @@ float revdeg(cv::Mat R_arm)
   return phi;
 }
 
-//回転行列から回転角を取り出す
-void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm, bool show_camera, size_t feature, size_t match, size_t prjMat, rclcpp::Logger logger, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
+void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
+              bool show_camera, size_t feature, size_t match, size_t prjMat, rclcpp::Logger logger,
+              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud,
+              tf2_ros::Buffer *buffer_)
 {
   RCLCPP_INFO(logger, "Received image #%s", msg_image->header.frame_id.c_str());
   //ループカウンタ
@@ -224,17 +248,23 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   //グローバル座標とカメラ座標間の座標変換行列
   cv::Mat arm_trans(3, 1, CV_32FC1);
   cv::Mat arm_rot(3, 3, CV_32FC1);
+  // //tfでの座標の受取
+  geometry_msgs::msg::TransformStamped TransformStamped;
+  TransformStamped = buffer_->lookupTransform("world", "endoscope", tf2::TimePoint());
   //並進成分
-  arm_trans.at<float>(0) = msg_arm->translation.x;
-  arm_trans.at<float>(1) = msg_arm->translation.y;
-  arm_trans.at<float>(2) = msg_arm->translation.z;
+  arm_trans.at<float>(0) = (float)TransformStamped.transform.translation.x * 1000.;
+  arm_trans.at<float>(1) = (float)TransformStamped.transform.translation.y * 1000.;
+  arm_trans.at<float>(2) = (float)TransformStamped.transform.translation.z * 1000.;
   //回転成分
   transformQuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(0, 1), arm_rot.at<float>(0, 2),
                               arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
                               arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
-                              msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
+                              (float)TransformStamped.transform.rotation.x, (float)TransformStamped.transform.rotation.y, (float)TransformStamped.transform.rotation.z, (float)TransformStamped.transform.rotation.w);
 
-
+  double rall, pitch, yaw;
+  QuaternionToEulerAngles(TransformStamped.transform.rotation.x, TransformStamped.transform.rotation.y, TransformStamped.transform.rotation.z, TransformStamped.transform.rotation.w, rall, pitch, yaw);
+  printf("position = [%0.4f %0.4f %0.4f] [%0.4f %0.4f %0.4f]\n", arm_trans.at<float>(0), arm_trans.at<float>(1), arm_trans.at<float>(2), rall, pitch, yaw);
+  
   //frame間隔
   static int frame_key1, frame_key2, frame_num;
   frame_num = atoi(msg_image->header.frame_id.c_str());
@@ -251,7 +281,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
   static cv::Mat t_keyframe(3, 1, CV_32FC1), t_keyframe1(3, 1, CV_32FC1), t_keyframe2(3, 1, CV_32FC1), t_frame(3, 1, CV_32FC1);
   R_frame = arm_rot.clone();
   t_frame = arm_trans.clone();
-  
+
   ////  detection 開始  ////
   static cv::Mat dst_keyframe, dst_keyframe1, dst_keyframe2, descriptor_keyframe1, descriptor_keyframe2;
   static std::vector<cv::KeyPoint> keypoints_keyframe, keypoints_keyframe1, keypoints_keyframe2;
@@ -553,7 +583,7 @@ void callback(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, c
 
   //Keyframeの更新
   int frame_span = frame_num - frame_key2;
-  if (frame_span > 10 && (cv::norm(t_arm2) > 8. || phi2 > PI / 480.))
+  if (frame_span > 10 && (cv::norm(t_arm2) > 8. || phi2 > M_PI / 480.))
   {
     dst_keyframe1 = dst_keyframe2.clone();
     keypoints_keyframe1 = keypoints_keyframe2;
@@ -614,6 +644,17 @@ int main(int argc, char *argv[])
   auto node = rclcpp::Node::make_shared("reconstruction");
   rclcpp::Logger node_logger = node->get_logger();
 
+  //時間管理
+  rclcpp::TimeSource ts(node);
+  rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+  ts.attachClock(clock);
+
+  std::shared_ptr<tf2_ros::TransformListener> tfl_;
+  tf2_ros::Buffer buffer_(clock);
+  tf2::TimePoint timepoint;
+  tfl_ = std::make_shared<tf2_ros::TransformListener>(buffer_);
+  buffer_.canTransform("endoscope", "world", tf2::TimePoint(), tf2::durationFromSec(1.0));
+
   // Set quality of service profile based on command line options.
   auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
   qos.reliability(reliability_policy);
@@ -628,7 +669,7 @@ int main(int argc, char *argv[])
   message_filters::Subscriber<sensor_msgs::msg::Image> image_sub(node.get(), topic_sub);
   message_filters::Subscriber<geometry_msgs::msg::Transform> arm_sub(node.get(), topic_sub_arm);
   message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync(image_sub, arm_sub, 100);
-  sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, prjMat, node_logger, pub, pub_pointcloud));
+  sync.registerCallback(std::bind(&callback, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, prjMat, node_logger, pub, pub_pointcloud, &buffer_));
 
   rclcpp::spin(node);
   rclcpp::shutdown();

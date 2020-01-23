@@ -146,26 +146,42 @@
     </visual>
   </link>
 
-  <joint name="endoscope_joint" type="fixed">
+  <joint name="endoscope_holder" type="fixed">
     <parent link="arm_link6"/>
-    <child link="endoscope_link"/>
+    <child link="endoscope_holder_link"/>
     <origin rpy="0 0 0" xyz="0 0.06 0"/>
+  </joint>
+
+  <link name="endoscope_holder_link">
+    <visual>
+      <geometry>
+        <box size="0.02 0.02 -0.04"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.02"/>
+      <material name="ARM/red"/>
+    </visual>
+  </link>
+
+  <joint name="endoscope_joint" type="fixed">
+    <parent link="endoscope_holder_link"/>
+    <child link="endoscope_link"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.04"/>
   </joint>
 
   <link name="endoscope_link">
     <visual>
       <geometry>
-        <box size="0.01 0.01 -0.08"/>
+        <box size="0.01 0.01 -0.04"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0 -0.04"/>
-      <material name="ARM/black"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.02"/>
+      <material name="ARM/blue"/>
     </visual>
   </link>
 
   <joint name="endoscope_joint2" type="fixed">
     <parent link="endoscope_link"/>
     <child link="endoscope_link2"/>
-    <origin rpy="0 0 0" xyz="0 0 -0.08"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.04"/>
   </joint>
 
   <link name="endoscope_link2">
@@ -174,7 +190,7 @@
         <box size="0.005 0.005 -0.03"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 -0.015"/>
-      <material name="ARM/black"/>
+      <material name="ARM/white"/>
     </visual>
   </link>
 
@@ -190,7 +206,7 @@
         <box size="0 0 0"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <material name="ARM/black"/>
+      <material name="ARM/white"/>
     </visual>
   </link>
 

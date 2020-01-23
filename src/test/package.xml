@@ -12,10 +12,53 @@
 
   <build_depend>rclcpp</build_depend>
   <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>message_filters</build_depend>
+  <build_depend>OpenCV</build_depend>
+  <build_depend>pcl_conversions</build_depend>
+  <build_depend>VTK 6.3</build_depend>
+  <build_depend>PCL 1.8</build_depend>
+  <build_depend>PCL COMPONENTS common</build_depend> 
+  <build_depend>eigen3_cmake_module</build_depend>
+  <build_depend>Eigen3</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>tf2_msgs</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
+  <build_depend>rcl_interfaces</build_depend>
+  <build_depend>rcutils</build_depend>
+  <build_depend>Boost COMPONENTS system</build_depend>
 
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>OpenCV</exec_depend>
+  <exec_depend>pcl_conversions</exec_depend>
+  <exec_depend>VTK</exec_depend>
+  <exec_depend>PCL 1.8</exec_depend>
+  <exec_depend>PCL COMPONENTS common</exec_depend>
+  <exec_depend>eigen3_cmake_module</exec_depend>
+  <exec_depend>Eigen3</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf2_msgs</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>rcutils</exec_depend>
+  <exec_depend>Boost COMPONENTS system</exec_depend>
 
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>launch</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+  <test_depend>rmw_implementation_cmake</test_depend>
+  
   <export>
     <build_type>ament_cmake</build_type>
   </export>

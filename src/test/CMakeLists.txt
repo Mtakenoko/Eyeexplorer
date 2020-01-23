@@ -26,16 +26,21 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(message_filters)
+find_package(nav_msgs REQUIRED)
+find_package(message_filters REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(VTK 6.3 REQUIRED)
+find_package(PCL 1.8 REQUIRED)
+find_package(PCL COMPONENTS common REQUIRED)
+find_package(eigen3_cmake_module REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
-find_package(pcl_conversions REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
-find_package(PCL COMPONENTS common REQUIRED)
 
 #test_talker node
 add_executable(test_talker
@@ -63,7 +68,7 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-#test_talker node
+#test_tf2_listener node
 add_executable(test_tf2_listener
   src/test_tf2_listener.cpp
 )
@@ -72,11 +77,68 @@ ament_target_dependencies(test_tf2_listener
   "geometry_msgs"
   "tf2_msgs"
   "tf2_ros"
+  "tf2_geometry_msgs"
 )
 install(TARGETS
   test_tf2_listener
   DESTINATION lib/${PROJECT_NAME}
 )
+
+#pcl_test node
+add_executable(pcl_test
+  src/pcl_test.cpp
+)
+# include_directories(pcl_test
+#   ${PCL_INCLUDE_DIRS}
+# )
+# link_directories(pcl_test
+#   ${PCL_LIBRARY_DIRS}
+# )
+# add_definitions(pcl_test
+#   ${PCL_DEFINITIONS}
+# )
+target_link_libraries(pcl_test
+  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${PCL_LIBRARIES}
+)
+ament_target_dependencies(pcl_test
+  "rclcpp"
+  "sensor_msgs"
+  "pcl_conversions"
+  "VTK 6.3"
+  "Eigen3"
+  "PCL 1.8"
+  "PCL COMPONENTS common"
+)
+install(TARGETS
+  pcl_test
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+#grid_map_test node
+add_executable(grid_map_test
+  src/grid_map_test.cpp
+)
+target_link_libraries(grid_map_test
+  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${PCL_LIBRARIES}
+)
+ament_target_dependencies(grid_map_test
+  "rclcpp"
+  "sensor_msgs"
+  "nav_msgs"
+  "pcl_conversions"
+  "VTK 6.3"
+  "Eigen3"
+  "PCL 1.8"
+  "PCL COMPONENTS common"
+)
+install(TARGETS
+grid_map_test
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

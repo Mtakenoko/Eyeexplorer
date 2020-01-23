@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
   //DIに関するmsg
   std_msgs::msg::Int32MultiArray msg_di_;
   auto publisher_di_ = node->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_di", qos);
-  msg_di_.data.resize(ADOF);
+  msg_di_.data.resize(10);
   for (size_t i = 0; i < 10; ++i)
   {
     msg_di_.data[i] = 0;
@@ -156,8 +156,8 @@ int main(int argc, char *argv[])
   std_msgs::msg::Float32MultiArray msg_ai_;
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ai_;
   publisher_ai_ = node->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
-  msg_ai_.data.resize(ADOF);
-  for (size_t i = 0; i < 5; ++i)
+  msg_ai_.data.resize(16);
+  for (size_t i = 0; i < 16; ++i)
   {
     msg_ai_.data[i] = 0.0;
   }
