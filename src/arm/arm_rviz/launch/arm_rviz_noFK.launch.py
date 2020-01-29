@@ -10,5 +10,6 @@ def generate_launch_description():
     urdf = os.path.join(get_package_share_directory('arm_rviz'), 'urdf', 'eyeexplorer3_nooffset.urdf')
     return LaunchDescription([
         Node(package='map_server', node_executable='map_server', output='screen'),
-        Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf])
+        Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf]),
+        Node(package='arm_status', node_executable='joint_publisher', output='screen')
     ])

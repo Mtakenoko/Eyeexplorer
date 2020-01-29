@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
@@ -77,25 +78,37 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   static int loop_count = 0;
   loop_count++;
 
+  //処理時間計測
+  std::chrono::system_clock::time_point start;
+  std::chrono::system_clock::time_point end[10];
+  start = std::chrono::system_clock::now();
+
   //グローバル座標とカメラ座標間の座標変換行列
   cv::Mat arm_trans(3, 1, CV_32FC1);
   cv::Mat arm_rot(3, 3, CV_32FC1);
   // //tfでの座標の受取
-  geometry_msgs::msg::TransformStamped TransformStamped;
-  TransformStamped = buffer_->lookupTransform("world", "endoscope", tf2::TimePoint());
-  //並進成分
-  arm_trans.at<float>(0) = (float)TransformStamped.transform.translation.x * 1000.;
-  arm_trans.at<float>(1) = (float)TransformStamped.transform.translation.y * 1000.;
-  arm_trans.at<float>(2) = (float)TransformStamped.transform.translation.z * 1000.;
-  //回転成分
-  transform.QuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(0, 1), arm_rot.at<float>(0, 2),
-                               arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
-                               arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
-                               (float)TransformStamped.transform.rotation.x, (float)TransformStamped.transform.rotation.y, (float)TransformStamped.transform.rotation.z, (float)TransformStamped.transform.rotation.w);
+  try
+  {
+    geometry_msgs::msg::TransformStamped TransformStamped;
+    TransformStamped = buffer_->lookupTransform("world", "endoscope", tf2::TimePoint());
+    //並進成分
+    arm_trans.at<float>(0) = (float)TransformStamped.transform.translation.x * 1000.;
+    arm_trans.at<float>(1) = (float)TransformStamped.transform.translation.y * 1000.;
+    arm_trans.at<float>(2) = (float)TransformStamped.transform.translation.z * 1000.;
+    //回転成分
+    transform.QuaternionToRotMat(arm_rot.at<float>(0, 0), arm_rot.at<float>(0, 1), arm_rot.at<float>(0, 2),
+                                 arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
+                                 arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
+                                 (float)TransformStamped.transform.rotation.x, (float)TransformStamped.transform.rotation.y, (float)TransformStamped.transform.rotation.z, (float)TransformStamped.transform.rotation.w);
 
-  double rall, pitch, yaw;
-  transform.QuaternionToEulerAngles(TransformStamped.transform.rotation.x, TransformStamped.transform.rotation.y, TransformStamped.transform.rotation.z, TransformStamped.transform.rotation.w, rall, pitch, yaw);
-
+    double rall, pitch, yaw;
+    transform.QuaternionToEulerAngles(TransformStamped.transform.rotation.x, TransformStamped.transform.rotation.y, TransformStamped.transform.rotation.z, TransformStamped.transform.rotation.w, rall, pitch, yaw);
+  }
+  catch (tf2::TransformException &ex)
+  {
+    RCLCPP_ERROR(logger, "tf2 error");
+    return;
+  }
   //frame間隔
   static int frame_key1, frame_key2, frame_num;
   frame_num = atoi(msg_image->header.frame_id.c_str());
@@ -112,6 +125,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   static cv::Mat t_keyframe(3, 1, CV_32FC1), t_keyframe1(3, 1, CV_32FC1), t_keyframe2(3, 1, CV_32FC1), t_frame(3, 1, CV_32FC1);
   R_frame = arm_rot.clone();
   t_frame = arm_trans.clone();
+  end[0] = std::chrono::system_clock::now();
 
   ////  detection 開始  ////
   static cv::Mat dst_keyframe, dst_keyframe1, dst_keyframe2, descriptor_keyframe1, descriptor_keyframe2;
@@ -145,30 +159,35 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     printf("Choosing Incorrect Option of Feature point detector.\n");
     return;
   }
+  end[1] = std::chrono::system_clock::now();
   detector->detect(dst_frame, keypoints_frame);
   descriptorExtractor->compute(dst_frame, keypoints_frame, descriptor_frame);
 
+  end[2] = std::chrono::system_clock::now();
   //特徴抽出初めてやったときはdst_keyframe1になんにも入ってない
-  static bool set_bool1 = false, set_bool2 = false;
-  if (!set_bool1)
+  static bool set_keyframe1 = false, set_keyframe2 = false;
+  if (!set_keyframe1)
   {
-    if (set_bool2)
-    {
-      dst_keyframe1 = dst_keyframe2.clone();
-      keypoints_keyframe1 = keypoints_keyframe2;
-      descriptor_keyframe1 = descriptor_keyframe2.clone();
-      R_keyframe1 = R_keyframe2.clone();
-      t_keyframe1 = t_keyframe2.clone();
-      frame_key1 = frame_key2;
-      set_bool1 = true;
-    }
+    //keyframe1の設定
+    dst_keyframe1 = dst_frame.clone();
+    keypoints_keyframe1 = keypoints_frame;
+    descriptor_keyframe1 = descriptor_frame.clone();
+    R_keyframe1 = R_frame.clone();
+    t_keyframe1 = t_frame.clone();
+    frame_key1 = frame_num;
+    set_keyframe1 = true;
+    return;
+  }
+  if (!set_keyframe2)
+  {
+    //keyframe2の設定
     dst_keyframe2 = dst_frame.clone();
     keypoints_keyframe2 = keypoints_frame;
     descriptor_keyframe2 = descriptor_frame.clone();
     R_keyframe2 = R_frame.clone();
     t_keyframe2 = t_frame.clone();
     frame_key2 = frame_num;
-    set_bool2 = true;
+    set_keyframe2 = true;
     return;
   }
   ////    detection 終了  ////
@@ -200,15 +219,17 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   // KeyFrame1とKeyframe2のどちらを使うか決定
   cv::Mat R_arm(3, 3, CV_32FC1), R_arm1(3, 3, CV_32FC1), R_arm2(3, 3, CV_32FC1), R_endo(3, 3, CV_32FC1);
   cv::Mat t_arm(3, 1, CV_32FC1), t_arm1(3, 1, CV_32FC1), t_arm2(3, 1, CV_32FC1), t_endo(3, 1, CV_32FC1);
-  R_arm1 = R_frame * R_keyframe1.t(); //カメラの回転変化
-  R_arm2 = R_frame * R_keyframe2.t(); //カメラの回転変化
-  t_arm1 = t_frame - t_keyframe1;     //ワールド座標系でのカメラ移動量
-  t_arm2 = t_frame - t_keyframe2;     //ワールド座標系でのカメラ移動量
+  R_arm1 = R_frame * R_keyframe1.t(); //取得フレームとキーフレーム1でのカメラの回転変化
+  R_arm2 = R_frame * R_keyframe2.t(); //取得フレームとキーフレーム2でのカメラの回転変化
+  t_arm1 = t_frame - t_keyframe1;     //取得フレームとキーフレーム1でのワールド座標系でのカメラ移動量
+  t_arm2 = t_frame - t_keyframe2;     //取得フレームとキーフレーム2でのワールド座標系でのカメラ移動量
   float phi1 = transform.RevFromRotMat(R_arm1);
   float phi2 = transform.RevFromRotMat(R_arm2);
   float Keyframedetect = std::abs(phi1) - std::abs(phi2);
+  int keyframe_num;
   if (Keyframedetect > 0)
   {
+    printf("use Keyframe 1\n");
     R_arm = R_arm1.clone();
     t_arm = t_arm1.clone();
     R_keyframe = R_keyframe1.clone();
@@ -217,9 +238,11 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     matcher->match(descriptor_keyframe1, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
     matcher->match(descriptor_frame, descriptor_keyframe1, dmatch21); //dst_frame -> dst_keyframe1
     keypoints_keyframe = keypoints_keyframe1;
+    keyframe_num = 1;
   }
   else
   {
+    printf("use Keyframe 2\n");
     R_arm = R_arm2.clone();
     t_arm = t_arm2.clone();
     R_keyframe = R_keyframe2.clone();
@@ -228,7 +251,9 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     matcher->match(descriptor_keyframe2, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
     matcher->match(descriptor_frame, descriptor_keyframe2, dmatch21); //dst_frame -> dst_keyframe1
     keypoints_keyframe = keypoints_keyframe2;
+    keyframe_num = 2;
   }
+  end[3] = std::chrono::system_clock::now();
 
   //エンコーダでの変化量を計算
   R_endo = R_arm.t();
@@ -265,6 +290,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
       }
     }
   }
+  end[4] = std::chrono::system_clock::now();
   ////    matching 終了   ////
 
   ////    reconstruction 開始     ////
@@ -317,7 +343,9 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     prjMat1 = cameraMatrix * Rt1; //内部パラメータと外部パラメータをかけて透視射影行列
     prjMat2 = cameraMatrix * Rt2; //内部パラメータと外部パラメータをかけて透視射影行列
 
-    //三角測量（triangulatePoints()に一気に点を与えるとき）
+    end[5] = std::chrono::system_clock::now();
+
+    //三角測量
     cv::Mat point3D, point3D_arm;
     cv::Mat point4D(4, match_num, CV_32FC1);
     float dist_mean;
@@ -338,13 +366,14 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     cv::Mat pointCloud(match_num, 1, CV_32FC3), pointCloud_arm(match_num, 1, CV_32FC3);
     point3D.convertTo(pointCloud, CV_32FC3);
     point3D_arm.convertTo(pointCloud_arm, CV_32FC3);
+    end[6] = std::chrono::system_clock::now();
 
     //cv::imshow
-    cv::Mat cvframe, cvframe_, cvframe_t;
-    cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, dmatch, cvframe);
-    cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, good_dmatch, cvframe_);
     if (show_camera)
     {
+      cv::Mat cvframe, cvframe_, cvframe_t;
+      cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, dmatch, cvframe);
+      cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, good_dmatch, cvframe_);
       cv::Point2f center_t, center_t_arm;
       cv::Point2f p_center = cv::Point2f(msg_image->height / 2., msg_image->width / 2.);
       cv::Scalar color = cv::Scalar(0, 255, 0);
@@ -369,6 +398,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
       }
       cv::waitKey(3);
     }
+    end[7] = std::chrono::system_clock::now();
 
     //変数のサイズ確認
     // printf("dmatch: %zu\n", match_num);
@@ -389,32 +419,32 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     // printf("t_endo         = [%0.4f %0.4f %0.4f]\n", t_endo.at<float>(0, 0), t_endo.at<float>(1, 0), t_endo.at<float>(2, 0));
     // printf("t_32             = [%0.4f %0.4f %0.4f]\n", t_32.at<float>(0, 0), t_32.at<float>(1, 0), t_32.at<float>(2, 0));
     // printf("R_endo        = \n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n", R_endo.at<float>(0, 0), R_endo.at<float>(0, 1), R_endo.at<float>(0, 2), R_endo.at<float>(1, 0), R_endo.at<float>(1, 1), R_endo.at<float>(1, 2), R_endo.at<float>(2, 0), R_endo.at<float>(2, 1), R_endo.at<float>(2, 2));
-    cv::Mat point3D_arm_result = point3D_arm.reshape(1, 3);
+    // cv::Mat point3D_arm_result = point3D_arm.reshape(1, 3);
     for (size_t i = 0; i < match_num; ++i)
     {
       // printf("point4D       #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D.at<float>(0, i), point4D.at<float>(1, i), point4D.at<float>(2, i), point4D.at<float>(3, i));
-      printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
+      // printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
       // printf("point3D_arm   #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_arm_result.at<float>(0, i), point3D_arm.at<float>(1, i), point3D_arm.at<float>(2, i));
     }
-    printf("dist_mean = %0.4f", dist_mean);
+    // printf("dist_mean = %0.4f\n", dist_mean);
     ////  reconstruction 終了 ////
 
     //Publish Image
     RCLCPP_INFO(logger, "Publishing image #%s", msg_image->header.frame_id.c_str());
-    auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
+    // auto msg_pub = std::make_unique<sensor_msgs::msg::Image>();
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvimage_to_msg(cvframe_, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
+    // converter.cvimage_to_msg(cvframe_, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
     // convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
     converter.pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
 
-    pub->publish(std::move(msg_pub));
+    // pub->publish(std::move(msg_pub));
     pub_pointcloud->publish(std::move(msg_cloud_pub));
-    //display_tf(t_sum, r_sum, node); //tfで5点アルゴリズムで推定したカメラff座標をtfに変換およびパブリッシュ
   }
+  end[8] = std::chrono::system_clock::now();
 
   //Keyframeの更新
   int frame_span = frame_num - frame_key2;
-  if (frame_span > 10 && (cv::norm(t_arm2) > 8. || phi2 > M_PI / 480.))
+  if (frame_span > 10 && (cv::norm(t_arm2) > 3. || phi2 > M_PI / 540.)) //@TODO   角度のtanと並進移動の和で判定を行うべき
   {
     dst_keyframe1 = dst_keyframe2.clone();
     keypoints_keyframe1 = keypoints_keyframe2;
@@ -429,7 +459,21 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     R_keyframe2 = R_frame.clone();
     t_keyframe2 = t_frame.clone();
     frame_key2 = frame_num;
+    printf("Keyframe was changed!\n");
   }
+  end[9] = std::chrono::system_clock::now();
+  // //処理時間表示
+  // double time[10], total;
+  // time[0] = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end[0] - start).count() / 1000.0);
+  // printf("time = [%0.2lf ", time[0]);
+  // for (int i = 1; i < 10; i++)
+  // {
+  //   time[i] = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end[i] - end[i - 1]).count() / 1000.0);
+  //   printf("%0.2lf ", time[i]);
+  // }
+  // printf("]\n");
+  // total = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end[9] - start).count() / 1000.0);
+  // printf("total = %0.1lf, FPS = %0.2lf\n", total, 1000. / total);
 }
 
 int main(int argc, char *argv[])
