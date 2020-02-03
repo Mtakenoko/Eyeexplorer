@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     auto callback = [pub_q, clock](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
         q_msg.position[0] = msg_sub->position[0] - readencoder.offset[0];
         q_msg.position[1] = msg_sub->position[1] - readencoder.offset[1];
-        q_msg.position[2] = msg_sub->position[2] - readencoder.offset[2];
+        q_msg.position[2] = msg_sub->position[2] - readencoder.offset[2] - q_msg.position[1];
         q_msg.position[3] = 0. - (q_msg.position[1] + q_msg.position[2]);
         q_msg.position[4] = msg_sub->position[3] - readencoder.offset[3];
         q_msg.position[5] = msg_sub->position[4] - readencoder.offset[4];

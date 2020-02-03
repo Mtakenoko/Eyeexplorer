@@ -76,6 +76,25 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# arm_state_holder node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(arm_state_holder
+  src/arm_state_holder.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(arm_state_holder
+  "rclcpp"
+  "geometry_msgs"
+  "tf2_msgs"
+  "tf2_ros"
+  "tf2_geometry_msgs"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  arm_state_holder
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

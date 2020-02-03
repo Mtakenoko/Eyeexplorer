@@ -93,6 +93,25 @@ install(TARGETS reconstruction_online_tf2
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# reconstruction_online_delay node
+add_executable(reconstruction_online_delay
+  src/reconstruction_online_delay.cpp
+  option/options_reconstruction_online_delay.cpp
+  ../HTL/src/transform.cpp
+  ../HTL/src/msg_converter.cpp
+)
+ament_target_dependencies(reconstruction_online_delay
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+)
+install(TARGETS reconstruction_online_delay
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

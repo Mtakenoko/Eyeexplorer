@@ -213,6 +213,7 @@ int main(int argc, char *argv[])
     loop_rate.sleep();
   }
   cleanup_module();
+  sleep(1);
   rclcpp::shutdown();
   return 0;
 }
