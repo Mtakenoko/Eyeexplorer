@@ -276,7 +276,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
 
   ////    reconstruction 開始     ////
   size_t match_num = good_dmatch.size();
-  if (match_num > 5) //５点アルゴリズムが行えるのに十分対応点があれば
+  if (match_num > 20) //５点アルゴリズムが行えるのに十分対応点があれば
   {
     //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
     cv::Mat cameraMatrix(3, 3, CV_32FC1), cameraMatrix_64(3, 3, CV_64FC1);
@@ -400,14 +400,14 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     // printf("t_endo         = [%0.4f %0.4f %0.4f]\n", t_endo.at<float>(0, 0), t_endo.at<float>(1, 0), t_endo.at<float>(2, 0));
     // printf("t_32             = [%0.4f %0.4f %0.4f]\n", t_32.at<float>(0, 0), t_32.at<float>(1, 0), t_32.at<float>(2, 0));
     // printf("R_endo        = \n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n", R_endo.at<float>(0, 0), R_endo.at<float>(0, 1), R_endo.at<float>(0, 2), R_endo.at<float>(1, 0), R_endo.at<float>(1, 1), R_endo.at<float>(1, 2), R_endo.at<float>(2, 0), R_endo.at<float>(2, 1), R_endo.at<float>(2, 2));
-    // cv::Mat point3D_arm_result = point3D_arm.reshape(1, 3);
+    cv::Mat point3D_arm_result = point3D_arm.reshape(1, 3);
     for (size_t i = 0; i < match_num; ++i)
     {
       // printf("point4D       #%zd = [%0.4f %0.4f %0.4f %0.4f]\n", i, point4D.at<float>(0, i), point4D.at<float>(1, i), point4D.at<float>(2, i), point4D.at<float>(3, i));
-      // printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
+      printf("point3D       #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D.at<cv::Vec3f>(i, 0)[0], point3D.at<cv::Vec3f>(i, 0)[1], point3D.at<cv::Vec3f>(i, 0)[2]);
       // printf("point3D_arm   #%zd = [%0.4f %0.4f %0.4f]\n", i, point3D_arm_result.at<float>(0, i), point3D_arm.at<float>(1, i), point3D_arm.at<float>(2, i));
     }
-    // printf("dist_mean = %0.4f\n", dist_mean);
+    printf("dist_mean = %0.4f\n", dist_mean);
     ////  reconstruction 終了 ////
 
     //Publish Image

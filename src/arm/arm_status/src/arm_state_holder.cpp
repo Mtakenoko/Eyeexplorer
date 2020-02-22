@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
     auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
 
-    const int end_timing = 220; //[ms]だけ送らせて配信する
+    const int end_timing = 225; //[ms]だけ送らせて配信する
     double x[end_timing], y[end_timing], z[end_timing];
     double qx[end_timing], qy[end_timing], qz[end_timing], qw[end_timing];
     bool PUB_START = false;

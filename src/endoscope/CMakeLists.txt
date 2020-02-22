@@ -35,6 +35,7 @@ find_package(pcl_conversions REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(PCL COMPONENTS common REQUIRED)
+find_package(Ceres REQUIRED)
 
 # cap_endoscope node
 add_executable(cap_endoscope
@@ -109,6 +110,29 @@ ament_target_dependencies(reconstruction_online_delay
   "message_filters"
 )
 install(TARGETS reconstruction_online_delay
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# reconstruction_BA node
+add_executable(reconstruction_BA
+  src/reconstruction_BA.cpp
+  option/options_reconstruction_BA.cpp
+  ../HTL/src/transform.cpp
+  ../HTL/src/msg_converter.cpp
+)
+target_link_libraries(reconstruction_BA
+  ceres
+)
+ament_target_dependencies(reconstruction_BA
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+  "ceres"
+)
+install(TARGETS reconstruction_BA
   DESTINATION lib/${PROJECT_NAME}
 )
 

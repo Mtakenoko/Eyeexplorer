@@ -36,7 +36,7 @@ void visualize_pointcloud(const sensor_msgs::msg::PointCloud2::SharedPtr sub_msg
         xyz.y = floatData[i * (sub_msg->point_step / sizeof(float)) + 1];
         xyz.z = floatData[i * (sub_msg->point_step / sizeof(float)) + 2];
         cloud_hold.points.push_back(xyz);
-        printf("xyz = [%0.4f %0.4f %0.4f]\n", xyz.x, xyz.y, xyz.z);
+        // printf("xyz = [%0.4f %0.4f %0.4f]\n", xyz.x, xyz.y, xyz.z);
     }
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>(cloud_hold));
     viewer.showCloud(cloud_ptr);

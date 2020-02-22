@@ -78,12 +78,12 @@ int main(int argc, char *argv[])
         q_msg.header.stamp = clock->now();
         pub_q->publish(q_msg);
 
-        // static int count = 0;
-        // if (count % 10 == 0)
-        // {
-        //     printf("q = [%lf %lf %lf %lf %lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5]);
-        // }
-        // count++;
+        static int count = 0;
+        if (count % 10 == 0)
+        {
+            printf("q = [%lf %lf %lf %lf %lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5]);
+        }
+        count++;
     };
 
     //Set QoS to Subscribe

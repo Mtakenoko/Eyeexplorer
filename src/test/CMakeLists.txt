@@ -29,6 +29,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(Ceres REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(VTK 6.3 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
@@ -84,58 +85,95 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-#pcl_test node
-add_executable(pcl_test
-  src/pcl_test.cpp
+# #pcl_test node
+# add_executable(pcl_test
+#   src/pcl_test.cpp
+# )
+# # include_directories(pcl_test
+# #   ${PCL_INCLUDE_DIRS}
+# # )
+# # link_directories(pcl_test
+# #   ${PCL_LIBRARY_DIRS}
+# # )
+# # add_definitions(pcl_test
+# #   ${PCL_DEFINITIONS}
+# # )
+# target_link_libraries(pcl_test
+#   ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+#   ${PCL_LIBRARIES}
+# )
+# ament_target_dependencies(pcl_test
+#   "rclcpp"
+#   "sensor_msgs"
+#   "pcl_conversions"
+#   "VTK 6.3"
+#   "Eigen3"
+#   "PCL 1.8"
+#   "PCL COMPONENTS common"
+# )
+# install(TARGETS
+#   pcl_test
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+
+# #grid_map_test node
+# add_executable(grid_map_test
+#   src/grid_map_test.cpp
+# )
+# target_link_libraries(grid_map_test
+#   ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+#   ${PCL_LIBRARIES}
+# )
+# ament_target_dependencies(grid_map_test
+#   "rclcpp"
+#   "sensor_msgs"
+#   "nav_msgs"
+#   "pcl_conversions"
+#   "VTK 6.3"
+#   "Eigen3"
+#   "PCL 1.8"
+#   "PCL COMPONENTS common"
+# )
+# install(TARGETS
+# grid_map_test
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+
+#ceres_test node
+add_executable(ceres_test
+  src/ceres_test.cpp
 )
-# include_directories(pcl_test
-#   ${PCL_INCLUDE_DIRS}
-# )
-# link_directories(pcl_test
-#   ${PCL_LIBRARY_DIRS}
-# )
-# add_definitions(pcl_test
-#   ${PCL_DEFINITIONS}
-# )
-target_link_libraries(pcl_test
-  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
-  ${PCL_LIBRARIES}
+target_link_libraries(ceres_test
+  ceres
 )
-ament_target_dependencies(pcl_test
+ament_target_dependencies(ceres_test
   "rclcpp"
-  "sensor_msgs"
-  "pcl_conversions"
-  "VTK 6.3"
+  "std_msgs"
   "Eigen3"
-  "PCL 1.8"
-  "PCL COMPONENTS common"
+  "ceres"
 )
 install(TARGETS
-  pcl_test
+  ceres_test
   DESTINATION lib/${PROJECT_NAME}
 )
 
-
-#grid_map_test node
-add_executable(grid_map_test
-  src/grid_map_test.cpp
+#ceres_test node
+add_executable(ceres_test2
+  src/ceres_test2.cpp
 )
-target_link_libraries(grid_map_test
-  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
-  ${PCL_LIBRARIES}
+target_link_libraries(ceres_test2
+  ceres
 )
-ament_target_dependencies(grid_map_test
+ament_target_dependencies(ceres_test2
   "rclcpp"
-  "sensor_msgs"
-  "nav_msgs"
-  "pcl_conversions"
-  "VTK 6.3"
+  "std_msgs"
   "Eigen3"
-  "PCL 1.8"
-  "PCL COMPONENTS common"
+  "ceres"
 )
 install(TARGETS
-grid_map_test
+  ceres_test2
   DESTINATION lib/${PROJECT_NAME}
 )
 

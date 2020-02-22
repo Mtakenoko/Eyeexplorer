@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
     for (size_t i = 0; i < ADOF; ++i)
     {
       msg_encoder_.position[i] = RQ[i] * enc[i];
-      //RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
+      // RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
     }
     msg_encoder_.header.stamp = clock->now();
 

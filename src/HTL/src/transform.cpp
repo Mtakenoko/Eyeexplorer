@@ -103,13 +103,37 @@ void Transform::QuaternionToRotMat(
 
 float Transform::RevFromRotMat(cv::Mat R_arm)
 {
-  //回転行列をクォータニオンに変換
-  float qx, qy, qz, qw;
-  Transform::RotMatToQuaternion(qx, qy, qz, qw,
-                              R_arm.at<float>(0, 0), R_arm.at<float>(0, 1), R_arm.at<float>(0, 2),
-                              R_arm.at<float>(1, 0), R_arm.at<float>(1, 1), R_arm.at<float>(1, 2),
-                              R_arm.at<float>(2, 0), R_arm.at<float>(2, 1), R_arm.at<float>(2, 2));
-  //クォータニオンの4つめの要素から回転角を取り出す
-  float phi = 2 * std::acos(qw);
-  return phi;
+    //回転行列をクォータニオンに変換
+    float qx, qy, qz, qw;
+    Transform::RotMatToQuaternion(qx, qy, qz, qw,
+                                  R_arm.at<float>(0, 0), R_arm.at<float>(0, 1), R_arm.at<float>(0, 2),
+                                  R_arm.at<float>(1, 0), R_arm.at<float>(1, 1), R_arm.at<float>(1, 2),
+                                  R_arm.at<float>(2, 0), R_arm.at<float>(2, 1), R_arm.at<float>(2, 2));
+    //クォータニオンの4つめの要素から回転角を取り出す
+    float phi = 2 * std::acos(qw);
+    return phi;
+}
+
+void Transform::RotMatToAngles(cv::Mat R, double &angle_x, double &angle_y, double &angle_z)
+{
+    double threshhold = 0.001;
+
+    if (abs(R.at<double>(2, 1) - 1.0) < threshhold)
+    {
+        angle_x = PI / 2;
+        angle_y = 0;
+        angle_z = atan2(R.at<double>(1, 0), R.at<double>(0, 0));
+    }
+    else if (abs(R.at<double>(2, 1) + 1.0) < threshhold)
+    {
+        angle_x = -PI / 2;
+        angle_y = 0;
+        angle_z = atan2(R.at<double>(1, 0), R.at<double>(0, 0));
+    }
+    else
+    {
+        angle_x = asin(R.at<double>(2, 1));
+        angle_y = atan2(R.at<double>(2, 0), R.at<double>(2, 2));
+        angle_z = atan2(R.at<double>(0, 1), R.at<double>(1, 1));
+    }
 }
