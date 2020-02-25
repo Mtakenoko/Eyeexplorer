@@ -338,65 +338,58 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     end[5] = std::chrono::system_clock::now();
 
     //三角測量
-    cv::Mat point3D, point3D_arm, point3D_BA;
+    cv::Mat point3D, point3D_arm, point3D_Arm, point3D_BA;
     cv::Mat point4D(4, match_num, CV_32FC1);
     float dist_mean;
     for (size_t i = 0; i < match_num; ++i)
     {
-      // std::vector<cv::Point3f> point3D_result;
       cv::Mat point3D_result, point3D_result_arm;
       cv::triangulatePoints(prjMat1, prjMat2, cv::Mat(p1[i]), cv::Mat(p2[i]), point4D);
       cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-      point3D_result_arm = (R_keyframe * point3D_result.reshape(1, 3) + t_keyframe) / 1000.;
+      point3D_result_arm = R_keyframe * point3D_result.reshape(1, 3) + t_keyframe;
       point3D.push_back(point3D_result);
       point3D_arm.push_back(point3D_result_arm.reshape(3, 1));
       dist_mean += point3D_result.at<cv::Vec3f>(0, 0)[2];
     }
+    point3D_Arm = point3D_arm / 1000.; //Viz用にmmからｍに変換
     dist_mean = dist_mean / match_num;
 
     //バンドル調整(Ceres Solver)
     //最適化問題解くためのオブジェクト作成
     ceres::Problem problem;
     //バンドル調整用パラメータ
-    double mutable_camera_for_observations[2][11];
+    double mutable_camera_for_observations[2][6];
     double mutable_point_for_observations[300][3];
+    cv::Mat rvec_keyframe, rvec_frame;
+    cv::Rodrigues(R_keyframe.t(), rvec_keyframe);
+    cv::Rodrigues(R_frame.t(), rvec_frame);
     //KeyFrameの方の情報
-    mutable_camera_for_observations[0][0] = R_keyframe_Quaternion.at<double>(0);
-    mutable_camera_for_observations[0][1] = R_keyframe_Quaternion.at<double>(1);
-    mutable_camera_for_observations[0][2] = R_keyframe_Quaternion.at<double>(2);
-    mutable_camera_for_observations[0][3] = R_keyframe_Quaternion.at<double>(3);
-    mutable_camera_for_observations[0][4] = (double)t_keyframe.at<float>(0);
-    mutable_camera_for_observations[0][5] = (double)t_keyframe.at<float>(1);
-    mutable_camera_for_observations[0][6] = (double)t_keyframe.at<float>(2);
-    mutable_camera_for_observations[0][7] = (double)fovx;
-    mutable_camera_for_observations[0][8] = (double)fovy;
-    mutable_camera_for_observations[0][9] = -0.303;
-    mutable_camera_for_observations[0][10] = -0.200;
+    mutable_camera_for_observations[0][0] = (double)rvec_keyframe.at<float>(0);
+    mutable_camera_for_observations[0][1] = (double)rvec_keyframe.at<float>(1);
+    mutable_camera_for_observations[0][2] = (double)rvec_keyframe.at<float>(2);
+    mutable_camera_for_observations[0][3] = (double)t_keyframe.at<float>(0);
+    mutable_camera_for_observations[0][4] = (double)t_keyframe.at<float>(1);
+    mutable_camera_for_observations[0][5] = (double)t_keyframe.at<float>(2);
     //Frameの方の情報
-    mutable_camera_for_observations[1][0] = R_frame_Quaternion.at<double>(0);
-    mutable_camera_for_observations[1][1] = R_frame_Quaternion.at<double>(1);
-    mutable_camera_for_observations[1][2] = R_frame_Quaternion.at<double>(2);
-    mutable_camera_for_observations[1][3] = R_frame_Quaternion.at<double>(3);
-    mutable_camera_for_observations[1][4] = (double)t_frame.at<float>(0);
-    mutable_camera_for_observations[1][5] = (double)t_frame.at<float>(1);
-    mutable_camera_for_observations[1][6] = (double)t_frame.at<float>(2);
-    mutable_camera_for_observations[1][7] = (double)fovx;
-    mutable_camera_for_observations[1][8] = (double)fovy;
-    mutable_camera_for_observations[1][9] = -0.303;
-    mutable_camera_for_observations[1][10] = -0.200;
-    printf("t_frame = [%f %f %f]\n", t_frame.at<float>(0), t_frame.at<float>(1), t_frame.at<float>(2));
+    mutable_camera_for_observations[1][0] = (double)rvec_frame.at<float>(0);
+    mutable_camera_for_observations[1][1] = (double)rvec_frame.at<float>(1);
+    mutable_camera_for_observations[1][2] = (double)rvec_frame.at<float>(2);
+    mutable_camera_for_observations[1][3] = (double)t_frame.at<float>(0);
+    mutable_camera_for_observations[1][4] = (double)t_frame.at<float>(1);
+    mutable_camera_for_observations[1][5] = (double)t_frame.at<float>(2);
+
     for (size_t i = 0; i < match_num; i++)
     {
-      //点の位置を[m]→[mm]に変換して点位置
-      mutable_point_for_observations[i][0] = (double)point3D.at<cv::Vec3f>(i, 0)[0];
-      mutable_point_for_observations[i][1] = (double)point3D.at<cv::Vec3f>(i, 0)[1];
-      mutable_point_for_observations[i][2] = (double)point3D.at<cv::Vec3f>(i, 0)[2];
-      mutable_point_for_observations[i + match_num][0] = (double)point3D.at<cv::Vec3f>(i, 0)[0];
-      mutable_point_for_observations[i + match_num][1] = (double)point3D.at<cv::Vec3f>(i, 0)[1];
-      mutable_point_for_observations[i + match_num][2] = (double)point3D.at<cv::Vec3f>(i, 0)[2];
+      mutable_point_for_observations[i][0] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[0];
+      mutable_point_for_observations[i][1] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[1];
+      mutable_point_for_observations[i][2] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[2];
+      mutable_point_for_observations[i + match_num][0] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[0];
+      mutable_point_for_observations[i + match_num][1] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[1];
+      mutable_point_for_observations[i + match_num][2] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[2];
+
       //コスト関数
-      ceres::CostFunction *cost_function_query = SnavelyReprojectionError::Create((double)(keypoints_keyframe[good_dmatch[i].queryIdx].pt.x - u0), (double)(keypoints_keyframe[good_dmatch[i].queryIdx].pt.y - v0));
-      ceres::CostFunction *cost_function_train = SnavelyReprojectionError::Create((double)(keypoints_keyframe[good_dmatch[i].trainIdx].pt.x - u0), (double)(keypoints_keyframe[good_dmatch[i].trainIdx].pt.y - v0));
+      ceres::CostFunction *cost_function_query = SnavelyReprojectionError::Create((double)keypoints_keyframe[good_dmatch[i].queryIdx].pt.x, (double)keypoints_keyframe[good_dmatch[i].queryIdx].pt.y);
+      ceres::CostFunction *cost_function_train = SnavelyReprojectionError::Create((double)keypoints_frame[good_dmatch[i].trainIdx].pt.x, (double)keypoints_frame[good_dmatch[i].trainIdx].pt.y);
       problem.AddResidualBlock(cost_function_query, NULL, mutable_camera_for_observations[0], mutable_point_for_observations[i]);
       problem.AddResidualBlock(cost_function_train, NULL, mutable_camera_for_observations[1], mutable_point_for_observations[i + match_num]);
     }
@@ -407,19 +400,22 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     options.minimizer_progress_to_stdout = true;
     options.num_threads = 8;
 
-    //solve
+    //Solve
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
-    //レポート出力
+    //レポートなど出力
     // std::cout << summary.FullReport() << "\n";
-    std::cout << "x:" << t_frame.at<float>(0) << "->" << mutable_camera_for_observations[1][4] << std::endl;
-    std::cout << "y:" << t_frame.at<float>(1) << "->" << mutable_camera_for_observations[1][5] << std::endl;
-    std::cout << "z:" << t_frame.at<float>(2) << "->" << mutable_camera_for_observations[1][6] << std::endl;
+    std::cout << "rvec_x:" << rvec_frame.at<float>(0) << "->" << mutable_camera_for_observations[1][0] << std::endl;
+    std::cout << "rvec_y:" << rvec_frame.at<float>(1) << "->" << mutable_camera_for_observations[1][1] << std::endl;
+    std::cout << "rvec_z:" << rvec_frame.at<float>(2) << "->" << mutable_camera_for_observations[1][2] << std::endl;
+    std::cout << "x     :" << t_frame.at<float>(0) << "->" << mutable_camera_for_observations[1][3] << std::endl;
+    std::cout << "y     :" << t_frame.at<float>(1) << "->" << mutable_camera_for_observations[1][4] << std::endl;
+    std::cout << "z     :" << t_frame.at<float>(2) << "->" << mutable_camera_for_observations[1][5] << std::endl;
 
-    std::cout << "point_x:" << point3D_arm.at<cv::Vec3f>(0, 0)[0] * 1000. << "->" << mutable_point_for_observations[0][0] << std::endl;
-    std::cout << "point_y:" << point3D_arm.at<cv::Vec3f>(0, 0)[1] * 1000. << "->" << mutable_point_for_observations[0][1] << std::endl;
-    std::cout << "point_z:" << point3D_arm.at<cv::Vec3f>(0, 0)[2] * 1000. << "->" << mutable_point_for_observations[0][2] << std::endl;
+    std::cout << "point_x:" << point3D_arm.at<cv::Vec3f>(0, 0)[0] << "->" << mutable_point_for_observations[0][0] << std::endl;
+    std::cout << "point_y:" << point3D_arm.at<cv::Vec3f>(0, 0)[1] << "->" << mutable_point_for_observations[0][1] << std::endl;
+    std::cout << "point_z:" << point3D_arm.at<cv::Vec3f>(0, 0)[2] << "->" << mutable_point_for_observations[0][2] << std::endl;
     for (size_t i = 0; i < match_num; ++i)
     {
       cv::Point3f p_xyz;
@@ -432,7 +428,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     // RViz2用に並べ替え
     cv::Mat pointCloud(match_num, 1, CV_32FC3), pointCloud_arm(match_num, 1, CV_32FC3), pointCloud_BA(match_num, 1, CV_32FC3);
     point3D.convertTo(pointCloud, CV_32FC3);
-    point3D_arm.convertTo(pointCloud_arm, CV_32FC3);
+    point3D_Arm.convertTo(pointCloud_arm, CV_32FC3);
     point3D_BA.convertTo(pointCloud_BA, CV_32FC3);
     end[6] = std::chrono::system_clock::now();
     //cv::imshow
@@ -474,6 +470,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     // printf("point4D       : %d %d %d\n", point4D.rows, point4D.cols, point4D.channels());
     // printf("point3D       : %d %d %d\n", point3D.rows, point3D.cols, point3D.channels());
     // printf("pointCloud    : %d %d %d\n", pointCloud.rows, pointCloud.cols, pointCloud.channels());
+    // printf("imagePoints   : %d %d %d\n", imagePoints_keyframe.rows, imagePoints_keyframe.cols, imagePoints_keyframe.channels());
 
     // printf
     // printf("cameramatrix  = \n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n%0.4f %0.4f %0.4f\n", cameraMatrix.at<float>(0, 0), cameraMatrix.at<float>(0, 1), cameraMatrix.at<float>(0, 2), cameraMatrix.at<float>(1, 0), cameraMatrix.at<float>(1, 1), cameraMatrix.at<float>(1, 2), cameraMatrix.at<float>(2, 0), cameraMatrix.at<float>(2, 1), cameraMatrix.at<float>(2, 2));
@@ -499,7 +496,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     //Publish Image
     RCLCPP_INFO(logger, "Publishing image #%s", msg_image->header.frame_id.c_str());
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    // convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
+    // converter.pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
     // converter.pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
     converter.pointcloud_to_PCL(pointCloud_BA, *msg_cloud_pub, 0);
 

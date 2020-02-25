@@ -80,8 +80,8 @@ int main(int argc, char **argv)
     Solve(options, &problem, &summary);
     std::cout << summary.FullReport() << "\n";
     // printf("mutablecameraがあーだこーだ  = [%lf %lf %lf %lf %lf %lf %lf %lf %lf]\n", pre_mutable_camera[0], pre_mutable_camera[1], pre_mutable_camera[2], pre_mutable_camera[3], pre_mutable_camera[4], pre_mutable_camera[5], pre_mutable_camera[6], pre_mutable_camera[7], pre_mutable_camera[8]);
-    printf("mutablecameraがあーだこーだ2 = [%lf %lf %lf %lf %lf %lf %lf %lf %lf]\n", bal_problem.mutable_camera_for_observation(0)[0], bal_problem.mutable_camera_for_observation(0)[1], bal_problem.mutable_camera_for_observation(0)[2], bal_problem.mutable_camera_for_observation(0)[3], bal_problem.mutable_camera_for_observation(0)[4], bal_problem.mutable_camera_for_observation(0)[5], bal_problem.mutable_camera_for_observation(0)[6], bal_problem.mutable_camera_for_observation(0)[7], bal_problem.mutable_camera_for_observation(0)[8]);
-    printf("mutablepointがあーだこーだ  = [%lf %lf %lf]\n", bal_problem.mutable_point_for_observation(0)[0], bal_problem.mutable_point_for_observation(0)[1], bal_problem.mutable_point_for_observation(0)[2]);
+    // printf("mutablecameraがあーだこーだ2 = [%lf %lf %lf %lf %lf %lf %lf %lf %lf]\n", bal_problem.mutable_camera_for_observation(0)[0], bal_problem.mutable_camera_for_observation(0)[1], bal_problem.mutable_camera_for_observation(0)[2], bal_problem.mutable_camera_for_observation(0)[3], bal_problem.mutable_camera_for_observation(0)[4], bal_problem.mutable_camera_for_observation(0)[5], bal_problem.mutable_camera_for_observation(0)[6], bal_problem.mutable_camera_for_observation(0)[7], bal_problem.mutable_camera_for_observation(0)[8]);
+    // printf("mutablepointがあーだこーだ  = [%lf %lf %lf]\n", bal_problem.mutable_point_for_observation(0)[0], bal_problem.mutable_point_for_observation(0)[1], bal_problem.mutable_point_for_observation(0)[2]);
 
     //
 

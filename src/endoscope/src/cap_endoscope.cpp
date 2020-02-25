@@ -116,7 +116,6 @@ cv::Rect set_ROI(const cv::Mat src)
   return ROI;
 }
 
-
 int main(int argc, char *argv[])
 {
   // Pass command line arguments to rclcpp.
@@ -206,6 +205,17 @@ int main(int argc, char *argv[])
   cv::Rect ROI;
   bool Is_ROI_Setted = false;
 
+  //カメラ内部パラメータ
+  cv::Mat cameraMatrix(3, 3, CV_32FC1);
+  float fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
+  cameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
+                  0.0, fovy, v0,
+                  0.0, 0.0, 1.0);
+  const cv::Mat distCoeffs = (cv::Mat_<float>(5, 1) << -0.303, -0.200, -0.004, -0.002, 0.000);
+
+  //歪み補正結果画像
+  cv::Mat dst_undishort;
+
   // Our main event loop will spin until the user presses CTRL-C to exit.
   while (rclcpp::ok())
   {
@@ -222,27 +232,28 @@ int main(int argc, char *argv[])
       // printf("(ROI.height,ROI.width) = (%d,%d)\n", ROI.height, ROI.width);
     }
     cv::Mat pub_img = frame(ROI); //ROIをかける
+    cv::undistort(pub_img, dst_undishort, cameraMatrix, distCoeffs);
 
     //cv::imshow("topic", pub_img);
     //cv::waitKey(1);
 
     // Check if the frame was grabbed correctly
-    if (!pub_img.empty())
+    if (!dst_undishort.empty())
     {
       // Convert to a ROS image
       if (!is_flipped)
       {
-        convert_frame_to_message(pub_img, i, *msg);
+        convert_frame_to_message(dst_undishort, i, *msg);
       }
       else
       {
         // Flip the frame if needed
-        cv::flip(pub_img, flipped_frame, 1);
+        cv::flip(dst_undishort, flipped_frame, 1);
         convert_frame_to_message(flipped_frame, i, *msg);
       }
       if (show_camera == 1)
       {
-        cv::imshow("cap_endoscope", pub_img);
+        cv::imshow("cap_endoscope", dst_undishort);
         cv::waitKey(1);
       }
       // Publish the image message and increment the frame_id.
