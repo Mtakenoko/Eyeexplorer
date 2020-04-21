@@ -136,6 +136,25 @@ install(TARGETS reconstruction_BA
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# KLT_checker node
+add_executable(KLT_checker
+  src/KLT_checker.cpp
+  option/options_reconstruction_BA.cpp
+  ../HTL/src/transform.cpp
+  ../HTL/src/msg_converter.cpp
+)
+ament_target_dependencies(KLT_checker
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+)
+install(TARGETS KLT_checker
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

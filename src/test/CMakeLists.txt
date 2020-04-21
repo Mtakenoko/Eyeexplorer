@@ -58,6 +58,19 @@ install(TARGETS
 )
 
 #test_talker node
+add_executable(minimal_subscriber
+  src/minimal_subscriber.cpp
+  src/minimal_subscriber_main.cpp
+)
+ament_target_dependencies(minimal_subscriber
+  "rclcpp"
+  "std_msgs"
+)
+install(TARGETS minimal_subscriber
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+#timer_test node
 add_executable(timer_test
   src/test_minimal_timer.cpp
 )
@@ -85,36 +98,67 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# #pcl_test node
-# add_executable(pcl_test
-#   src/pcl_test.cpp
+#pcl_test node
+add_executable(pcl_test
+  src/pcl_test.cpp
+)
+# include_directories(pcl_test
+#   ${PCL_INCLUDE_DIRS}
 # )
-# # include_directories(pcl_test
-# #   ${PCL_INCLUDE_DIRS}
-# # )
-# # link_directories(pcl_test
-# #   ${PCL_LIBRARY_DIRS}
-# # )
-# # add_definitions(pcl_test
-# #   ${PCL_DEFINITIONS}
-# # )
-# target_link_libraries(pcl_test
-#   ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
-#   ${PCL_LIBRARIES}
+# link_directories(pcl_test
+#   ${PCL_LIBRARY_DIRS}
 # )
-# ament_target_dependencies(pcl_test
-#   "rclcpp"
-#   "sensor_msgs"
-#   "pcl_conversions"
-#   "VTK 6.3"
-#   "Eigen3"
-#   "PCL 1.8"
-#   "PCL COMPONENTS common"
+# add_definitions(pcl_test
+#   ${PCL_DEFINITIONS}
 # )
-# install(TARGETS
-#   pcl_test
-#   DESTINATION lib/${PROJECT_NAME}
+target_link_libraries(pcl_test
+  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${PCL_LIBRARIES}
+)
+ament_target_dependencies(pcl_test
+  "rclcpp"
+  "sensor_msgs"
+  "pcl_conversions"
+  "VTK 6.3"
+  "Eigen3"
+  "PCL 1.8"
+  "PCL COMPONENTS common"
+)
+install(TARGETS
+  pcl_test
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+#pcl_outlier_remove node
+add_executable(pcl_outlier_remove
+  src/pcl_outlier_remove.cpp
+)
+# include_directories(pcl_outlier_remove
+#   ${PCL_INCLUDE_DIRS}
 # )
+# link_directories(pcl_outlier_remove
+#   ${PCL_LIBRARY_DIRS}
+# )
+# add_definitions(pcl_outlier_remove
+#   ${PCL_DEFINITIONS}
+# )
+target_link_libraries(pcl_outlier_remove
+  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${PCL_LIBRARIES}
+)
+ament_target_dependencies(pcl_outlier_remove
+  "rclcpp"
+  "sensor_msgs"
+  "pcl_conversions"
+  "VTK 6.3"
+  "Eigen3"
+  "PCL 1.8"
+  "PCL COMPONENTS common"
+)
+install(TARGETS
+  pcl_outlier_remove
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 
 # #grid_map_test node

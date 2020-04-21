@@ -12,4 +12,5 @@ def generate_launch_description():
         Node(package='map_server', node_executable='map_server', output='screen'),
         Node(package='arm_status', node_executable='joint_publisher', output='screen'),
         Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf]),
+        Node(package='arm_status', node_executable='arm_state_holder', output='screen')
     ])

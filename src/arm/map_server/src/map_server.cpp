@@ -30,7 +30,7 @@ int main(int argc, char * argv[])
   auto node = rclcpp::Node::make_shared("map_server");
 
   auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-    "map",
+    "world",
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
 
   rclcpp::WallRate loop_rate(1);

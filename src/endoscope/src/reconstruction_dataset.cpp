@@ -208,6 +208,12 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   // KeyFrame1とKeyframe2のどちらを使うか決定
   cv::Mat R_arm(3, 3, CV_32FC1), R_arm1(3, 3, CV_32FC1), R_arm2(3, 3, CV_32FC1), R_endo(3, 3, CV_32FC1);
   cv::Mat t_arm(3, 1, CV_32FC1), t_arm1(3, 1, CV_32FC1), t_arm2(3, 1, CV_32FC1), t_endo(3, 1, CV_32FC1);
+  cv::Mat epi_mask, F(3, 3, CV_32FC1), t_x(3, 3, CV_32FC1); //特徴点マッチングの際のエピポーラ線についてのマスク
+  cv::Mat cameraMatrix(3, 3, CV_32FC1);                     //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
+  float fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
+  cameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
+                  0.0, fovy, v0,
+                  0.0, 0.0, 1.0);
   R_arm1 = R_keyframe1.t() * R_frame; //取得フレームとキーフレーム1でのカメラの回転変化
   R_arm2 = R_keyframe2.t() * R_frame; //取得フレームとキーフレーム2でのカメラの回転変化
   t_arm1 = t_frame - t_keyframe1;     //取得__QuaternionQuaternion_Quaternionフレームとキーフレーム1でのワールド座標系でのカメラ移動量
@@ -223,6 +229,12 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     R_keyframe = R_keyframe1.clone();
     t_keyframe = t_keyframe1.clone();
     dst_keyframe = dst_keyframe1;
+    // t_x = (cv::Mat_<float>(3, 3) << 0.0, -t_arm.at<float>(2), t_arm.at<float>(1),
+    //        t_arm.at<float>(2), 0.0, -t_arm.at<float>(0),
+    //        -t_arm.at<float>(1), t_arm.at<float>(0), 0.0);
+    // F = cameraMatrix.inv().t() * t_x * R_arm * cameraMatrix.inv();
+    // cv::computeCorrespondEpilines();
+    matcher->add(descriptor_keyframe1);
     matcher->match(descriptor_keyframe1, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
     matcher->match(descriptor_frame, descriptor_keyframe1, dmatch21); //dst_frame -> dst_keyframe1
     keypoints_keyframe = keypoints_keyframe1;
@@ -265,7 +277,6 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   if (good_count > MIN_MATCH_COUNT)
   { //十分対応点が見つかるならば
     cv::Mat masks;
-    cv::Mat H = cv::findHomography(match_point1, match_point2, masks, cv::RANSAC, 5.);
     //RANSACで使われた対応点のみ抽出
     for (int i = 0; i < masks.rows; ++i)
     {
@@ -283,13 +294,6 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   size_t match_num = good_dmatch.size();
   if (match_num > 40) //５点アルゴリズムが行えるのに十分対応点があれば
   {
-    //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
-    cv::Mat cameraMatrix(3, 3, CV_32FC1);
-    float fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
-    cameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
-                    0.0, fovy, v0,
-                    0.0, 0.0, 1.0);
-
     //対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
     std::vector<cv::Point2f> p1, p2;
     for (size_t i = 0; i < match_num; i++)
@@ -563,7 +567,7 @@ int main(int argc, char *argv[])
 
   message_filters::Subscriber<sensor_msgs::msg::Image> image_sub(node.get(), topic_sub);
   message_filters::Subscriber<geometry_msgs::msg::Transform> arm_sub(node.get(), topic_sub_arm);
-  message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync(image_sub, arm_sub, 1000);
+  message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync(image_sub, arm_sub, 10);
   sync.registerCallback(std::bind(&triangulation, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, prjMat, node_logger, pub_pointcloud));
 
   rclcpp::spin(node);

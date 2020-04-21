@@ -27,7 +27,6 @@ void visualize_pointcloud(const sensor_msgs::msg::PointCloud2::SharedPtr sub_msg
     cloud_hold.height = sub_msg->height;
     cloud_hold.is_dense = false;
     cloud_hold.resize(cloud_hold.width * cloud_hold.height);
-    printf("width = %d, height = %d\n", cloud_hold.width, cloud_hold.height);
     auto floatData = reinterpret_cast<float *>(sub_msg->data.data());
     for (uint32_t i = 0; i < sub_msg->width; ++i)
     {
@@ -52,7 +51,7 @@ int main(int argc, char *argv[])
     size_t depth = rmw_qos_profile_default.depth;
     rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
-    std::string topic_sub("pointcloud");
+    std::string topic_sub("pointcloud_filtered");
 
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
