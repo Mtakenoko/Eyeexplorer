@@ -4,8 +4,10 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/EES/include",
                 "/opt/ros/dashing/include",
                 "/usr/include",
+                "/usr/local/include",
                 "/usr/include/eigen3",
                 "/usr/include/pcl-1.8",
                 "/usr/include/vtk-6.3",

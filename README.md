@@ -52,8 +52,17 @@ ros2 run ts01 ts01_sensor<br>
 ros2 run endoscope cap_endoscope -c 2 -s 1<br>
 ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_rviz_noFK.launch.py<br>
 ros2 run endoscope reconstruction_online_delay -s 1 -e 0 -p 1<br>
+ros2 run endoscope reconstruction_BA -s 1<br>
 rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz<br>
+ros2 launch workspace/ros2_eyeexplorer/src/test/launch/pcl_remove.launch.py<br>
 
 # その他
 ## Ceres Solverのサンプル
 ros2 run test ceres_test2 src/test/data/problem-16-22106-pre.txt
+
+
+## 2020-4-19
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK.launch.py 
+ros2 bag play rosbag2/topic_BA_mario.bag/
+ros2 run endoscope reconstruction_BA -s 1
+

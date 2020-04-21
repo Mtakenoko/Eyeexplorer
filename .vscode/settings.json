@@ -69,7 +69,8 @@
         "numeric": "cpp",
         "hash_map": "cpp",
         "hash_set": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "qdialog": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/takeyama/workspace/ros2_ws/build/ros2bag",
@@ -240,5 +241,6 @@
         "/home/takeyama/workspace/ros2_ws/build/ament_clang_format",
         "/home/takeyama/workspace/ros2_ws/install/ament_clang_format/lib/python3.6/site-packages",
         "/opt/ros/dashing/lib/python3.6/site-packages"
-    ]
+    ],
+    "ros.distro": "dashing"
 }

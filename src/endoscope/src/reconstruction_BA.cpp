@@ -187,12 +187,13 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   if (match == 0)
   {
     //Brute-Force matcher
-    matcher = cv::DescriptorMatcher::create("BruteForce");
+    matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
   }
   else if (match == 1)
   {
     //FLANN
-    matcher = cv::DescriptorMatcher::create("FlannBased");
+    matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+    std::vector<std::vector<cv::DMatch>> knn_matches;
   }
   else
   {
@@ -203,7 +204,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
   //マッチング
   std::vector<cv::DMatch> dmatch, good_dmatch;
   std::vector<cv::DMatch> dmatch12, dmatch21;
-  std::vector<cv::Point2f> match_point1, match_point2;
+  std::vector<std::vector<cv::DMatch>> knn_matches12, knn_matches21;
 
   // KeyFrame1とKeyframe2のどちらを使うか決定
   cv::Mat R_arm(3, 3, CV_32FC1), R_arm1(3, 3, CV_32FC1), R_arm2(3, 3, CV_32FC1), R_endo(3, 3, CV_32FC1);
@@ -223,9 +224,27 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     R_keyframe = R_keyframe1.clone();
     t_keyframe = t_keyframe1.clone();
     dst_keyframe = dst_keyframe1;
-    matcher->match(descriptor_keyframe1, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
-    matcher->match(descriptor_frame, descriptor_keyframe1, dmatch21); //dst_frame -> dst_keyframe1
     keypoints_keyframe = keypoints_keyframe1;
+    if (match == 0)
+    {
+      //Brute-Force matcher
+      matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
+      matcher->match(descriptor_keyframe1, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
+      matcher->match(descriptor_frame, descriptor_keyframe1, dmatch21); //dst_frame -> dst_keyframe1
+    }
+    else if (match == 1)
+    {
+      //FLANN
+      if (descriptor_keyframe1.type() != CV_32F)
+        descriptor_keyframe1.convertTo(descriptor_keyframe1, CV_32F);
+
+      if (descriptor_frame.type() != CV_32F)
+        descriptor_frame.convertTo(descriptor_frame, CV_32F);
+
+      matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+      matcher->knnMatch(descriptor_keyframe1, descriptor_frame, knn_matches12, 2);
+      matcher->knnMatch(descriptor_frame, descriptor_keyframe1, knn_matches21, 2);
+    }
   }
   else
   {
@@ -238,15 +257,48 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     matcher->match(descriptor_keyframe2, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
     matcher->match(descriptor_frame, descriptor_keyframe2, dmatch21); //dst_frame -> dst_keyframe1
     keypoints_keyframe = keypoints_keyframe2;
+    if (match == 0)
+    {
+      //Brute-Force matcher
+      matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
+      matcher->match(descriptor_keyframe2, descriptor_frame, dmatch12); //dst_keyframe1 -> dst_frame
+      matcher->match(descriptor_frame, descriptor_keyframe2, dmatch21); //dst_frame -> dst_keyframe1
+    }
+    else if (match == 1)
+    {
+      //FLANN
+      if (descriptor_keyframe2.type() != CV_32F)
+        descriptor_keyframe2.convertTo(descriptor_keyframe2, CV_32F);
+
+      if (descriptor_frame.type() != CV_32F)
+        descriptor_frame.convertTo(descriptor_frame, CV_32F);
+
+      matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+      matcher->knnMatch(descriptor_keyframe2, descriptor_frame, knn_matches12, 2);
+      matcher->knnMatch(descriptor_frame, descriptor_keyframe2, knn_matches21, 2);
+    }
   }
   end[3] = std::chrono::system_clock::now();
 
-  //ワールド座標から内視鏡座標系で表示（keyframeと現フレームの回転行列と並進移動）
-  R_endo = R_arm.clone();
-  t_endo = R_keyframe.t() * t_arm; //(１つ目の画像撮影時の)カメラ座標系に合わせたカメラ移動量
+  if (match == 1)
+  {
+    const float ratio_thresh = 0.7f;
+    printf("12, 21 =(%zu, %zu)\n", knn_matches12.size(), knn_matches21.size());
+    for (size_t i = 0; i < knn_matches12.size(); i++)
+    {
+      if (knn_matches12[i][0].distance < ratio_thresh * knn_matches12[i][1].distance)
+        dmatch12.push_back(knn_matches12[i][0]);
+    }
+    for (size_t i = 0; i < knn_matches21.size(); i++)
+    {
+      if (knn_matches21[i][0].distance < ratio_thresh * knn_matches21[i][1].distance)
+        dmatch21.push_back(knn_matches21[i][0]);
+    }
+  }
 
   //dst_keyframe1 -> dst_frame と dst_frame -> dst_keyframe1の結果が一致しているか検証
   size_t good_count = 0;
+  std::vector<cv::Point2f> match_point1, match_point2;
   for (size_t i = 0; i < dmatch12.size(); ++i)
   {
     cv::DMatch m12 = dmatch12[i];
@@ -260,6 +312,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
       good_count++;
     }
   }
+
   //ホモグラフィ行列推定
   const size_t MIN_MATCH_COUNT = 10;
   if (good_count > MIN_MATCH_COUNT)
@@ -289,6 +342,9 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     cameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
                     0.0, fovy, v0,
                     0.0, 0.0, 1.0);
+    // カメラの外部パラメータ
+    R_endo = R_arm.clone();          //ワールド座標から内視鏡座標系で表示（keyframeと現フレームの回転行列と並進移動）
+    t_endo = R_keyframe.t() * t_arm; //(１つ目の画像撮影時の)カメラ座標系に合わせたカメラ移動量
 
     //対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
     std::vector<cv::Point2f> p1, p2;
@@ -473,6 +529,11 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
 
     pub_pointcloud->publish(std::move(msg_cloud_pub));
   }
+  else
+  {
+    printf("match_num = %zu\n", match_num);
+  }
+
   end[8] = std::chrono::system_clock::now();
 
   //Keyframeの更新
