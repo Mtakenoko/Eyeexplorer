@@ -4,7 +4,6 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/EES/include",
                 "/opt/ros/dashing/include",
                 "/usr/include",
                 "/usr/local/include",

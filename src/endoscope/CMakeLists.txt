@@ -68,32 +68,6 @@ cap_endoscope_large
 DESTINATION lib/${PROJECT_NAME}
 )
 
-# reconstruction_online_tf2 node
-add_executable(reconstruction_online_tf2
-  src/reconstruction_online_tf2.cpp
-  option/options_reconstruction_online_tf2.cpp
-  ../HTL/src/transform.cpp
-  ../HTL/src/msg_converter.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(reconstruction_online_tf2
-  ${Boost_SYSTEM_LIBRARY}
-)
-
-ament_target_dependencies(reconstruction_online_tf2
-  "rclcpp"
-  "std_msgs"
-  "geometry_msgs"
-  "sensor_msgs"
-  "OpenCV"
-  "tf2_ros"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-)
-install(TARGETS reconstruction_online_tf2
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 # reconstruction_online_delay node
 add_executable(reconstruction_online_delay
   src/reconstruction_online_delay.cpp
@@ -152,6 +126,19 @@ ament_target_dependencies(KLT_checker
   "message_filters"
 )
 install(TARGETS KLT_checker
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# tracking_test node
+add_executable(tracking_test
+  src/tracking_test.cpp
+)
+ament_target_dependencies(tracking_test
+  "rclcpp"
+  "sensor_msgs"
+  "OpenCV"
+)
+install(TARGETS tracking_test
   DESTINATION lib/${PROJECT_NAME}
 )
 
