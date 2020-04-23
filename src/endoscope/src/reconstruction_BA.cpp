@@ -19,6 +19,7 @@
 #include <message_filters/time_synchronizer.h>
 
 #include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/point_cloud.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <geometry_msgs/msg/transform.hpp>
 
@@ -95,8 +96,6 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
                                arm_rot.at<float>(1, 0), arm_rot.at<float>(1, 1), arm_rot.at<float>(1, 2),
                                arm_rot.at<float>(2, 0), arm_rot.at<float>(2, 1), arm_rot.at<float>(2, 2),
                                (float)msg_arm->rotation.x, (float)msg_arm->rotation.y, (float)msg_arm->rotation.z, (float)msg_arm->rotation.w);
-
-  cv::Mat arm_rot_Quaternion = (cv::Mat_<double>(4, 1) << msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
 
   //frame間隔
   static int frame_key1, frame_key2, frame_num;
@@ -334,7 +333,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
 
   ////    reconstruction 開始     ////
   size_t match_num = good_dmatch.size();
-  if (match_num > 40) //５点アルゴリズムが行えるのに十分対応点があれば
+  if (match_num > 5) //５点アルゴリズムが行えるのに十分対応点があれば
   {
     //カメラの内部パラメータ(チェッカーボードから求めた焦点距離と主点座標)
     cv::Mat cameraMatrix(3, 3, CV_32FC1);
@@ -475,17 +474,21 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     if (show_camera)
     {
       cv::Mat cvframe, cvframe_, cvframe_t;
-      cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, dmatch, cvframe);
-      cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, good_dmatch, cvframe_);
-      cv::Point2f center_t_arm;
+      // cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, dmatch, cvframe);
+      cv::Scalar match_line_color = cv::Scalar(255, 0, 0);
+      cv::Scalar match_point_color = cv::Scalar(255, 255, 0);
+      cv::drawMatches(dst_keyframe, keypoints_keyframe, dst_frame, keypoints_frame, good_dmatch, cvframe_, match_line_color, match_point_color);
+      cv::Point2f center_t_arm, center_t_arm_z;
       cv::Point2f p_center = cv::Point2f(msg_image->height / 2., msg_image->width / 2.);
+      cv::Point2f p_center2 = cv::Point2f(msg_image->height * 3. / 2., msg_image->width / 2.);
       cv::Scalar color = cv::Scalar(0, 255, 0);
       center_t_arm = cv::Point2f(t_endo.at<float>(0) * 20 + p_center.x, t_endo.at<float>(1) * 20 + p_center.y);
-      cv::arrowedLine(cvframe, p_center, center_t_arm, color, 2, 8, 0, 0.5);
+      center_t_arm_z = cv::Point2f(3 * p_center.x, t_endo.at<float>(2) * 20 + p_center.y);
+      // cv::arrowedLine(cvframe, p_center, center_t_arm, color, 2, 8, 0, 0.5);
       cv::arrowedLine(cvframe_, p_center, center_t_arm, color, 2, 8, 0, 0.5);
-      cv::imshow("cvframe", cvframe);
+      cv::arrowedLine(cvframe_, p_center2, center_t_arm_z, color, 2, 8, 0, 0.5);
+      // cv::imshow("cvframe", cvframe);
       cv::imshow("cvframe_", cvframe_);
-
       cv::waitKey(3);
     }
     end[7] = std::chrono::system_clock::now();
@@ -525,7 +528,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     // converter.pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
     // converter.pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
-    converter.pointcloud_to_PCL(pointCloud_BA, *msg_cloud_pub, 0);
+    converter.cvMat_to_msgPointCloud2(pointCloud_BA, *msg_cloud_pub, 0);
 
     pub_pointcloud->publish(std::move(msg_cloud_pub));
   }
@@ -538,7 +541,11 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
 
   //Keyframeの更新
   int frame_span = frame_num - frame_key2;
-  if (frame_span > 10 && (cv::norm(t_arm2) > 3. || phi2 > M_PI / 540.)) //@TODO   角度のtanと並進移動の和で判定を行うべき
+  cv::Mat t_arm2_cam = R_keyframe2.t() * t_arm2; //(１つ目の画像撮影時の)カメラ座標系に合わせたカメラ移動量
+  cv::Point2f t_cam2_xy;
+  t_cam2_xy.x = t_arm2_cam.at<float>(0);
+  t_cam2_xy.y = t_arm2_cam.at<float>(1);
+  if (frame_span > 10 && (cv::norm(t_cam2_xy) > 3. || phi2 > M_PI / 540.)) //@TODO   角度のtanと並進移動の和で判定を行うべき
   {
     dst_keyframe1 = dst_keyframe2.clone();
     keypoints_keyframe1 = keypoints_keyframe2;
@@ -606,7 +613,7 @@ int main(int argc, char *argv[])
   if (show_camera)
   {
     // Initialize an OpenCV named window called "cvframe".
-    cv::namedWindow("cvframe", cv::WINDOW_AUTOSIZE);
+    // cv::namedWindow("cvframe", cv::WINDOW_AUTOSIZE);
     cv::namedWindow("cvframe_", cv::WINDOW_AUTOSIZE);
   }
   // Initialize a ROS node.

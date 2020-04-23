@@ -4,7 +4,6 @@
 #include <ktl.h>
 #include <rclcpp/rclcpp.hpp>
 
-
 #include "../include/msg_converter.h"
 Converter::Converter()
 {
@@ -39,7 +38,23 @@ void Converter::cvimage_to_msg(const cv::Mat &frame, size_t frame_id, sensor_msg
     msg.header.frame_id = std::to_string(frame_id);
 }
 
-void Converter::pointcloud_to_PCL(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count)
+void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::msg::PointCloud &msg_cloud_pub)
+{
+    msg_cloud_pub.header = std_msgs::msg::Header();
+    msg_cloud_pub.header.stamp = rclcpp::Clock().now();
+    msg_cloud_pub.header.frame_id = "world";
+
+    geometry_msgs::msg::Point32 point;
+    for (size_t i = 0; i < pointCloud.rows; i++)
+    {
+        point.x = pointCloud.at<float>(i, 0);
+        point.y = pointCloud.at<float>(i, 1);
+        point.z = pointCloud.at<float>(i, 2);
+        msg_cloud_pub.points.push_back(point);
+    }
+}
+
+void Converter::cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count)
 {
     msg_cloud_pub.header = std_msgs::msg::Header();
     msg_cloud_pub.header.stamp = rclcpp::Clock().now();

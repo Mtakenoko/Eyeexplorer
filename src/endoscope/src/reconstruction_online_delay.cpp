@@ -416,7 +416,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     // converter.cvimage_to_msg(cvframe_, atoi(msg_image->header.frame_id.c_str()), *msg_pub); //cv → msg
     // convert_pointcloud_to_PCL(pointCloud, *msg_cloud_pub, 0);
-    converter.pointcloud_to_PCL(pointCloud_arm, *msg_cloud_pub, 0);
+    converter.cvMat_to_msgPointCloud2(pointCloud_arm, *msg_cloud_pub, 0);
 
     // pub->publish(std::move(msg_pub));
     pub_pointcloud->publish(std::move(msg_cloud_pub));
