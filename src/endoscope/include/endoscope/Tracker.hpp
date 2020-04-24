@@ -42,7 +42,8 @@ public:
     void setFrame_Id(std::string frame_id_) { frame_id = frame_id_; };
 
     cv::Mat getMatchedImage() { return matched_image; };
-    std::vector<std::unordered_multimap<int, LastFrame>> getLastFrame() { return last_frame; };
+    std::vector<std::map<int, LastFrame>> getLastFrame() { return last_frame; };
+    std::vector<std::map<unsigned long int, LastFrame>> getFindTrack() { return find_track; };
 
     void process(const cv::Mat frame);
     void showMatchedImage();
@@ -64,6 +65,7 @@ public:
 
 protected:
     void resetFirstFrame(cv::Mat reset_frame);
+    void calcFindTrack();
 
     cv::Ptr<cv::Feature2D> detector;
     cv::Ptr<cv::DescriptorMatcher> matcher;
@@ -71,7 +73,8 @@ protected:
     std::vector<cv::KeyPoint> first_keypoint;
     std::vector<cv::Point2f> object_bb;
     cv::Mat matched_image;
-    std::vector<std::unordered_multimap<int, LastFrame>> last_frame;
+    std::vector<std::map<int, LastFrame>> last_frame;
+    std::vector<std::map<unsigned long int, LastFrame>> find_track;
     unsigned long int track_no;
     std::string frame_id;
     float threshold_ratio;
@@ -245,8 +248,11 @@ void Tracker::process(const cv::Mat frame)
         resetFirstFrame(frame);
         return;
     }
+    printf("matches:%zu->%zu->%zu\n", knn_matches.size(), matched1_keypoints.size(), inliners_matches.size());
 
-    std::unordered_multimap<int, LastFrame> current_frame;
+    std::map<int, LastFrame> current_frame;
+    std::map<unsigned long int, LastFrame> track;
+    find_track.clear();
     for (size_t i = 0; i < good_match.size(); i++)
     {
         // さっきknnマッチングを行ったときのクエリ・訓練ディスクリプタのインデクスをmatched_idxとして保存した
@@ -270,21 +276,30 @@ void Tracker::process(const cv::Mat frame)
             {
                 // 設定されている場合
                 // 追跡する番号はそのまま引き継ぐ
+                track.insert(std::make_pair(itr->second.track_no, LastFrame(idx1, x1, y1, idx2, x2, y2, itr->second.track_no, frame_id)));
                 current_frame.insert(std::make_pair(idx2, LastFrame(idx1, x1, y1, idx2, x2, y2, itr->second.track_no, frame_id)));
+                // printf("data_tra: (%zu), (%d, %0.1f, %0.1f, %d, %0.1f, %0.1f, %zu, %s)\n", itr->second.track_no, idx1, x1, y1, idx2, x2, y2, itr->second.track_no, frame_id.c_str());
             }
             else
             {
                 // 設定されていない場合は新規に追加
                 // 追跡する番号track_noを新規のものを仕様する
-                current_frame.insert(std::make_pair(idx2, LastFrame(idx1, x1, y1, idx2, x2, y2, track_no++, frame_id)));
+                track.insert(std::make_pair(track_no, LastFrame(idx1, x1, y1, idx2, x2, y2, track_no, frame_id)));
+                current_frame.insert(std::make_pair(idx2, LastFrame(idx1, x1, y1, idx2, x2, y2, track_no, frame_id)));
+                // printf("data_new: (%zu), (%d, %0.1f, %0.1f, %d, %0.1f, %0.1f, %zu, %s)\n", track_no, idx1, x1, y1, idx2, x2, y2, track_no, frame_id.c_str());
+                track_no++;
             }
         }
         else
         {
-            // 過去フレームが存在しないときは無条件に新規に追加
-            current_frame.insert(std::make_pair(idx2, LastFrame(idx1, x1, y1, idx2, x2, y2, track_no++, frame_id)));
+            // そもそも過去フレームが存在しないときは無条件に新規に追加
+            track.insert(std::make_pair(track_no, LastFrame(idx1, x1, y1, idx2, x2, y2, track_no, frame_id)));
+            current_frame.insert(std::make_pair(idx2, LastFrame(idx1, x1, y1, idx2, x2, y2, track_no, frame_id)));
+            // printf("data_ini: (%zu), (%d, %0.1f, %0.1f, %d, %0.1f, %0.1f, %zu, %s)\n", track_no, idx1, x1, y1, idx2, x2, y2, track_no, frame_id.c_str());
+            track_no++;
         }
     }
+    find_track.push_back(track);
     last_frame.push_back(current_frame);
 
     // printf("last_frame.size() = %zu\n", last_frame.size());
@@ -305,4 +320,66 @@ void Tracker::process(const cv::Mat frame)
     first_frame = frame.clone();
     first_keypoint = keypoint;
     first_descriptor = descriptor;
+}
+
+
+void Tracker::calcFindTrack()
+{
+    for (size_t i = 0; i < last_frame.size(); i++)
+    {
+        std::map<unsigned long int, LastFrame> track;
+        auto itr = last_frame[i].begin();
+        while (itr != last_frame[i].end())
+        {
+            track.insert(std::make_pair(itr->second.track_no, itr->second));
+            itr++;
+        }
+        find_track.push_back(track);
+    }
+
+    // trackの番号順に読み出し
+    // printf("track_no = %zu, find_track.size() = %zu\n", track_no, find_track.size());
+    static unsigned long int min_track_no = 0;
+    bool min_setting = true;
+    for (unsigned long int i = min_track_no; i < this->track_no; i++)
+    {
+        auto itr_1 = find_track[0].find(i);
+
+        for (size_t j = 0; j < find_track.size(); j++)
+        {
+            bool flag_first = false;
+
+            if (j == 0)
+            {
+                // Frameが0の時に対応点の登録があれば
+                if (itr_1 != find_track[0].end())
+                    flag_first = true;
+            }
+            else
+            {
+                // Frameが1以上で、一個前のフレームに登録があれば
+                if (itr_1 != find_track[j - 1].end())
+                    flag_first = true;
+            }
+
+            // トラック番号iについて、j番目のフレーム内にありますか？
+            auto itr = find_track[j].find(i);
+            if (itr != find_track[j].end())
+            {
+                if (flag_first)
+                {
+                    // j-1番目のフレームにもトラック番号iが登場するなら
+                    printf("TrackNo.%zu, FrameNo:%d: (x1,y1)=(%f, %f)\n", itr_1->first, std::atoi(itr_1->second.frame_id.c_str()), itr->second.x1, itr->second.y1);
+                    printf("TrackNo.%zu, FrameNo:%d: (x2,y2)=(%f, %f)\n", itr->first, std::atoi(itr->second.frame_id.c_str()), itr->second.x2, itr->second.y2);
+                }
+                if (min_setting)
+                {
+                    min_setting = false;
+                    min_track_no = itr->first;
+                }
+            }
+            itr_1 = itr;
+        }
+        // printf("track_No.%zu is end\n", i);
+    }
 }

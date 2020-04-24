@@ -2,7 +2,6 @@
 #include <iostream>
 #include <string>
 #include <chrono>
-#include <unordered_map>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
@@ -37,8 +36,9 @@ TrackingSubscriber::TrackingSubscriber()
     std::string topic_sub("endoscope_image");
 
     //Tracker Setting
-    this->setThreshold_MatchRatio(0.7f);
-    this->setThreshold_TrackNo(500);
+    this->setThreshold_MatchRatio(0.9f);
+    this->setThreshold_TrackNo(5000);
+    this->setThreshold_RANSAC(15.);
     this->setFlagShowImage(true);
 
     // Initialize default demo parameters
@@ -65,69 +65,6 @@ void TrackingSubscriber::topic_callback_(const sensor_msgs::msg::Image::SharedPt
     this->setFrame_Id(msg_image->header.frame_id);
     this->process(frame_image);
     this->showMatchedImage();
-
-    // 検索キーをトラック番号に変更
-    // std::map<int, LastFrame> のintが検索キー(iterator使うときにこうしとくと便利)
-    // last_frameではこのintにはidx2が入っていたが、ここではトラック番号に変更する
-    std::vector<std::unordered_multimap<unsigned long int, LastFrame>> find_track;
-    std::vector<std::unordered_multimap<int, LastFrame>> last_frame = this->getLastFrame();
-    for (size_t i = 0; i < last_frame.size(); i++)
-    {
-        std::unordered_multimap<unsigned long int, LastFrame> track;
-        auto itr = last_frame[i].begin();
-        while (itr != last_frame[i].end())
-        {
-            track.insert(std::make_pair(itr->second.track_no, itr->second));
-            itr++;
-        }
-        find_track.push_back(track);
-    }
-
-    // trackの番号順に読み出し
-    // printf("track_no = %zu, find_track.size() = %zu\n", track_no, find_track.size());
-    static unsigned long int min_track_no = 0;
-    bool min_setting = true;
-    for (unsigned long int i = min_track_no; i < this->track_no; i++)
-    {
-        auto itr_1 = find_track[0].find(i);
-
-        for (size_t j = 0; j < find_track.size(); j++)
-        {
-            bool flag_first = false;
-
-            if (j == 0)
-            {
-                // Frameが0の時に対応点の登録があれば
-                if (itr_1 != find_track[0].end())
-                    flag_first = true;
-            }
-            else
-            {
-                // Frameが1以上で、一個前のフレームに登録があれば
-                if (itr_1 != find_track[j - 1].end())
-                    flag_first = true;
-            }
-
-            // トラック番号iについて、j番目のフレーム内にありますか？
-            auto itr = find_track[j].find(i);
-            if (itr != find_track[j].end())
-            {
-                if (flag_first)
-                {
-                    // j-1番目のフレームにもトラック番号iが登場するなら
-                    // printf("TrackNo.%zu, FrameNo:%d: (x1,y1)=(%f, %f)\n", itr_1->first, std::atoi(itr_1->second.frame_id.c_str()), itr->second.x1, itr->second.y1);
-                    // printf("TrackNo.%zu, FrameNo:%d: (x2,y2)=(%f, %f)\n", itr->first, std::atoi(itr->second.frame_id.c_str()), itr->second.x2, itr->second.y2);
-                }
-                if (min_setting)
-                {
-                    min_setting = false;
-                    min_track_no = itr->first;
-                }
-            }
-            itr_1 = itr;
-        }
-        // printf("track_No.%zu is end\n", i);
-    }
 }
 
 int main(int argc, char *argv[])
