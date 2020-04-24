@@ -26,7 +26,7 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 
-#include "../include/options_reconstruction_BA.hpp"
+#include "../include/option/options_reconstruction_BA.hpp"
 #include "../../HTL/include/transform.h"
 #include "../../HTL/include/msg_converter.h"
 #include "../include/endoscope/bundleadjustment.hpp"

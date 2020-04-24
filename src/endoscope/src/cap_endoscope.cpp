@@ -29,7 +29,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "std_msgs/msg/bool.hpp"
 
-#include "../include/option_cap_endoscope.hpp"
+#include "../include/option/option_cap_endoscope.hpp"
 
 /// Convert an OpenCV matrix encoding type to a string format recognized by sensor_msgs::Image.
 /**

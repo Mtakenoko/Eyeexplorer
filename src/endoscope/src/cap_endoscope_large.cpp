@@ -29,7 +29,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "std_msgs/msg/bool.hpp"
 
-#include "../include/option_cap_endoscope_large.hpp"
+#include "../include/option/option_cap_endoscope_large.hpp"
 
 //画像のサイズ
 #define IMAGE_HIGHT 453 

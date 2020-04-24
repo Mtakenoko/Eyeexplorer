@@ -1,9 +1,11 @@
+#ifndef TRACKER_HPP__
+#define TRACKER_HPP__
+
 #include <iostream>
 #include <unordered_map>
 #include <string>
 
-#include <opencv2/core.hpp>
-#include <opencv2/features2d.hpp>
+#include <opencv2/opencv.hpp>
 
 class LastFrame
 {
@@ -48,7 +50,7 @@ public:
     void process(const cv::Mat frame);
     void showMatchedImage();
 
-    enum detectorType
+    enum DetectorType
     {
         AKAZE = 0,
         ORB = 1,
@@ -83,6 +85,7 @@ protected:
     bool flag_showimage;
     bool flag_setfirstframe;
 };
+#endif
 
 void Tracker::setDetector(int featureType)
 {

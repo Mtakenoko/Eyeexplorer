@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "../include/option_cap_endoscope_large.hpp"
+#include "../include/option/option_cap_endoscope_large.hpp"
 
 bool find_command_option(const std::vector<std::string> & args, const std::string & option)
 {

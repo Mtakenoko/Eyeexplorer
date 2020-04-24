@@ -1,15 +1,10 @@
-#include <cstdio>
 #include <iostream>
 #include <string>
 #include <chrono>
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
-#include <opencv2/calib3d.hpp>
 
 #include <rclcpp/rclcpp.hpp>
-#include <rclcpp/time_source.hpp>
-#include <rclcpp/clock.hpp>
 
 #include <sensor_msgs/msg/image.hpp>
 
@@ -30,7 +25,7 @@ private:
 
 // TrackingSubscriber.cpp
 TrackingSubscriber::TrackingSubscriber()
-    : Node("tracking_test"), Tracker(Tracker::ORB, Tracker::FLANNBASED)
+    : Node("tracking_test"), Tracker(Tracker::DetectorType::ORB, Tracker::MatcerType::FLANNBASED)
 {
     // Topic Name
     std::string topic_sub("endoscope_image");
@@ -38,7 +33,7 @@ TrackingSubscriber::TrackingSubscriber()
     //Tracker Setting
     this->setThreshold_MatchRatio(0.9f);
     this->setThreshold_TrackNo(5000);
-    this->setThreshold_RANSAC(15.);
+    this->setThreshold_RANSAC(10.);
     this->setFlagShowImage(true);
 
     // Initialize default demo parameters
