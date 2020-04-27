@@ -25,7 +25,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(message_filters)
+find_package(message_filters REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_msgs REQUIRED)
@@ -130,17 +130,33 @@ install(TARGETS KLT_checker
 )
 
 # tracking_test node
-add_executable(tracking_test
-  src/tracking_test.cpp
+add_executable(tracking
+  src/tracking.cpp
 )
-ament_target_dependencies(tracking_test
+ament_target_dependencies(tracking
   "rclcpp"
   "sensor_msgs"
   "OpenCV"
 )
-install(TARGETS tracking_test
+install(TARGETS tracking
   DESTINATION lib/${PROJECT_NAME}
 )
+
+# tracking_subscriber node
+add_executable(tracking_subscriber
+  src/tracking_subscriber2.cpp
+)
+ament_target_dependencies(tracking_subscriber
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "message_filters"
+  "boost"
+  "OpenCV"
+)
+install(TARGETS tracking_subscriber
+  DESTINATION lib/${PROJECT_NAME}
+)  
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

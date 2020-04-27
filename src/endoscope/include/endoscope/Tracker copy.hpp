@@ -53,7 +53,6 @@ public:
 
     void process(const cv::Mat frame);
     void showMatchedImage();
-    void calcFindTrack();
 
     enum DetectorType : int
     {
@@ -72,6 +71,7 @@ public:
 
 private:
     void resetFirstFrame(cv::Mat reset_frame);
+    void calcFindTrack();
 
     cv::Ptr<cv::Feature2D> detector;
     cv::Ptr<cv::DescriptorMatcher> matcher;
@@ -204,22 +204,15 @@ void Tracker::process(const cv::Mat frame)
     std::vector<int> matched1_keypoints_idx, matched2_keypoints_idx;
     matched1_keypoints_idx.clear();
     matched2_keypoints_idx.clear();
-    matcher->knnMatch(first_descriptor, descriptor, knn_matches, 3);
+    matcher->knnMatch(first_descriptor, descriptor, knn_matches, 2);
 
-    // 誤対応除去①
-    // ハミング距離がある一定範囲よりも近いものだけ選択
-    if (knn_matches.size() == 0)
-    {
-        resetFirstFrame(frame);
-        return;
-    }
+    // 一つ前のフレーム内でのidx2と値が等しい
+    int use_knnnum;
     if (!last_frame.empty())
     {
         for (size_t i = 0; i < knn_matches.size(); i++)
         {
-            // 一つ前のフレーム内でのidx2と値が等しい
-            int use_knnnum;
-            int idx1_0 = knn_matches[i][0].queryIdx;
+            int idx1_0 = knn_matches[i][0].trainIdx;
             auto itr_0 = last_frame.back().find(idx1_0);
             if (itr_0 != last_frame.back().end())
             {
@@ -232,7 +225,7 @@ void Tracker::process(const cv::Mat frame)
                 if (itr_1 != last_frame.back().end())
                 {
                     use_knnnum = 1;
-                }
+                }/*
                 else
                 {
                     int idx1_2 = knn_matches[i][2].queryIdx;
@@ -241,50 +234,40 @@ void Tracker::process(const cv::Mat frame)
                     {
                         use_knnnum = 2;
                     }
-                    else
-                    {
-                        use_knnnum = -1;
-                    }
-                }
+                }*/
             }
-            if ((use_knnnum == 0 || use_knnnum == -1) && knn_matches[i][0].distance < threshold_ratio * knn_matches[i][1].distance)
-            {
-                // printf("use point [%zu, %d]\n", i, use_knnnum);
-                // i番目のマッチングについてのクエリディスクリプタが存在するキーポイント（first_keypointの中で）
-                matched1_keypoints.push_back(first_keypoint[knn_matches[i][0].queryIdx]);
-                matched2_keypoints.push_back(keypoint[knn_matches[i][0].trainIdx]);
-                // i番目のマッチングについてのクエリディスクリプタのインデックス
-                matched1_keypoints_idx.push_back(knn_matches[i][0].queryIdx);
-                matched2_keypoints_idx.push_back(knn_matches[i][0].trainIdx);
-                dmatch.push_back(knn_matches[i][0]);
-            }
-            else if ((use_knnnum == 1 || use_knnnum == 2) && knn_matches[i][0].distance > threshold_ratio_other * knn_matches[i][use_knnnum].distance)
-            {
-                // printf("うおおおおuse unliked point [%zu, %d]\n", i, use_knnnum);
-                // i番目のマッチングについてのクエリディスクリプタが存在するキーポイント（first_keypointの中で）
-                matched1_keypoints.push_back(first_keypoint[knn_matches[i][use_knnnum].queryIdx]);
-                matched2_keypoints.push_back(keypoint[knn_matches[i][use_knnnum].trainIdx]);
-                // i番目のマッチングについてのクエリディスクリプタのインデックス
-                matched1_keypoints_idx.push_back(knn_matches[i][use_knnnum].queryIdx);
-                matched2_keypoints_idx.push_back(knn_matches[i][use_knnnum].trainIdx);
-                dmatch.push_back(knn_matches[i][0]);
-            }
+            // printf("knnnum = %d at i = %zu, idx1 = %d\n", use_knnnum, i, idx1_0);
         }
     }
-    else
+
+    // 誤対応除去①
+    // ハミング距離がある一定範囲よりも近いものだけ選択
+    if (knn_matches.size() == 0)
     {
-        for (size_t i = 0; i < knn_matches.size(); i++)
+        resetFirstFrame(frame);
+        return;
+    }
+    for (size_t i = 0; i < knn_matches.size(); i++)
+    {
+        if (use_knnnum == 0 && knn_matches[i][0].distance < threshold_ratio * knn_matches[i][1].distance)
         {
-            for (size_t j = 0; j < 3; j++)
-            {
-                // i番目のマッチングについてのクエリディスクリプタが存在するキーポイント（first_keypointの中で）
-                matched1_keypoints.push_back(first_keypoint[knn_matches[i][j].queryIdx]);
-                matched2_keypoints.push_back(keypoint[knn_matches[i][j].trainIdx]);
-                // i番目のマッチングについてのクエリディスクリプタのインデックス
-                matched1_keypoints_idx.push_back(knn_matches[i][j].queryIdx);
-                matched2_keypoints_idx.push_back(knn_matches[i][j].trainIdx);
-                dmatch.push_back(knn_matches[i][j]);
-            }
+            // i番目のマッチングについてのクエリディスクリプタが存在するキーポイント（first_keypointの中で）
+            matched1_keypoints.push_back(first_keypoint[knn_matches[i][0].queryIdx]);
+            matched2_keypoints.push_back(keypoint[knn_matches[i][0].trainIdx]);
+            // i番目のマッチングについてのクエリディスクリプタのインデックス
+            matched1_keypoints_idx.push_back(knn_matches[i][0].queryIdx);
+            matched2_keypoints_idx.push_back(knn_matches[i][0].trainIdx);
+            dmatch.push_back(knn_matches[i][0]);
+        }
+        else if ((use_knnnum == 1 || use_knnnum == 2) && knn_matches[i][0].distance > threshold_ratio_other * knn_matches[i][use_knnnum].distance)
+        {
+            // i番目のマッチングについてのクエリディスクリプタが存在するキーポイント（first_keypointの中で）
+            matched1_keypoints.push_back(first_keypoint[knn_matches[i][use_knnnum].queryIdx]);
+            matched2_keypoints.push_back(keypoint[knn_matches[i][use_knnnum].trainIdx]);
+            // i番目のマッチングについてのクエリディスクリプタのインデックス
+            matched1_keypoints_idx.push_back(knn_matches[i][use_knnnum].queryIdx);
+            matched2_keypoints_idx.push_back(knn_matches[i][use_knnnum].trainIdx);
+            dmatch.push_back(knn_matches[i][0]);
         }
     }
 
@@ -330,7 +313,7 @@ void Tracker::process(const cv::Mat frame)
     {
         // さっきknnマッチングを行ったときのクエリ・訓練ディスクリプタのインデクスをmatched_idxとして保存した
         // その中で誤対応除去したinliners_idxに対応するインデックスを取得する
-        // つまり誤対応除去されたインデックス(first_frameから見たら当然飛び飛びの値)が入っている
+        // つまりfirst_frameから見た誤対応除去されたインデックス(当然飛び飛びの値)が入っている
         int idx1 = matched1_keypoints_idx[inliners_idx[i]];
         int idx2 = matched2_keypoints_idx[inliners_idx[i]];
 
@@ -352,7 +335,6 @@ void Tracker::process(const cv::Mat frame)
                 track.insert(std::make_pair(itr->second.track_no, LastFrame(idx1, x1, y1, idx2, x2, y2, itr->second.track_no, frame_id)));
                 current_frame.insert(std::make_pair(idx2, LastFrame(idx1, x1, y1, idx2, x2, y2, itr->second.track_no, frame_id)));
                 // printf("data_tra: (%d), (%d, %0.1f, %0.1f, %d, %0.1f, %0.1f, %d, %s)\n", itr->second.track_no, idx1, x1, y1, idx2, x2, y2, itr->second.track_no, frame_id.c_str());
-                // printf("No.%d:[%f %f], [%f %f] [%f %f]\n",itr->second.track_no, itr->second.x1, itr->second.y1, x1, y1, x2, y2);
             }
             else
             {
@@ -387,8 +369,8 @@ void Tracker::process(const cv::Mat frame)
     {
         cv::Scalar match_line_color = cv::Scalar(255, 0, 0);
         cv::Scalar match_point_color = cv::Scalar(255, 255, 0);
-        cv::drawMatches(first_frame, first_keypoint, frame, keypoint, good_match, matched_image, match_line_color, match_point_color);
-        // cv::drawKeypoints(frame, inliners2_keypoints, matched_image, match_point_color);
+        cv::drawMatches(first_frame, first_keypoint, frame, keypoint, good_match,
+                        matched_image, match_line_color, match_point_color);
     }
 
     first_frame = frame.clone();
@@ -398,7 +380,6 @@ void Tracker::process(const cv::Mat frame)
 
 void Tracker::calcFindTrack()
 {
-    // std::mapのキーとして特徴点ナンバーを登録したものを生成
     for (size_t i = 0; i < last_frame.size(); i++)
     {
         std::map<unsigned int, LastFrame> track;
@@ -443,9 +424,7 @@ void Tracker::calcFindTrack()
                 if (flag_first)
                 {
                     // j-1番目のフレームにもトラック番号iが登場するなら
-                    printf("TrackNo.%d, FrameNo:%d: (x1,y1)=(%f, %f)\n", itr_1->first, std::atoi(itr_1->second.frame_id.c_str()) - 1, itr_1->second.x1, itr_1->second.y1);
-                    printf("TrackNo.%d, FrameNo:%d: (x2,y2)=(%f, %f)\n", itr_1->first, std::atoi(itr_1->second.frame_id.c_str()), itr_1->second.x2, itr_1->second.y2);
-                    printf("TrackNo.%d, FrameNo:%d: (x1,y1)=(%f, %f)\n", itr->first, std::atoi(itr->second.frame_id.c_str()) - 1, itr->second.x1, itr->second.y1);
+                    printf("TrackNo.%d, FrameNo:%d: (x1,y1)=(%f, %f)\n", itr_1->first, std::atoi(itr_1->second.frame_id.c_str()), itr->second.x1, itr->second.y1);
                     printf("TrackNo.%d, FrameNo:%d: (x2,y2)=(%f, %f)\n", itr->first, std::atoi(itr->second.frame_id.c_str()), itr->second.x2, itr->second.y2);
                 }
                 if (min_setting)
