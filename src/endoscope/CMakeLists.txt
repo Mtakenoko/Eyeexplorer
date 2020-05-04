@@ -52,40 +52,6 @@ install(TARGETS
 cap_endoscope
 DESTINATION lib/${PROJECT_NAME}
 )
-# cap_endoscope_large node
-add_executable(cap_endoscope_large
-src/cap_endoscope_large.cpp
-option/options_cap_endoscope_large.cpp
-)
-ament_target_dependencies(cap_endoscope_large
-"rclcpp"
-"sensor_msgs"
-"std_msgs"
-"OpenCV"
-)
-install(TARGETS
-cap_endoscope_large
-DESTINATION lib/${PROJECT_NAME}
-)
-
-# reconstruction_online_delay node
-add_executable(reconstruction_online_delay
-  src/reconstruction_online_delay.cpp
-  option/options_reconstruction_online_delay.cpp
-  ../HTL/src/transform.cpp
-  ../HTL/src/msg_converter.cpp
-)
-ament_target_dependencies(reconstruction_online_delay
-  "rclcpp"
-  "sensor_msgs"
-  "geometry_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-)
-install(TARGETS reconstruction_online_delay
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 # reconstruction_BA node
 add_executable(reconstruction_BA
@@ -110,24 +76,28 @@ install(TARGETS reconstruction_BA
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# KLT_checker node
-add_executable(KLT_checker
-  src/KLT_checker.cpp
-  option/options_reconstruction_BA.cpp
+# Reconstruct_class node
+add_executable(reconstruction_BA_class
+  src/reconstruction_BA_class.cpp
   ../HTL/src/transform.cpp
   ../HTL/src/msg_converter.cpp
 )
-ament_target_dependencies(KLT_checker
+target_link_libraries(reconstruction_BA_class
+  ceres
+)
+ament_target_dependencies(reconstruction_BA_class
   "rclcpp"
   "sensor_msgs"
   "geometry_msgs"
   "std_msgs"
   "OpenCV"
   "message_filters"
+  "ceres"
 )
-install(TARGETS KLT_checker
+install(TARGETS reconstruction_BA_class
   DESTINATION lib/${PROJECT_NAME}
 )
+
 
 # tracking_test node
 add_executable(tracking

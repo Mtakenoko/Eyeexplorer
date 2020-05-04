@@ -20,6 +20,7 @@ public:
         float &m21, float &m22, float &m23,
         float &m31, float &m32, float &m33,
         float qx, float qy, float qz, float qw);
+    cv::Mat QuaternionToRotMat2(const float &qx, const float &qy, const float &qz, const float &qw);
     float RevFromRotMat(cv::Mat R);
     void RotMatToAngles(cv::Mat R,
                         double &angle_x, double &angle_y, double &angle_z);

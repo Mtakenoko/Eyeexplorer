@@ -267,7 +267,7 @@ void Tracker::process(const cv::Mat frame)
                 // i番目のマッチングについてのクエリディスクリプタのインデックス
                 matched1_keypoints_idx.push_back(knn_matches[i][use_knnnum].queryIdx);
                 matched2_keypoints_idx.push_back(knn_matches[i][use_knnnum].trainIdx);
-                dmatch.push_back(knn_matches[i][0]);
+                dmatch.push_back(knn_matches[i][use_knnnum]);
             }
         }
     }

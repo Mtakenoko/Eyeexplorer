@@ -386,6 +386,18 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
       point3D_arm.push_back(point3D_result_arm.reshape(3, 1));
       dist_mean += point3D_result.at<cv::Vec3f>(0, 0)[2];
     }
+    // std::cout << "R_frame" << R_keyframe << std::endl;
+    // std::cout << "t_frame" << t_keyframe << std::endl;
+    // std::cout << "R_endo" << R_endo << std::endl;
+    // std::cout << "t_endo" << t_endo << std::endl;
+    // std::cout << "Rt1" << Rt1 << std::endl;
+    // std::cout << "Rt2" << Rt2 << std::endl;
+    // std::cout << "prj1" << prjMat1 << std::endl;
+    // std::cout << "prj2" << prjMat2 << std::endl;
+    // std::cout << "point3D" << point3D << std::endl;
+    // std::cout << "point3D_arm" << point3D_arm << std::endl;
+    // std::cout << "p1" << cv::Mat(p1) << std::endl;
+    // std::cout << "point_1" << p1 << std::endl;
     dist_mean = dist_mean / match_num;
 
     //バンドル調整(Ceres Solver)
@@ -483,7 +495,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
       cv::Point2f p_center2 = cv::Point2f(msg_image->height * 3. / 2., msg_image->width / 2.);
       cv::Scalar color = cv::Scalar(0, 255, 0);
       center_t_arm = cv::Point2f(t_endo.at<float>(0) * 20 + p_center.x, t_endo.at<float>(1) * 20 + p_center.y);
-      center_t_arm_z = cv::Point2f(3 * p_center.x, t_endo.at<float>(2) * 20 + p_center.y);
+      center_t_arm_z = cv::Point2f(p_center2.x, t_endo.at<float>(2) * 20 + p_center.y);
       // cv::arrowedLine(cvframe, p_center, center_t_arm, color, 2, 8, 0, 0.5);
       cv::arrowedLine(cvframe_, p_center, center_t_arm, color, 2, 8, 0, 0.5);
       cv::arrowedLine(cvframe_, p_center2, center_t_arm_z, color, 2, 8, 0, 0.5);
