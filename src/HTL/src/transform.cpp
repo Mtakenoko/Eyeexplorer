@@ -100,18 +100,18 @@ void Transform::QuaternionToRotMat(
     m32 = 2.0f * qy * qz - 2.0f * qw * qx;
     m33 = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;
 }
-cv::Mat Transform::QuaternionToRotMat2(const float &qx, const float &qy, const float &qz, const float &qw)
+cv::Mat Transform::QuaternionToRotMat(const float &qx, const float &qy, const float &qz, const float &qw)
 {
     cv::Mat Output(3, 3, CV_32FC1);
-    Output.at<float>(0, 0) = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
-    Output.at<float>(0, 1) = 2.0f * qx * qy + 2.0f * qw * qz;
-    Output.at<float>(0, 2) = 2.0f * qx * qz - 2.0f * qw * qy;
-    Output.at<float>(1, 0) = 2.0f * qx * qy - 2.0f * qw * qz;
-    Output.at<float>(1, 1) = 1.0f - 2.0f * qx * qx - 2.0f * qz * qz;
-    Output.at<float>(1, 2) = 2.0f * qy * qz + 2.0f * qw * qx;
-    Output.at<float>(2, 0) = 2.0f * qx * qz + 2.0f * qw * qy;
-    Output.at<float>(2, 1) = 2.0f * qy * qz - 2.0f * qw * qx;
-    Output.at<float>(2, 2) = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;
+    Output.at<float>(0, 0) = qx * qx - qy * qy - qz * qz + qw * qw;
+    Output.at<float>(0, 1) = 2.0f * (qx * qy - qz * qw);
+    Output.at<float>(0, 2) = 2.0f * (qx * qz + qy * qw);
+    Output.at<float>(1, 0) = 2.0f * (qx * qy + qz * qw);
+    Output.at<float>(1, 1) = -qx * qx + qy * qy - qz * qz + qw * qw;
+    Output.at<float>(1, 2) = 2.0f * (qy * qz - qx * qw);
+    Output.at<float>(2, 0) = 2.0f * (qx * qz - qy * qw);
+    Output.at<float>(2, 1) = 2.0f * (qy * qz + qx * qw);
+    Output.at<float>(2, 2) = -qx * qx - qy * qy + qz * qz + qw * qw;
     return Output;
 }
 

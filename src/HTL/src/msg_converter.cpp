@@ -45,7 +45,7 @@ void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::ms
     msg_cloud_pub.header.frame_id = "world";
 
     geometry_msgs::msg::Point32 point;
-    for (size_t i = 0; i < pointCloud.rows; i++)
+    for (int i = 0; i < pointCloud.rows; i++)
     {
         point.x = pointCloud.at<float>(i, 0);
         point.y = pointCloud.at<float>(i, 1);

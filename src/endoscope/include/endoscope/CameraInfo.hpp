@@ -113,7 +113,10 @@ public:
     void setData()
     {
         cv::Mat CamPose(3, 4, CV_32FC1);
-        cv::hconcat(Rotation, Transform, CamPose);
+        /*cv::Mat M_reflection = (cv::Mat_<float>(3, 3) << 1., 0., 0.,
+                                0., 1., 0.,
+                                0., 0., -1.);*/
+        cv::hconcat(/*M_reflection */Rotation, /*M_reflection */ Transform, CamPose);
         CameraPose = CamPose.clone();
 
         cv::Mat ProjMat = CameraMatrix * CameraPose;

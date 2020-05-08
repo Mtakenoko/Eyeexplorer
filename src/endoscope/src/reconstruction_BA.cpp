@@ -71,7 +71,7 @@ int encoding2mat_type(const std::string &encoding)
 }
 
 void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image, const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-                   bool show_camera, size_t feature, size_t match, size_t prjMat, rclcpp::Logger logger,
+                   bool show_camera, size_t feature, size_t match, rclcpp::Logger logger,
                    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
 {
   RCLCPP_INFO(logger, "Received image #%s", msg_image->header.frame_id.c_str());
@@ -98,7 +98,7 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
                                (float)msg_arm->rotation.x, (float)msg_arm->rotation.y, (float)msg_arm->rotation.z, (float)msg_arm->rotation.w);
 
   //frame間隔
-  static int frame_key1, frame_key2, frame_num;
+  static int frame_key2, frame_num;
   frame_num = atoi(msg_image->header.frame_id.c_str());
 
   //Subscribe
@@ -162,7 +162,6 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     descriptor_keyframe1 = descriptor_frame.clone();
     R_keyframe1 = R_frame.clone();
     t_keyframe1 = t_frame.clone();
-    frame_key1 = frame_num;
     set_keyframe1 = true;
     return;
   }
@@ -564,7 +563,6 @@ void triangulation(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_ima
     descriptor_keyframe1 = descriptor_keyframe2.clone();
     R_keyframe1 = R_keyframe2.clone();
     t_keyframe1 = t_keyframe2.clone();
-    frame_key1 = frame_key2;
 
     dst_keyframe2 = dst_frame.clone();
     keypoints_keyframe2 = keypoints_frame;
@@ -644,7 +642,7 @@ int main(int argc, char *argv[])
   message_filters::Subscriber<sensor_msgs::msg::Image> image_sub(node.get(), topic_sub);
   message_filters::Subscriber<geometry_msgs::msg::Transform> arm_sub(node.get(), topic_sub_arm);
   message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync(image_sub, arm_sub, 1000);
-  sync.registerCallback(std::bind(&triangulation, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, prjMat, node_logger, pub_pointcloud));
+  sync.registerCallback(std::bind(&triangulation, std::placeholders::_1, std::placeholders::_2, show_camera, feature, match, node_logger, pub_pointcloud));
 
   rclcpp::spin(node);
   rclcpp::shutdown();

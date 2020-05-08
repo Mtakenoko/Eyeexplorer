@@ -13,9 +13,9 @@
 
 #include "CameraInfo.hpp"
 #include "KeyFrame.hpp"
+#include "Bundler.hpp"
 #include "../../../HTL/include/transform.h"
 #include "../../../HTL/include/msg_converter.h"
-#include "../../include/endoscope/bundleadjustment.hpp"
 
 Transform transform;
 Converter converter;
@@ -119,7 +119,7 @@ void Reconstruction::setFirstFrame()
     flag_setFirstFrame = false;
 }
 
-void Reconstruction::chooseKeyFrame()
+/*void Reconstruction::chooseKeyFrame()
 {
     if (keyframe_database.size() > 2)
     {
@@ -130,12 +130,12 @@ void Reconstruction::chooseKeyFrame()
 
         if (frame_span < 5)
         {
-            printf("using KF #1");
+            printf("using KF #1\n");
             num_keyframe = keyframe_database.size() - 3;
         }
         else
         {
-            printf("using KF #2");
+            printf("using KF #2\n");
             num_keyframe = keyframe_database.size() - 2;
         }
     }
@@ -145,6 +145,52 @@ void Reconstruction::chooseKeyFrame()
     }
 
     keyframe_data = keyframe_database[num_keyframe];
+}*/
+
+void Reconstruction::chooseKeyFrame()
+{
+    if (keyframe_database.size() >= 10)
+    {
+        for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
+        {
+            // 判定1: Z方向の変化が少ない
+            // カメラ座標の計算
+            cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
+            if (abs(t_endo.at<float>(2)) < 5.)
+            {
+                // 判定2: xy方向の変化or仰角の変化が一定範囲内にある
+                // xy方向の移動量
+                cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
+                bool moving_xy = cv::norm(t_move_xy) < 15. && cv::norm(t_move_xy) > 3.;
+
+                // 仰角
+                float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+                bool moving_phi = abs(phi) < 0.1 && abs(phi) > 0.001;
+                if (moving_xy && moving_phi)
+                {
+                    printf("あったぞ＾＾(xy: %f, phi: %f)\n", cv::norm(t_move_xy), abs(phi));
+                    keyframe_data = *itr;
+                    return;
+                }
+                else
+                {
+                    printf("norm = %f, phi = %f\n", cv::norm(t_move_xy), abs(phi));
+                }
+            }
+            printf("t_endo_z = %f\n", abs(t_endo.at<float>(2)));
+            printf("戻るぞ\n");
+        }
+        // 何一つ当てはまるのがなければ
+        // 三次元復元は行わず、KFの候補であれば登録だけはする
+        printf("一つもなかったよ；；\n");
+        flag_reconstruction = false;
+        this->setKeyFrame();
+        return;
+    }
+    else
+    {
+        keyframe_data = keyframe_database[keyframe_database.size() - 1];
+    }
 }
 
 void Reconstruction::setKeyFrame()
@@ -172,7 +218,7 @@ bool Reconstruction::checkKeyFrame()
     float t_move_norm = cv::norm(t_move_xy);
 
     // 仰角
-    float phi = transform.RevFromRotMat(itr_endo->camerainfo.Rotation);
+    float phi = transform.RevFromRotMat(itr_endo->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
 
     if (frame_span > 10 && (t_move_norm > 3. || phi > M_PI / 540.))
         return true;
@@ -235,7 +281,7 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
     frame_data.extractor.image = frame_image.clone();
 
     // 運動学で求めたグローバル座標からみたカメラの位置姿勢
-    cv::Mat R_frame_world = transform.QuaternionToRotMat2(msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
+    cv::Mat R_frame_world = transform.QuaternionToRotMat(msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
     cv::Mat t_frame_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x * 1000., msg_arm->translation.y * 1000., msg_arm->translation.z * 1000.);
     frame_data.camerainfo.Rotation_world = R_frame_world.clone();
     frame_data.camerainfo.Transform_world = t_frame_world.clone();
@@ -369,7 +415,11 @@ void Reconstruction::triangulation()
     frame_data.extractor.match2point_query(inliners_matches);
     keyframe_data.extractor.match2point_train(inliners_matches);
 
+    // 三角測量
     cv::Mat point4D(4, match_num, CV_32FC1);
+    cv::Mat M = (cv::Mat_<float>(3, 3) << 1., 0., 0.,
+                 0., 1., 0.,
+                 0., 0., -1.);
     for (size_t i = 0; i < match_num; i++)
     {
         cv::Mat point3D_result, point3D_result_arm;
@@ -377,13 +427,10 @@ void Reconstruction::triangulation()
                               cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
                               point4D);
         cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-        point3D_result_arm = keyframe_data.camerainfo.Rotation_world.t() * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world;
+        point3D_result_arm = keyframe_data.camerainfo.Rotation_world * M * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world;
         point3D.push_back(point3D_result);
         point3D_arm.push_back(point3D_result_arm.reshape(3, 1));
     }
-    // printf("point3D       : %d %d %d\n", point3D.rows, point3D.cols, point3D.channels());
-    // printf("point3D_arm   : %d %d %d\n", point3D_arm.rows, point3D_arm.cols, point3D_arm.channels());
-
     // std::cout << "R_frame" << frame_data.camerainfo.Rotation_world << std::endl;
     // std::cout << "t_frame" << frame_data.camerainfo.Transform_world << std::endl;
     // std::cout << "R_endo" << frame_data.camerainfo.Rotation << std::endl;
@@ -404,11 +451,16 @@ void Reconstruction::bundler()
     ceres::Problem problem;
     //バンドル調整用パラメータ
     double mutable_camera_for_observations[2][6];
-    double mutable_point_for_observations[300][3];
+    double **mutable_point_for_observations = new double *[match_num * 2];
+    for (size_t i = 0; i < match_num * 2; i++)
+    {
+        mutable_point_for_observations[i] = new double[3];
+    }
 
     cv::Mat rvec_keyframe, rvec_frame;
     cv::Rodrigues(keyframe_data.camerainfo.Rotation_world, rvec_keyframe);
     cv::Rodrigues(frame_data.camerainfo.Rotation_world, rvec_frame);
+
     //KeyFrameの方の情報
     mutable_camera_for_observations[0][0] = (double)rvec_keyframe.at<float>(0);
     mutable_camera_for_observations[0][1] = (double)rvec_keyframe.at<float>(1);
@@ -434,12 +486,13 @@ void Reconstruction::bundler()
         mutable_point_for_observations[i + match_num][2] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[2];
 
         //コスト関数
-        ceres::CostFunction *cost_function_query = SnavelyReprojectionError::Create((double)frame_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.x,
-                                                                                    (double)frame_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.y);
         ceres::CostFunction *cost_function_train = SnavelyReprojectionError::Create((double)keyframe_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.x,
                                                                                     (double)keyframe_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.y);
-        problem.AddResidualBlock(cost_function_query, NULL, mutable_camera_for_observations[0], mutable_point_for_observations[i]);
-        problem.AddResidualBlock(cost_function_train, NULL, mutable_camera_for_observations[1], mutable_point_for_observations[i + match_num]);
+        ceres::CostFunction *cost_function_query = SnavelyReprojectionError::Create((double)frame_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.x,
+                                                                                    (double)frame_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.y);
+
+        problem.AddResidualBlock(cost_function_train, NULL, mutable_camera_for_observations[0], mutable_point_for_observations[i]);
+        problem.AddResidualBlock(cost_function_query, NULL, mutable_camera_for_observations[1], mutable_point_for_observations[i + match_num]);
     }
 
     //Solverのオプション選択
@@ -474,6 +527,15 @@ void Reconstruction::bundler()
         p_xyz.z = (float)mutable_point_for_observations[i][2];
         point3D_BA.push_back(p_xyz);
     }
+
+    /// delete
+    for (size_t i = 0; i < match_num * 2; i++)
+    {
+        delete[] mutable_point_for_observations[i];
+        mutable_point_for_observations[i] = 0;
+    }
+    delete[] mutable_point_for_observations;
+    mutable_point_for_observations = 0;
 }
 
 void Reconstruction::showImage()
@@ -529,8 +591,8 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
 
 void Reconstruction::process()
 {
-    if (!flag_reconstruction)
-        return;
+    flag_reconstruction = true;
+
     if (flag_setFirstFrame)
     {
         this->setFirstFrame();
@@ -540,6 +602,12 @@ void Reconstruction::process()
 
     // どのKFを使うか選択しkeyframe_dataに入力
     this->chooseKeyFrame();
+
+    // 現在のフレームがKeyFrameの候補であれば
+    this->setKeyFrame();
+
+    if (!flag_reconstruction)
+        return;
 
     // 特徴点マッチング
     this->BF_matching();
@@ -551,13 +619,10 @@ void Reconstruction::process()
     this->triangulation();
 
     // バンドル調整
-    // this->bundler();
+    this->bundler();
 
     // 図示
     this->showImage();
-
-    // 現在のフレームがKeyFrameの候補であれば
-    this->setKeyFrame();
 }
 
 void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
