@@ -47,12 +47,14 @@ private:
     void knn_outlier_remover();
     void BF_outlier_remover();
     void triangulation();
+    void triangulation_est();
     void bundler();
     void setFirstFrame();
     void setKeyFrame();
     void chooseKeyFrame();
     bool checkKeyFrame();
     void keyframe_detector();
+    void estimate_move();
     void process();
     void showImage();
     void publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
@@ -64,6 +66,7 @@ private:
     bool flag_reconstruction;
     bool flag_setFirstFrame;
     bool flag_showImage;
+    bool flag_estimate_move;
     bool isKeyFrame;
     unsigned long int counter;
     const float fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
@@ -75,11 +78,13 @@ private:
     float threshold_ransac = 5.0;
     std::vector<std::vector<cv::DMatch>> knn_matches;
     std::vector<cv::DMatch> dmatch, inliners_matches;
+    std::vector<cv::Point2f> matched_point1, matched_point2;
     size_t match_num;
     cv::Mat cameraMatrix;
     cv::Ptr<cv::FeatureDetector> detector;
     cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
     cv::Ptr<cv::DescriptorMatcher> matcher;
+    cv::Mat R_est, t_est;
 };
 #endif
 
@@ -90,6 +95,7 @@ Reconstruction::Reconstruction()
     flag_reconstruction = true;
     flag_setFirstFrame = true;
     flag_showImage = true;
+    flag_estimate_move = true;
     frame_data.camerainfo.CameraMatrix = CameraMat.clone();
 
     if (flag_showImage)
@@ -108,6 +114,8 @@ void Reconstruction::initialize()
     frame_data.extractor.keypoints.clear();
     keyframe_data.extractor.point.clear();
     keyframe_data.extractor.keypoints.clear();
+    matched_point1.clear();
+    matched_point2.clear();
     frame_data.camerainfo.CameraMatrix = CameraMat.clone();
 }
 
@@ -116,36 +124,7 @@ void Reconstruction::setFirstFrame()
     frame_data.camerainfo.Rotation = Rotation_eye.clone();
     frame_data.camerainfo.Transform = Transform_zeros.clone();
     keyframe_database.push_back(frame_data);
-    flag_setFirstFrame = false;
 }
-
-/*void Reconstruction::chooseKeyFrame()
-{
-    if (keyframe_database.size() > 2)
-    {
-
-        // KeyFrameに新たに登録してからのフレーム間隔
-        auto itr_endo = keyframe_database.end() - 1;
-        int frame_span = frame_data.camerainfo.frame_num - itr_endo->camerainfo.frame_num;
-
-        if (frame_span < 5)
-        {
-            printf("using KF #1\n");
-            num_keyframe = keyframe_database.size() - 3;
-        }
-        else
-        {
-            printf("using KF #2\n");
-            num_keyframe = keyframe_database.size() - 2;
-        }
-    }
-    else
-    {
-        num_keyframe = keyframe_database.size() - 1;
-    }
-
-    keyframe_data = keyframe_database[num_keyframe];
-}*/
 
 void Reconstruction::chooseKeyFrame()
 {
@@ -161,7 +140,7 @@ void Reconstruction::chooseKeyFrame()
                 // 判定2: xy方向の変化or仰角の変化が一定範囲内にある
                 // xy方向の移動量
                 cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-                bool moving_xy = cv::norm(t_move_xy) < 15. && cv::norm(t_move_xy) > 3.;
+                bool moving_xy = cv::norm(t_move_xy) < 8. && cv::norm(t_move_xy) > 2.;
 
                 // 仰角
                 float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
@@ -333,6 +312,7 @@ void Reconstruction::knn_outlier_remover()
     std::vector<int> matched1_keypoints_idx, matched2_keypoints_idx;
     matched1_keypoints_idx.clear();
     matched2_keypoints_idx.clear();
+
     if (knn_matches.size() == 0)
     {
         printf("knn_matches.size() == 0\n");
@@ -364,6 +344,8 @@ void Reconstruction::knn_outlier_remover()
             // inliners2_keypoints.push_back(matched2_keypoints[i]);
             inliners_matches.push_back(dmatch[i]);
             inliners_idx.push_back(i); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
+            matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt);
+            matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].trainIdx].pt);
         }
     }
     match_num = inliners_matches.size();
@@ -398,6 +380,8 @@ void Reconstruction::BF_outlier_remover()
         {
             inliners_matches.push_back(dmatch[i]);
             inliners_idx.push_back(i); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
+            matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt);
+            matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].trainIdx].pt);
         }
     }
     match_num = inliners_matches.size();
@@ -408,6 +392,49 @@ void Reconstruction::triangulation()
     // カメラ座標の計算
     cv::Mat R_endo = keyframe_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world;
     cv::Mat t_endo = keyframe_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - keyframe_data.camerainfo.Transform_world);
+    frame_data.camerainfo.Rotation = R_endo.clone();
+    frame_data.camerainfo.Transform = t_endo.clone();
+    frame_data.camerainfo.setData();
+    keyframe_data.camerainfo.setData();
+    frame_data.extractor.match2point_query(inliners_matches);
+    keyframe_data.extractor.match2point_train(inliners_matches);
+
+    // 三角測量
+    cv::Mat point4D(4, match_num, CV_32FC1);
+    cv::Mat M = (cv::Mat_<float>(3, 3) << 1., 0., 0.,
+                 0., 1., 0.,
+                 0., 0., -1.);
+    for (size_t i = 0; i < match_num; i++)
+    {
+        cv::Mat point3D_result, point3D_result_arm;
+        cv::triangulatePoints(keyframe_data.camerainfo.ProjectionMatrix, frame_data.camerainfo.ProjectionMatrix,
+                              cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
+                              point4D);
+        cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
+        point3D_result_arm = keyframe_data.camerainfo.Rotation_world * M * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world;
+        point3D.push_back(point3D_result);
+        point3D_arm.push_back(point3D_result_arm.reshape(3, 1));
+    }
+    // std::cout << "R_frame" << frame_data.camerainfo.Rotation_world << std::endl;
+    // std::cout << "t_frame" << frame_data.camerainfo.Transform_world << std::endl;
+    // std::cout << "R_endo" << frame_data.camerainfo.Rotation << std::endl;
+    // std::cout << "t_endo" << frame_data.camerainfo.Transform << std::endl;
+    // std::cout << "Rt_f" << frame_data.camerainfo.CameraPose << std::endl;
+    // std::cout << "Rt_kf" << keyframe_data.camerainfo.CameraPose << std::endl;
+    // std::cout << "Prj_kf" << keyframe_data.camerainfo.ProjectionMatrix << std::endl;
+    // std::cout << "Prj_f" << frame_data.camerainfo.ProjectionMatrix << std::endl;
+    // std::cout << "p1" << cv::Mat(keyframe_data.extractor.point) << std::endl;
+    // std::cout << "R_keyframe" << keyframe_data.camerainfo.Rotation_world << std::endl;
+    // std::cout << "t_keyframe" << keyframe_data.camerainfo.Transform_world << std::endl;
+    // std::cout << "point1" << frame_data.extractor.point << std::endl;
+}
+
+void Reconstruction::triangulation_est()
+{
+    // カメラ座標の計算
+    cv::Mat R_endo, t_endo;
+    R_est.convertTo(R_endo, CV_32FC1);
+    t_est.convertTo(t_endo, CV_32FC1);
     frame_data.camerainfo.Rotation = R_endo.clone();
     frame_data.camerainfo.Transform = t_endo.clone();
     frame_data.camerainfo.setData();
@@ -538,6 +565,24 @@ void Reconstruction::bundler()
     mutable_point_for_observations = 0;
 }
 
+void Reconstruction::estimate_move()
+{
+    // 眼球の移動を検知したらフラグを管理する
+    if (!flag_estimate_move)
+        return;
+
+    // 5点アルゴリズムやる以上、5点以上の点が必要
+    if (matched_point1.size() < 5)
+    {
+        return;
+    }
+    // 5点アルゴリズム//１つめの画像を正規化座標としたときに2枚目の画像への回転・並進変換行列
+    cv::Mat essential_mask;
+    cv::Point2f principle_point(u0, v0);
+    cv::Mat EssentialMat = cv::findEssentialMat(matched_point1, matched_point2, (fovx + fovy) / 2., principle_point, cv::RANSAC, 0.9999, 0.003, essential_mask);
+    cv::recoverPose(EssentialMat, matched_point1, matched_point2, R_est, t_est, (fovx + fovy) / 2., principle_point, essential_mask);
+}
+
 void Reconstruction::showImage()
 {
     // マッチングの様子を図示
@@ -565,6 +610,12 @@ void Reconstruction::showImage()
 
 void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
 {
+    if (flag_setFirstFrame)
+    {
+        flag_setFirstFrame = false;
+        return;
+    }
+
     /*cv::Mat pointCloud(match_num, 1, CV_32FC3);
     point3D /= 1000.;
     point3D.convertTo(pointCloud, CV_32FC3);
@@ -615,11 +666,21 @@ void Reconstruction::process()
     // 誤対応除去
     this->BF_outlier_remover();
 
+    if (match_num < 5)
+        return;
+
+    // もし眼球移動を検知すれば
+    this->estimate_move();
+
     // 三角測量
-    this->triangulation();
+    // this->triangulation();
+    this->triangulation_est();
 
     // バンドル調整
-    this->bundler();
+    // this->bundler();
+
+    // もし眼球移動を検知すれば
+    this->estimate_move();
 
     // 図示
     this->showImage();
