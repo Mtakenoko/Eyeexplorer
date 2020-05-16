@@ -130,7 +130,7 @@ void Estimation_EyeBall::estimate()
 
 void Estimation_EyeBall::publish()
 {
-    auto marker_msg = std::make_unique<visualization_msgs::msg::Marker>();    //set marker
+    auto marker_msg = std::make_unique<visualization_msgs::msg::Marker>(); //set marker
     rclcpp::Clock::SharedPtr clock = this->get_clock();
     int id = 0;
     marker_msg->header.frame_id = "world";
@@ -161,8 +161,9 @@ void Estimation_EyeBall::publish()
     marker_msg->pose.orientation.y = (double)eye_shape.Orientation.at<float>(1);
     marker_msg->pose.orientation.z = (double)eye_shape.Orientation.at<float>(2);
     marker_msg->pose.orientation.w = (double)eye_shape.Orientation.at<float>(3);
-    
-    // publisher_->publish(std::move(marker_msg));
+
+    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("EyeBall", 10);
+    publisher_->publish(std::move(marker_msg));
     RCLCPP_INFO(this->get_logger(), "Published pointCloud!");
 }
 #endif
