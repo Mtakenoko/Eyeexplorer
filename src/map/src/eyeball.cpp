@@ -33,9 +33,9 @@ void eye_ball(const sensor_msgs::msg::JointState::SharedPtr msg_sub,
     marker_msg.type = visualization_msgs::msg::Marker::SPHERE;
     marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
-    marker_msg.scale.x = 10;
-    marker_msg.scale.y = 10;
-    marker_msg.scale.z = 10;
+    marker_msg.scale.x = 0.24;
+    marker_msg.scale.y = 1.0;
+    marker_msg.scale.z = 0.5;
 
     marker_msg.color.a = 1.0;
     marker_msg.color.r = 0.0;

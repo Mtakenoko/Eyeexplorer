@@ -35,49 +35,73 @@ find_package(pcl_conversions REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(PCL COMPONENTS common REQUIRED)
+find_package(Ceres REQUIRED)
 
-# eye_ball node
+# # eye_ball node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(eye_ball
+#   src/eyeball.cpp
+# )
+# # 実行ファイルをリンクする
+# target_link_libraries(eye_ball
+#   ts01
+#   ktl
+#   ktlrt
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(eye_ball
+#   "rclcpp"
+#   "sensor_msgs"
+#   "visualization_msgs"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS
+#   eye_ball
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# # pointcloud_storage node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(pointcloud_storage
+#   src/pointcloud_storage.cpp
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(pointcloud_storage
+#   "rclcpp"
+#   "sensor_msgs"
+#   "std_msgs"
+#   "OpenCV"
+#   "tf2_msgs"
+#   "tf2_geometry_msgs"
+#   "rcl_interfaces"
+#   "rcutils"
+#   "pcl_conversions"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS pointcloud_storage
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# eyeball_estimator node
 # スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(eye_ball
-  src/eyeball.cpp
+add_executable(eyeball_estimator
+  src/eyeball_estimator.cpp
 )
 # 実行ファイルをリンクする
-target_link_libraries(eye_ball
-  ts01
-  ktl
-  ktlrt
+target_link_libraries(eyeball_estimator
+  ceres
 )
 # コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(eye_ball
+ament_target_dependencies(eyeball_estimator
   "rclcpp"
   "sensor_msgs"
   "visualization_msgs"
+  "OpenCV"
+  "ceres"
 )
 # 実行ファイルをインストール
 install(TARGETS
-  eye_ball
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# pointcloud_storage node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(pointcloud_storage
-  src/pointcloud_storage.cpp
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(pointcloud_storage
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-  "rcl_interfaces"
-  "rcutils"
-  "pcl_conversions"
-)
-# 実行ファイルをインストール
-install(TARGETS pointcloud_storage
+  eyeball_estimator
   DESTINATION lib/${PROJECT_NAME}
 )
 
