@@ -17,9 +17,13 @@
   <build_depend>message_filters</build_depend>
   <build_depend>tf2_msgs</build_depend>
   <build_depend>tf2_geometry_msgs</build_depend>
-  <build_depend>pcl</build_depend>
   <build_depend>pcl_conversions</build_depend>
-  <build_depend>boost</build_depend>
+  <build_depend>VTK 6.3</build_depend>
+  <build_depend>PCL 1.8</build_depend>
+  <build_depend>PCL COMPONENTS common</build_depend> 
+  <build_depend>eigen3_cmake_module</build_depend>
+  <build_depend>Eigen3</build_depend>
+  <build_depend>Boost COMPONENTS system</build_depend>
 
   <exec_depend>libopencv-dev</exec_depend>
   <exec_depend>rclcpp</exec_depend>
@@ -29,9 +33,13 @@
   <exec_depend>message_filters</exec_depend>
   <exec_depend>tf2_msgs</exec_depend>
   <exec_depend>tf2_geometry_msgs</exec_depend>
-  <exec_depend>pcl</exec_depend>
   <exec_depend>pcl_conversions</exec_depend>
-  <exec_depend>boost</exec_depend>
+  <exec_depend>VTK 6.3</exec_depend>
+  <exec_depend>PCL 1.8</exec_depend>
+  <exec_depend>PCL COMPONENTS common</exec_depend> 
+  <exec_depend>eigen3_cmake_module</exec_depend>
+  <exec_depend>Eigen3</exec_depend>
+  <exec_depend>Boost COMPONENTS system</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
