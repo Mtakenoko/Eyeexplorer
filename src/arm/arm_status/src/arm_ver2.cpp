@@ -1,12 +1,6 @@
 #include <ktl.h>
 #include "../include/arm/arm.h"
 
-#define KV Ktl::Vector<3>
-#define ZERO Ktl::Vector<3>(.0, .0, .0)
-#define X(num) Ktl::Vector<3>(num, 0.0, 0.0)
-#define Y(num) Ktl::Vector<3>(0.0, num, 0.0)
-#define Z(num) Ktl::Vector<3>(0.0, 0.0, num)
-
 PassiveArm::PassiveArm()
 {
   double offsetAngle = 0.0 / DEG;

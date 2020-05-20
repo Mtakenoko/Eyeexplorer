@@ -42,12 +42,15 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     enc_pos[2] = sub_msg->position[2];
     enc_pos[3] = sub_msg->position[3];
     enc_pos[4] = sub_msg->position[4];
-        
+
     //エンコーダーの値を読んで運動学を解く
     for (int i = 0; i < ADOF; i++)
     {
         passivearm.q[i] = enc_pos[i] - readencoder.offset[i];
     }
+    passivearm.forward_kinematics();
+
+    // q_msgにデータ入力
     q_msg.position[0] = passivearm.q[0];
     q_msg.position[1] = passivearm.q[1];
     q_msg.position[2] = passivearm.q[2];
@@ -56,19 +59,18 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     q_msg.position[5] = passivearm.q[4];
 
     q_msg.header.stamp = clock->now();
-    passivearm.forward_kinematics();
 
     //位置・姿勢計算
-    Ktl::Matrix<3, 3> Escope =  Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
-                                Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
-    Ktl::Matrix<3, 3> endoscope_pose = passivearm.Rr() * Escope; // 内視鏡姿勢行列
-    Ktl::Vector<3> n = endoscope_pose.column(2);                 // 内視鏡の向き
+    Ktl::Matrix<3, 3> Escope = Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
+                               Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
+    Ktl::Matrix<3, 3> endoscope_pose = passivearm.Rr() * Escope;     // 内視鏡姿勢行列
+    Ktl::Vector<3> n = endoscope_pose.column(2);                     // 内視鏡の向き
     Ktl::Vector<3> Ptip = passivearm.Pr() + ENDOSCOPE_LENGTH * n;
 
     //並進成分
     tip_msg.translation.x = Ptip[0];
     tip_msg.translation.y = Ptip[1];
-    tip_msg.translation.z = Ptip[2]; 
+    tip_msg.translation.z = Ptip[2];
 
     //回転行列
     float qx, qy, qz, qw;
@@ -89,14 +91,15 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     count++;
     if (count % 10 == 0)
     {
-         RCLCPP_INFO(logger, "t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        RCLCPP_INFO(logger, "zim: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", passivearm.Pr()[0], passivearm.Pr()[1], passivearm.Pr()[2], rall, pitch, yaw);
+        RCLCPP_INFO(logger, "tip: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
         // printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
         // printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
     }
 
     //Publish
     pub_tip->publish(tip_msg);
-    pub_q->publish(q_msg);
+    // pub_q->publish(q_msg);
 
     //ここからtf
     //送信するメッセージ
@@ -104,7 +107,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     // tf_msg.transform.translation.x = Ptip[0] / 1000.;
     // tf_msg.transform.translation.y = Ptip[1] / 1000.;
-    // tf_msg.transform.translation.z = Ptip[2] / 1000.;   
+    // tf_msg.transform.translation.z = Ptip[2] / 1000.;
     // tf_msg.transform.rotation.x = qx;
     // tf_msg.transform.rotation.y = qy;
     // tf_msg.transform.rotation.z = qz;
@@ -145,7 +148,7 @@ int main(int argc, char *argv[])
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_q.c_str());
     auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
-    auto pub_q = node->create_publisher<sensor_msgs::msg::JointState>(topic_pub_q, 10);      // Create the image publisher with our custom QoS profile.
+    auto pub_q = node->create_publisher<sensor_msgs::msg::JointState>(topic_pub_q, 10);       // Create the image publisher with our custom QoS profile.
 
     //setting q_msg
     q_msg.name.push_back("arm_joint1");

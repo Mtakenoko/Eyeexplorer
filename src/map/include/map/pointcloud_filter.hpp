@@ -19,7 +19,7 @@ public:
 private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_data(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud);
     pcl::PointCloud<pcl::PointXYZ>::Ptr hold_data(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr hold_point(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_);
+    void add_hold_point(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_);
     pcl::PointCloud<pcl::PointXYZ>::Ptr outliertemoval_filtering(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_);
     pcl::PointCloud<pcl::PointXYZ>::Ptr paththrough_filter(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_);
     pcl::PointCloud<pcl::PointXYZ>::Ptr voxelgrid_filter(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_);
@@ -55,24 +55,33 @@ void PointCloud_Filter::topic_callback_(const sensor_msgs::msg::PointCloud2::Sha
     // SubscribeしたものをPCL用データに変換
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_(new pcl::PointCloud<pcl::PointXYZ>());
     cloud_ = PointCloud_Filter::input_data(msg_pointcloud);
+    PointCloud_Filter::hold_data(msg_pointcloud);
 
-    // Publish用の点群ポインタ
-    pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud_(new pcl::PointCloud<pcl::PointXYZ>());
+    // // フィルタリング
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud_(new pcl::PointCloud<pcl::PointXYZ>());
+    // filtered_cloud_ = PointCloud_Filter::outliertemoval_filtering(cloud_);
+
+    // // 点群を保持
+    // PointCloud_Filter::add_hold_point(filtered_cloud_);
+
     // フィルタリング
-    filtered_cloud_ = PointCloud_Filter::outliertemoval_filtering(cloud_);
-    
-    // 点群を保持
-    PointCloud_Filter::hold_point(filtered_cloud_);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud_(new pcl::PointCloud<pcl::PointXYZ>());
+    filtered_cloud_ = PointCloud_Filter::outliertemoval_filtering(cloud_hold_);
 
     // Publish用の点群ポインタ
-    pcl::PointCloud<pcl::PointXYZ>::Ptr publish_cloud_(new pcl::PointCloud<pcl::PointXYZ>());
-    publish_cloud_ = PointCloud_Filter::voxelgrid_filter(cloud_hold_);
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr publish_cloud_(new pcl::PointCloud<pcl::PointXYZ>());
+    // cloud_hold_ = PointCloud_Filter::voxelgrid_filter(cloud_hold_);
 
     // 表示
     PointCloud_Filter::show(cloud_hold_);
 
     // Publish
-    PointCloud_Filter::publish(cloud_hold_);
+    PointCloud_Filter::publish(filtered_cloud_);
+
+    // RCLCPP_INFO
+    RCLCPP_INFO(this->get_logger(), "cloud_->width = %zu", cloud_->width);
+    RCLCPP_INFO(this->get_logger(), "cloud_hold_->width = %zu", cloud_hold_->width);
+    RCLCPP_INFO(this->get_logger(), "filtered_cloud_->width = %zu", filtered_cloud_->width);
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloud_Filter::input_data(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud)
@@ -113,19 +122,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloud_Filter::hold_data(const sensor_ms
     return cloud_hold_;
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloud_Filter::hold_point(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_)
+void PointCloud_Filter::add_hold_point(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_)
 {
     cloud_hold_->width += input_point_->width;
     cloud_hold_->height = input_point_->height;
     cloud_hold_->is_dense = false;
     cloud_hold_->resize(cloud_hold_->width * cloud_hold_->height);
-    // cloud_hold_->push_back(input_point_->points);
-    // cloud_hold_->points.push_back(input_point_->points);
     for (uint32_t i = 0; i < input_point_->width; i++)
     {
         cloud_hold_->points.push_back(input_point_->points[i]);
     }
-    return cloud_hold_;
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloud_Filter::outliertemoval_filtering(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_point_)
