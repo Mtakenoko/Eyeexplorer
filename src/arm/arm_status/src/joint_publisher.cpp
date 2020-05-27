@@ -53,10 +53,12 @@ int main(int argc, char *argv[])
     //setting q_msg
     q_msg.name.push_back("arm_joint1");
     q_msg.name.push_back("arm_joint2");
+    q_msg.name.push_back("arm_joint_horiz1");
     q_msg.name.push_back("arm_joint3");
-    q_msg.name.push_back("arm_joint_horiz");
+    q_msg.name.push_back("arm_joint_horiz2");
     q_msg.name.push_back("arm_joint4");
     q_msg.name.push_back("arm_joint5");
+    q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
@@ -71,17 +73,18 @@ int main(int argc, char *argv[])
     auto callback = [pub_q, clock](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
         q_msg.position[0] = msg_sub->position[0] - readencoder.offset[0];
         q_msg.position[1] = msg_sub->position[1] - readencoder.offset[1];
-        q_msg.position[2] = msg_sub->position[2] - readencoder.offset[2] - q_msg.position[1];
-        q_msg.position[3] = 0. - (q_msg.position[1] + q_msg.position[2]);
-        q_msg.position[4] = msg_sub->position[3] - readencoder.offset[3];
-        q_msg.position[5] = msg_sub->position[4] - readencoder.offset[4];
+        q_msg.position[2] = -q_msg.position[1];
+        q_msg.position[3] = msg_sub->position[2] - readencoder.offset[2] - q_msg.position[1];
+        q_msg.position[4] = -q_msg.position[3];
+        q_msg.position[5] = msg_sub->position[3] - readencoder.offset[3];
+        q_msg.position[6] = msg_sub->position[4] - readencoder.offset[4];
         q_msg.header.stamp = clock->now();
         pub_q->publish(q_msg);
 
         static int count = 0;
         if (count % 10 == 0)
         {
-            printf("q = [%lf %lf %lf %lf %lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5]);
+            printf("q = [%0.4lf %0.4lf %0.4lf %0.4lf %0.4lf %0.4lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5], q_msg.position[6]);
         }
         count++;
     };

@@ -53,10 +53,11 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     // q_msgにデータ入力
     q_msg.position[0] = passivearm.q[0];
     q_msg.position[1] = passivearm.q[1];
-    q_msg.position[2] = passivearm.q[2];
-    q_msg.position[3] = 0. - (passivearm.q[1] + passivearm.q[2]);
-    q_msg.position[4] = passivearm.q[3];
-    q_msg.position[5] = passivearm.q[4];
+    q_msg.position[2] = -passivearm.q[1];
+    q_msg.position[3] = passivearm.q[2];
+    q_msg.position[4] = -passivearm.q[2];
+    q_msg.position[5] = passivearm.q[3];
+    q_msg.position[6] = passivearm.q[4];
 
     q_msg.header.stamp = clock->now();
 
@@ -74,10 +75,10 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     //回転行列
     float qx, qy, qz, qw;
-    transform.RotMatToQuaternion(qx, qy, qz, qw,
-                                 endoscope_pose[0][0], endoscope_pose[0][1], endoscope_pose[0][2],
-                                 endoscope_pose[1][0], endoscope_pose[1][1], endoscope_pose[1][2],
-                                 endoscope_pose[2][0], endoscope_pose[2][1], endoscope_pose[2][2]);
+    transform.RotMatToQuaternion(&qx, &qy, &qz, &qw,
+                                 (float)endoscope_pose[0][0], (float)endoscope_pose[0][1], (float)endoscope_pose[0][2],
+                                 (float)endoscope_pose[1][0], (float)endoscope_pose[1][1], (float)endoscope_pose[1][2],
+                                 (float)endoscope_pose[2][0], (float)endoscope_pose[2][1], (float)endoscope_pose[2][2]);
     tip_msg.rotation.x = qx;
     tip_msg.rotation.y = qy;
     tip_msg.rotation.z = qz;
@@ -153,10 +154,12 @@ int main(int argc, char *argv[])
     //setting q_msg
     q_msg.name.push_back("arm_joint1");
     q_msg.name.push_back("arm_joint2");
-    q_msg.name.push_back("arm_joint3");
     q_msg.name.push_back("arm_joint_horiz");
+    q_msg.name.push_back("arm_joint3");
+    q_msg.name.push_back("arm_joint_horiz2");
     q_msg.name.push_back("arm_joint4");
     q_msg.name.push_back("arm_joint5");
+    q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
     q_msg.position.push_back(0.0);
