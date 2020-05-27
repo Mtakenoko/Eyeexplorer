@@ -4,22 +4,59 @@ project(calibration)
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
+  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 endif()
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
+  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 endif()
+
+set(CMAKE_CXX_COMPILE_FLAGS "-std=c++11 -lktl")
+add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(message_filters REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(rcutils REQUIRED)
+find_package(Boost COMPONENTS system REQUIRED)
+find_package(PCL COMPONENTS common REQUIRED)
+find_package(Ceres REQUIRED)
+
+# arm_param_calibrator node
+add_executable(arm_param_calibrator
+  src/arm_param_calibrator.cpp
+  ../HTL/src/transform.cpp
+)
+target_link_libraries(arm_param_calibrator
+  ceres ts01 ktl ktlrt
+)
+ament_target_dependencies(arm_param_calibrator
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "std_msgs"
+  "OpenCV"
+  "message_filters"
+  "ceres"
+)
+install(TARGETS arm_param_calibrator
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

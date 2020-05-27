@@ -10,10 +10,65 @@ Transform::Transform()
 }
 
 bool Transform::RotMatToQuaternion(
-    float &qx, float &qy, float &qz, float &qw,
-    float m11, float m12, float m13,
-    float m21, float m22, float m23,
-    float m31, float m32, float m33)
+    double *qx, double *qy, double *qz, double *qw,
+    const double &m11, const double &m12, const double &m13,
+    const double &m21, const double &m22, const double &m23,
+    const double &m31, const double &m32, const double &m33)
+{
+    // 最大成分を検索
+    double elem[4]; // 0:x, 1:y, 2:z, 3:w
+    elem[0] = m11 - m22 - m33 + 1.0f;
+    elem[1] = -m11 + m22 - m33 + 1.0f;
+    elem[2] = -m11 - m22 + m33 + 1.0f;
+    elem[3] = m11 + m22 + m33 + 1.0f;
+
+    unsigned biggestIndex = 0;
+    for (int i = 1; i < 4; i++)
+    {
+        if (elem[i] > elem[biggestIndex])
+            biggestIndex = i;
+    }
+
+    if (elem[biggestIndex] < 0.0f)
+        return false; // 引数の行列に間違いあり！
+
+    // 最大要素の値を算出
+    double *q[4] = {qx, qy, qz, qw};
+    double v = sqrtf(elem[biggestIndex]) * 0.5f;
+    *q[biggestIndex] = v;
+    double mult = 0.25f / v;
+
+    switch (biggestIndex)
+    {
+    case 0: // x
+        *q[1] = (m12 + m21) * mult;
+        *q[2] = (m31 + m13) * mult;
+        *q[3] = (m32 - m23) * mult;
+        break;
+    case 1: // y
+        *q[0] = (m12 + m21) * mult;
+        *q[2] = (m23 + m32) * mult;
+        *q[3] = (m13 - m31) * mult;
+        break;
+    case 2: // z
+        *q[0] = (m31 + m13) * mult;
+        *q[1] = (m23 + m32) * mult;
+        *q[3] = (m21 - m12) * mult;
+        break;
+    case 3: // w
+        *q[0] = (m32 - m23) * mult;
+        *q[1] = (m13 - m31) * mult;
+        *q[2] = (m21 - m12) * mult;
+        break;
+    }
+
+    return true;
+}
+bool Transform::RotMatToQuaternion(
+    float *qx, float *qy, float *qz, float *qw,
+    const float &m11, const float &m12, const float &m13,
+    const float &m21, const float &m22, const float &m23,
+    const float &m31, const float &m32, const float &m33)
 {
     // 最大成分を検索
     float elem[4]; // 0:x, 1:y, 2:z, 3:w
@@ -33,7 +88,7 @@ bool Transform::RotMatToQuaternion(
         return false; // 引数の行列に間違いあり！
 
     // 最大要素の値を算出
-    float *q[4] = {&qx, &qy, &qz, &qw};
+    float *q[4] = {qx, qy, qz, qw};
     float v = sqrtf(elem[biggestIndex]) * 0.5f;
     *q[biggestIndex] = v;
     float mult = 0.25f / v;
@@ -64,6 +119,7 @@ bool Transform::RotMatToQuaternion(
 
     return true;
 }
+
 void Transform::QuaternionToEulerAngles(double q0, double q1, double q2, double q3,
                                         double &roll, double &pitch, double &yaw)
 {
@@ -119,7 +175,7 @@ float Transform::RevFromRotMat(cv::Mat R_arm)
 {
     //回転行列をクォータニオンに変換
     float qx, qy, qz, qw;
-    Transform::RotMatToQuaternion(qx, qy, qz, qw,
+    Transform::RotMatToQuaternion(&qx, &qy, &qz, &qw,
                                   R_arm.at<float>(0, 0), R_arm.at<float>(0, 1), R_arm.at<float>(0, 2),
                                   R_arm.at<float>(1, 0), R_arm.at<float>(1, 1), R_arm.at<float>(1, 2),
                                   R_arm.at<float>(2, 0), R_arm.at<float>(2, 1), R_arm.at<float>(2, 2));
