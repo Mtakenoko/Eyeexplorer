@@ -6,12 +6,13 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 
-#include <ktl.h>
-
-#include <ceres/ceres.h>
-#include <ceres/rotation.h>
+#include <QApplication>
+#include <QDialog>
 
 #include "../include/calibration/calibrate_arm.hpp"
+#include "maindialog.h"
+
+// #include "../GUI/widget.h"
 
 int main(int argc, char *argv[])
 {
@@ -20,8 +21,14 @@ int main(int argc, char *argv[])
     // Ceres Solver Logging用　Initializer
     google::InitGoogleLogging(argv[0]);
 
+    // Widget用
+    QApplication app(argc, argv);
+    QWidget *window = new QWidget;
+    MainDialog *dialog = new MainDialog(window);
+    dialog->show();
+
     // Topic Name
-    std::string topic_sub_track("endoscope_image");
+    std::string topic_sub_image("image");
     std::string topic_sub_joint("joint_states");
     auto calib_param = Calib_Param();
 
@@ -36,13 +43,21 @@ int main(int argc, char *argv[])
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
-    // Subscribeの設定
-    message_filters::Subscriber<sensor_msgs::msg::Image> sub_track_(node.get(), topic_sub_track);
-    message_filters::Subscriber<sensor_msgs::msg::JointState> sub_arm_(node.get(), topic_sub_joint);
-    message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::JointState> sync_(sub_track_, sub_arm_, 1000);
-    sync_.registerCallback(std::bind(&Calib_Param::topic_callback_, calib_param, std::placeholders::_1, std::placeholders::_2));
+    while (rclcpp::ok())
+    {
+        // Subscribeの設定
+        message_filters::Subscriber<sensor_msgs::msg::Image> sub_image_(node.get(), topic_sub_image);
+        message_filters::Subscriber<sensor_msgs::msg::JointState> sub_arm_(node.get(), topic_sub_joint);
+        message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::JointState> sync_(sub_image_, sub_arm_, 1000);
+        sync_.registerCallback(std::bind(&Calib_Param::topic_callback_, calib_param, std::placeholders::_1, std::placeholders::_2));
+    
+        rclcpp::spin_some(node);
+        app.processEvents();
+    }
 
-    rclcpp::spin(node);
+    // 終了処理
     rclcpp::shutdown();
+    delete window;
+    delete dialog;
     return 0;
 }

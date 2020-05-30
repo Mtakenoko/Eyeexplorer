@@ -18,28 +18,47 @@
 #include <ceres/ceres.h>
 #include "cost_function.hpp"
 
-struct Point_3D
+struct Marker_dataset
 {
-    double x;
-    double y;
-    double z;
-};
-
-struct Point_image
-{
-    double u;
-    double v;
 };
 
 struct Marker
 {
-    Point_3D Position;
-    Point_image ProjectPoint;
+    cv::Point3f Position;
+    cv::Point2f Point_Image;
+    int ID;
+    void setPosition(int marker_id)
+    {
+        // マーカーIDを受け取ればそれに対応する三次元位置をPositionに格納する
+        switch (marker_id)
+        {
+        case 1:
+            this->Position.x = 100.;
+            this->Position.x = 100.;
+            this->Position.x = 100.;
+            break;
+
+        case 2:
+            this->Position.x = 200.;
+            this->Position.y = 200.;
+            this->Position.z = 200.;
+            break;
+
+        case 3:
+            this->Position.x = 300.;
+            this->Position.y = 300.;
+            this->Position.z = 300.;
+            break;
+        default:
+            std::cerr << "marker_id is unsupported" << std::endl;
+            break;
+        }
+    }
 };
 
 struct Scene
 {
-    Marker marker;
+    std::vector<Marker> marker;
     double joint[5];
     cv::Mat Image;
 };
@@ -56,7 +75,7 @@ private:
     void process();
     void input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                     const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_joint);
-    void detect_marker(const cv::Mat &image, Marker *marker);
+    void detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
     void optimization();
     int encoding2mat_type(const std::string &encoding);
 
@@ -70,13 +89,14 @@ private:
 
 Calib_Param::Calib_Param() : flag_take(false), flag_finish(false)
 {
+    std::cout << "Welcome to Calibration node!" << std::endl;
 }
 
 void Calib_Param::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                   const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm)
 {
     Calib_Param::input_data(msg_image, msg_arm);
-    Calib_Param::optimization();
+    // Calib_Param::optimization();
 }
 
 int Calib_Param::encoding2mat_type(const std::string &encoding)
@@ -154,9 +174,13 @@ void Calib_Param::optimization()
         {
             mutable_angle_param[i] = itr->joint[i]; // [rad]
         }
-        ceres::CostFunction *cost_function = NewProjectionErrorCostFuctor::Create(itr->marker.ProjectPoint.u, itr->marker.ProjectPoint.v,
-                                                                                  itr->marker.Position.x, itr->marker.Position.y, itr->marker.Position.z);
-        problem.AddResidualBlock(cost_function, NULL, mutable_link_param, mutable_angle_param);
+        // 見つけたマーカーの数だけ処理する
+        for (auto marker_itr = itr->marker.begin(); marker_itr != itr->marker.end(); marker_itr++)
+        {
+            ceres::CostFunction *cost_function = NewProjectionErrorCostFuctor::Create((double)marker_itr->Point_Image.x, (double)marker_itr->Point_Image.y,
+                                                                                      (double)marker_itr->Position.x, (double)marker_itr->Position.y, (double)marker_itr->Position.z);
+            problem.AddResidualBlock(cost_function, NULL, mutable_link_param, mutable_angle_param);
+        }
     }
 
     //Solverのオプション選択
@@ -175,7 +199,7 @@ void Calib_Param::input_data(const std::shared_ptr<const sensor_msgs::msg::Image
 {
     // 新規シーンのオブジェクト生成
     Scene new_scene;
-    
+
     // 角度
     for (int i = 0; i < 5; i++)
     {
@@ -192,12 +216,38 @@ void Calib_Param::input_data(const std::shared_ptr<const sensor_msgs::msg::Image
     scene.push_back(new_scene);
 }
 
-void Calib_Param::detect_marker(const cv::Mat &image, Marker *marker)
+void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marker)
 {
-    // マーカーの種類判別
+    if (image.empty())
+    {
+        std::cerr << "Image is empty." << std::endl;
+        return;
+    }
 
-    // マーカーの位置検出
+    // dictionary生成
+    const cv::aruco::PREDEFINED_DICTIONARY_NAME dictionary_name = cv::aruco::DICT_4X4_50;
+    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(dictionary_name);
 
+    // マーカーの検出
+    std::vector<int> marker_ids;
+    std::vector<std::vector<cv::Point2f>> marker_corners;
+    cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
+    cv::aruco::detectMarkers(image, dictionary, marker_corners, marker_ids, parameters);
+
+    // 検出したマーカーの描画
+    cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
+    cv::imshow("marker_detection", image);
+    cv::waitKey(10);
+
+    for (auto itr = marker_ids.begin(); itr != marker_ids.end(); itr++)
+    {
+        Marker new_marker;
+        new_marker.ID = *itr;
+        new_marker.setPosition(new_marker.ID);
+        //TODO: Point_imageについても格納（ただこのイテレータ内では処理できないのでは…？） 
+        // マーカーデータのpush_back
+        marker->push_back(new_marker);
+    }
 }
 
 #endif

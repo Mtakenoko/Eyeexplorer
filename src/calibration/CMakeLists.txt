@@ -37,13 +37,23 @@ find_package(Boost COMPONENTS system REQUIRED)
 find_package(PCL COMPONENTS common REQUIRED)
 find_package(Ceres REQUIRED)
 
+#Qt5 configulation
+set(CMAKE_AUTOMOC ON)
+find_package(ament_cmake REQUIRED)
+# find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED
+find_package(Qt5 REQUIRED
+  Core
+  Widgets
+)
+set(QT_LIBRARIES Qt5::Widgets)
+add_definitions(-DQT_NO_KEYWORDS)
+
+################  node setting  ###############
 # arm_param_calibrator node
 add_executable(arm_param_calibrator
   src/arm_param_calibrator.cpp
+  src/maindialog.cpp
   ../HTL/src/transform.cpp
-)
-target_link_libraries(arm_param_calibrator
-  ceres ts01 ktl ktlrt
 )
 ament_target_dependencies(arm_param_calibrator
   "rclcpp"
@@ -53,6 +63,10 @@ ament_target_dependencies(arm_param_calibrator
   "OpenCV"
   "message_filters"
   "ceres"
+)
+target_link_libraries(arm_param_calibrator
+  ceres ts01 ktl ktlrt
+  ${QT_LIBRARIES}
 )
 install(TARGETS arm_param_calibrator
   DESTINATION lib/${PROJECT_NAME}
