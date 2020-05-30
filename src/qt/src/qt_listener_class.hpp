@@ -8,7 +8,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 
-class MainDialog :  public QDialog
+class MainDialog : public QDialog
 {
     Q_OBJECT
 public:
@@ -16,7 +16,7 @@ public:
 
 public:
     QLineEdit *lineEdit;
-    rclcpp::Node node_;
+    rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
     void stringCallback(const std_msgs::msg::String::SharedPtr msg);
 };

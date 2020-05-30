@@ -15,10 +15,12 @@ int main(int argc, char **argv)
     // MainDialog::QDialog *dialog = new MainDialog(window);
     // dialog->show();
 
+    // auto node = rclcpp::Node::make_shared("qt_listener"); //Set QoS to Publish
+
     rclcpp::WallRate loop_rate(20);
     while (rclcpp::ok())
     {
-        // rclcpp::spin_some(std::make_shared<rclcpp::Node>());
+        rclcpp::spin_some(mainDialog->node_);
         app.processEvents();
         loop_rate.sleep();
     }
