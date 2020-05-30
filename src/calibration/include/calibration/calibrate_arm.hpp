@@ -96,6 +96,7 @@ void Calib_Param::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::
                                   const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm)
 {
     Calib_Param::input_data(msg_image, msg_arm);
+    std::cout << "inputted data" << std::endl;
     // Calib_Param::optimization();
 }
 

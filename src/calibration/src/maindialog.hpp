@@ -1,3 +1,8 @@
+#ifndef Q_MOC_RUN
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/string.hpp>
+#endif
+
 #include <QDialog>
 #include <QLabel>
 #include <QPushButton>
@@ -12,12 +17,20 @@ class MainDialog : public QDialog
 public:
     MainDialog(QWidget *parent);
 
- //private Q_SLOTS:も同じようにQtのマクロで、SLOTとして使う関数の前に置く
+    //private Q_SLOTS:も同じようにQtのマクロで、SLOTとして使う関数の前に置く
 private Q_SLOTS:
     void setLabelText();
+
+public:
+    // int getSetiingFlag();
 
 private:
     QLabel *label;
     QLineEdit *lineEdit;
     QPushButton *setButton;
+
+public:
+    rclcpp::Node::SharedPtr node_;
+    std::string topic_sub_image;
+    std::string topic_sub_joint;
 };
