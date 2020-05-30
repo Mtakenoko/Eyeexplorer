@@ -101,38 +101,38 @@ install(TARGETS basic4
 )
 
 #qt_talker node
-add_executable(talker
+add_executable(qt_talker
   src/qt_talker.cpp
   src/qt_talker_class.cpp
 )
-ament_target_dependencies(talker
+ament_target_dependencies(qt_talker
   "rclcpp"
   "std_msgs"
 )
-target_link_libraries(talker
+target_link_libraries(qt_talker
   ${catkin_LIBRARIES}
   ${QT_LIBRARIES}
 )
 # 実行ファイルをインストール
-install(TARGETS talker
+install(TARGETS qt_talker
   DESTINATION lib/${PROJECT_NAME}
 )
 
 #qt_listener node
-add_executable(listener
+add_executable(qt_listener
   src/qt_listener.cpp
   src/qt_listener_class.cpp
 )
-ament_target_dependencies(listener
+ament_target_dependencies(qt_listener
   "rclcpp"
   "std_msgs"
 )
-target_link_libraries(listener
+target_link_libraries(qt_listener
   ${catkin_LIBRARIES}
   ${QT_LIBRARIES}
 )
 # 実行ファイルをインストール
-install(TARGETS listener
+install(TARGETS qt_listener
   DESTINATION lib/${PROJECT_NAME}
 )
 

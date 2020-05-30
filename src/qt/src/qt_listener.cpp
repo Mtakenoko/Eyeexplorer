@@ -10,13 +10,15 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     QApplication app(argc, argv);
     QWidget *window = new QWidget;
-    MainDialog::QDialog *dialog = new MainDialog(window);
-    dialog->show();
+    MainDialog *mainDialog = new MainDialog(window);
+    mainDialog->show();
+    // MainDialog::QDialog *dialog = new MainDialog(window);
+    // dialog->show();
 
     rclcpp::WallRate loop_rate(20);
     while (rclcpp::ok())
     {
-        rclcpp::spin(std::make_shared<MainDialog::Node>());
+        // rclcpp::spin_some(std::make_shared<rclcpp::Node>());
         app.processEvents();
         loop_rate.sleep();
     }
@@ -24,6 +26,6 @@ int main(int argc, char **argv)
     //終了処理
     rclcpp::shutdown();
     delete window;
-    delete dialog;
+    delete mainDialog;
     return 0;
 }
