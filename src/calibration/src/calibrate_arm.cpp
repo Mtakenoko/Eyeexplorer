@@ -1,93 +1,39 @@
-// 順運動学の結果を補正し、正しいリンクパラメータ、オフセット角度を最適化により求める
-// 位置が既知のマーカーに対して、
-// 入力：ロボットの角度とリンクのパラメータ、内視鏡の画像、設置したマーカーの位置（既知なので別に入力じゃなくてもいいかも）
-// 出力：角度オフセット量、リンクパラメータの推定値
-// 課題：現在運動学を解くのは"urdf"+"robot_state_publisher"を用い
-
-#ifndef CALIBRATE_FK_HPP__
-#define CALIBRATE_FK_HPP__
-
-#include <opencv2/opencv.hpp>
 #include <opencv2/aruco.hpp>
-
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/image.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/msg/joint_state.hpp>
-
 #include <ceres/ceres.h>
-#include "cost_function.hpp"
+#include "../include/calibrate_arm.hpp"
+#include "../include/cost_function.hpp"
 
-struct Marker_dataset
+void Marker::setPosition(int marker_id)
 {
-};
-
-struct Marker
-{
-    cv::Point3f Position;
-    cv::Point2f Point_Image;
-    int ID;
-    void setPosition(int marker_id)
+    // マーカーIDを受け取ればそれに対応する三次元位置をPositionに格納する
+    switch (marker_id)
     {
-        // マーカーIDを受け取ればそれに対応する三次元位置をPositionに格納する
-        switch (marker_id)
-        {
-        case 1:
-            this->Position.x = 100.;
-            this->Position.x = 100.;
-            this->Position.x = 100.;
-            break;
+    case 1:
+        this->Position.x = 100.;
+        this->Position.x = 100.;
+        this->Position.x = 100.;
+        break;
 
-        case 2:
-            this->Position.x = 200.;
-            this->Position.y = 200.;
-            this->Position.z = 200.;
-            break;
+    case 2:
+        this->Position.x = 200.;
+        this->Position.y = 200.;
+        this->Position.z = 200.;
+        break;
 
-        case 3:
-            this->Position.x = 300.;
-            this->Position.y = 300.;
-            this->Position.z = 300.;
-            break;
-        default:
-            std::cerr << "marker_id is unsupported" << std::endl;
-            break;
-        }
+    case 3:
+        this->Position.x = 300.;
+        this->Position.y = 300.;
+        this->Position.z = 300.;
+        break;
+    default:
+        std::cerr << "marker_id is unsupported" << std::endl;
+        break;
     }
-};
+}
 
-struct Scene
-{
-    std::vector<Marker> marker;
-    double joint[5];
-    cv::Mat Image;
-};
-
-class Calib_Param
-{
-public:
-    Calib_Param();
-    void topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                         const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm);
-
-private:
-    void initialization();
-    void process();
-    void input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                    const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_joint);
-    void detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
-    void optimization();
-    int encoding2mat_type(const std::string &encoding);
-
-private:
-    // マーカーの三次元位置および画像平面での位置およびその画像
-    std::vector<Scene> scene;
-
-    bool flag_take;
-    bool flag_finish;
-};
-
-Calib_Param::Calib_Param() : flag_take(false), flag_finish(false)
+Calib_Param::Calib_Param()
+    : scene_counter(0), flag_set(false), flag_finish(false), flag_optimize(false)
 {
     std::cout << "Welcome to Calibration node!" << std::endl;
 }
@@ -95,9 +41,18 @@ Calib_Param::Calib_Param() : flag_take(false), flag_finish(false)
 void Calib_Param::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                   const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm)
 {
-    Calib_Param::input_data(msg_image, msg_arm);
-    std::cout << "inputted data" << std::endl;
-    // Calib_Param::optimization();
+    if (flag_set)
+    {
+        std::cout << "input data #" << scene_counter << std::endl;
+        Calib_Param::input_data(msg_image, msg_arm);
+    }
+    if (flag_optimize)
+    {
+        std::cout << "Start Calibration" << std::endl
+                  << scene_counter << "'s scenes are used for this calibration" << std::endl
+                  << "Optimizing..." << std::endl;
+        Calib_Param::optimization();
+    }
 }
 
 int Calib_Param::encoding2mat_type(const std::string &encoding)
@@ -215,6 +170,10 @@ void Calib_Param::input_data(const std::shared_ptr<const sensor_msgs::msg::Image
     Calib_Param::detect_marker(new_scene.Image, &new_scene.marker);
 
     scene.push_back(new_scene);
+
+    // setフラグを下げる
+    scene_counter++;
+    flag_set = false;
 }
 
 void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marker)
@@ -245,10 +204,19 @@ void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marke
         Marker new_marker;
         new_marker.ID = *itr;
         new_marker.setPosition(new_marker.ID);
-        //TODO: Point_imageについても格納（ただこのイテレータ内では処理できないのでは…？） 
+        //TODO: Point_imageについても格納（ただこのイテレータ内では処理できないのでは…？）
         // マーカーデータのpush_back
         marker->push_back(new_marker);
     }
 }
 
-#endif
+int Calib_Param::getSceneNum()
+{
+    return scene_counter;
+}
+
+cv::Mat Calib_Param::getNewSceneImage()
+{
+    cv::Mat image = scene.back().Image;
+    return image;
+}

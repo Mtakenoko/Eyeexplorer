@@ -1,36 +1,6 @@
-#ifndef ARM_STATUS__ARM_
-#define ARM_STATUS__ARM_
+#include "../include/arm.hpp"
 
-#include <ktl.h>
-
-#define ADOF 5
-#define ENDOSCOPE_LENGTH 110.0
-
-class PassiveArm : public Ktl::SerialMechanism<ADOF>
-{
-public:
-  PassiveArm();
-  template <typename T>
-  PassiveArm(const T &link0_x, const T &link0_y, const T &link0_z,
-             const T &link1_x, const T &link1_y, const T &link1_z,
-             const T &link2_x, const T &link2_y, const T &link2_z,
-             const T &link3_x, const T &link3_y, const T &link3_z,
-             const T &link4_x, const T &link4_y, const T &link4_z,
-             const T &link5_x, const T &link5_y, const T &link5_z);
-
-  template <typename T>
-  PassiveArm(const T link[21]);
-  int Getversion();
-  void Setversion(int val);
-  Ktl::Matrix<3, 3> Tw; //gimbal の設置角度
-
-  void inverse_kinematics() override;
-
-private:
-  int arm_version;
-};
-
-PassiveArm::PassiveArm()
+PassiveArm::PassiveArm() : Ktl::SerialMechanism<ADOF>()
 {
   //土台部
   setup_link(0, Ktl::Vector<3>(9.0, 0.0, 32.0));
@@ -56,6 +26,7 @@ PassiveArm::PassiveArm(const T &link0_x, const T &link0_y, const T &link0_z,
                        const T &link3_x, const T &link3_y, const T &link3_z,
                        const T &link4_x, const T &link4_y, const T &link4_z,
                        const T &link5_x, const T &link5_y, const T &link5_z)
+    : Ktl::SerialMechanism<ADOF>()
 {
   // 土台部
   setup_link(0, Ktl::Vector<3>(link0_x, link0_y, link0_z));
@@ -75,7 +46,7 @@ PassiveArm::PassiveArm(const T &link0_x, const T &link0_y, const T &link0_z,
 }
 
 template <typename T>
-PassiveArm::PassiveArm(const T link[21])
+PassiveArm::PassiveArm(const T link[21]) : Ktl::SerialMechanism<ADOF>()
 {
   //土台部
   setup_link(0, Ktl::Vector<3>(link[0], link[1], link[2]));
@@ -96,40 +67,3 @@ PassiveArm::PassiveArm(const T link[21])
   setup_link(5, Ktl::Vector<3>(link[18], link[19], link[20]));
   setup_axis(5, Ktl::Z, 0);
 }
-void PassiveArm::inverse_kinematics()
-{
-
-  const Ktl::Vector<3> Pref = P;
-  const Ktl::Matrix<3, 3> Rref = R;
-  Ktl::Vector<6> dr;
-
-  for (int n = 0; n < 100; n++)
-  {
-    forward_kinematics();
-
-    Ktl::Vector<3> w = R.column(0) * Rref.column(0) + R.column(1) * Rref.column(1) + R.column(2) * Rref.column(2);
-    //下記と等価
-    /*
-      Vector<3> w     = 
-      R.column(0) * (Rref.column(0)-R.column(0))+
-      R.column(1) * (Rref.column(1)-R.column(1))+
-      R.column(2) * (Rref.column(2)-R.column(2));
-    */
-    dr.insert(0, Pref - P);
-    dr.insert(3, w);
-    dr.insert(3, 0.5 * w);
-
-    Ktl::Matrix<6, ADOF> Ja = J();
-    Ktl::Matrix<ADOF, 6> Ji = Ja.inv();
-
-    Ktl::Vector<ADOF> dq = Ji * dr;
-
-    q += dq;
-
-    if (n > 10)
-      printf("Ktl::SerialMechanism::inverse_kinematics : n=%d\n", n);
-    if (dr.abs() < 0.001)
-      break;
-  }
-}
-#endif

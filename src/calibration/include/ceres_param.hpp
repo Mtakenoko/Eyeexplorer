@@ -1,5 +1,5 @@
-#ifndef CERES_PARAM_HPP__
-#define CERES_PARAM_HPP__
+#ifndef CERES_PARAM_HPP_
+#define CERES_PARAM_HPP_
 
 #include <cmath>
 #include <cstdio>

@@ -1,10 +1,7 @@
-#include <rclcpp/rclcpp.hpp>
-
 #include <QApplication>
-#include <QDialog>
 
-#include "maindialog.hpp"
-
+#include "MainDialog.hpp"
+// #include "ImageWidget.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +15,8 @@ int main(int argc, char *argv[])
     QWidget *window = new QWidget;
     MainDialog *dialog = new MainDialog(window);
     dialog->show();
-
+    // ImageWidget widget;
+    // widget.show();
     while (rclcpp::ok())
     {
         rclcpp::spin_some(dialog->node_);

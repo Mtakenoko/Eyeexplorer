@@ -52,7 +52,10 @@ add_definitions(-DQT_NO_KEYWORDS)
 # arm_param_calibrator node
 add_executable(arm_param_calibrator
   src/arm_param_calibrator.cpp
-  src/maindialog.cpp
+  src/MainDialog.cpp
+  src/ImageWidget.cpp
+  src/calibrate_arm.cpp
+  src/cost_function.cpp
   ../HTL/src/transform.cpp
 )
 ament_target_dependencies(arm_param_calibrator
