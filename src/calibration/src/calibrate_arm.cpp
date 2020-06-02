@@ -1,4 +1,3 @@
-#include <opencv2/aruco.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <ceres/ceres.h>
 #include "../include/calibrate_arm.hpp"
@@ -37,8 +36,11 @@ Calib_Param::Calib_Param()
       flag_finish(false), flag_optimize(false)
 {
     std::cout << "Welcome to Calibration node!" << std::endl;
-}
 
+    // Aruco Marker Detectionのdictionary生成
+    dictionary_name = cv::aruco::DICT_4X4_50;
+    dictionary = cv::aruco::getPredefinedDictionary(dictionary_name);
+}
 
 void Calib_Param::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
@@ -109,6 +111,11 @@ void Calib_Param::optimization()
     std::cout << "Start Calibration" << std::endl
               << scene_counter << " scenes are used for this calibration" << std::endl
               << "Optimizing..." << std::endl;
+    sleep(5);
+    std::cout << "Optimizing Finished!!!" << std::endl;
+    flag_optimize = false;
+    Calib_Param::clear();
+    return;
 
     //最適化問題解くためのオブジェクト作成
     ceres::Problem problem;
@@ -165,9 +172,10 @@ void Calib_Param::optimization()
     //Solve
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    rclcpp::shutdown();
 
     flag_optimize = false;
+    Calib_Param::clear();
+    rclcpp::shutdown();
 }
 
 void Calib_Param::input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
@@ -225,13 +233,9 @@ void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marke
 {
     if (image.empty())
     {
-        std::cerr << "Image is empty." << std::endl;
+        std::cerr << "Image used for AR marker detection is empty." << std::endl;
         return;
     }
-
-    // dictionary生成
-    const cv::aruco::PREDEFINED_DICTIONARY_NAME dictionary_name = cv::aruco::DICT_4X4_50;
-    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(dictionary_name);
 
     // マーカーの検出
     std::vector<int> marker_ids;
@@ -239,20 +243,29 @@ void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marke
     cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
     cv::aruco::detectMarkers(image, dictionary, marker_corners, marker_ids, parameters);
 
-    // 検出したマーカーの描画
-    cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
-    // cv::imshow("marker_detection", image);
-    cv::waitKey(10);
+    // マーカーが見つかんなかったら
+    if (marker_ids.size() < 1)
+    {
+        std::cout << "Marker Not Found!" << std::endl;
+        return;
+    }
 
-    for (auto itr = marker_ids.begin(); itr != marker_ids.end(); itr++)
+    // 検出したマーカーの描画
+    cv::aruco::drawDetectedMarkers(marker_image, marker_corners, marker_ids);
+
+    // 検出したマーカーの数だけmarkerに追加
+    for (size_t i = 0; i < marker_ids.size(); i++)
     {
         Marker new_marker;
-        new_marker.ID = *itr;
+        new_marker.ID = marker_ids[i];
         new_marker.setPosition(new_marker.ID);
-        //TODO: Point_imageについても格納（ただこのイテレータ内では処理できないのでは…？）
-        // マーカーデータのpush_back
+        new_marker.Point_Image = marker_corners[i][0]; // (注)marker_cornersには4つのコーナー位置が左上から時計回り（左上、右上、右下、左下の順）で格納されている
         marker->push_back(new_marker);
     }
+
+    // 終了処理
+    marker_ids.clear();
+    marker_corners.clear();
 }
 
 int Calib_Param::getSceneNum()
@@ -263,4 +276,20 @@ int Calib_Param::getSceneNum()
 void Calib_Param::getNewSceneImage(cv::Mat *image)
 {
     *image = now_image.clone();
+}
+
+void Calib_Param::getNewMarkerImage(cv::Mat *image)
+{
+    *image = marker_image.clone();
+}
+
+void Calib_Param::clear()
+{
+    scene.clear();
+    new_Scene.marker.clear();
+    scene_counter = 0;
+    flag_set = false;
+    flag_set_image = false;
+    flag_set_joint = false;
+    flag_finish = true;
 }

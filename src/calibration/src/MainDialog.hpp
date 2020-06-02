@@ -28,6 +28,7 @@ private Q_SLOTS:
     void inputDataToggle();
     void calibrateToggle();
     void updateImage();
+    void updateMarkerImage();
 
 private:
     QLabel *label;
@@ -35,10 +36,16 @@ private:
     QPushButton *setButton;
     QPushButton *calibrateButton;
     QGraphicsView *graphics;
+    QGraphicsView *graphics2;
+    QGraphicsView *graphics_logo;
     QGraphicsScene *scene;
+    QGraphicsScene *scene2;
+    QGraphicsScene *scene_logo;
+    std::string spla_girl;
+    std::string gui_logo;
 
-    void setScene();
-    void initImage();
+    void setItemToScene(QGraphicsScene *qscene, const cv::Mat image);
+    void initImage(QGraphicsScene *qscene, std::string file_path);
 
 public:
     rclcpp::Node::SharedPtr node_;
