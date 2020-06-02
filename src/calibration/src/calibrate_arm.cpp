@@ -39,24 +39,6 @@ Calib_Param::Calib_Param()
     std::cout << "Welcome to Calibration node!" << std::endl;
 }
 
-void Calib_Param::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                                  const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm)
-{
-    std::cout << "I'm now topic_callback now #" << msg_image->header.frame_id.c_str() << std::endl;
-
-    if (flag_set)
-    {
-        std::cout << "input data #" << scene_counter << std::endl;
-        Calib_Param::input_data(msg_image, msg_arm);
-    }
-    if (flag_optimize)
-    {
-        std::cout << "Start Calibration" << std::endl
-                  << scene_counter << "'s scenes are used for this calibration" << std::endl
-                  << "Optimizing..." << std::endl;
-        Calib_Param::optimization();
-    }
-}
 
 void Calib_Param::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
@@ -188,32 +170,6 @@ void Calib_Param::optimization()
     flag_optimize = false;
 }
 
-void Calib_Param::input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                             const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_joint)
-{
-    // 新規シーンのオブジェクト生成
-    Scene new_scene;
-
-    // 角度
-    for (int i = 0; i < 5; i++)
-    {
-        new_scene.joint[i] = msg_joint->position[i];
-    }
-
-    // 画像
-    cv::Mat frame_image(msg_image->height, msg_image->width, Calib_Param::encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
-    new_scene.Image = frame_image.clone();
-
-    // マーカー位置検出
-    Calib_Param::detect_marker(new_scene.Image, &new_scene.marker);
-
-    scene.push_back(new_scene);
-
-    // setフラグを下げる
-    scene_counter++;
-    flag_set = false;
-}
-
 void Calib_Param::input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
     std::cout << "input image data #" << msg_image->header.frame_id.c_str() << std::endl;
@@ -264,10 +220,6 @@ void Calib_Param::setCaptureFlag()
 void Calib_Param::setCalibrationFlag()
 {
     flag_optimize = true;
-}
-bool Calib_Param::getSetFlag()
-{
-    return flag_set;
 }
 void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marker)
 {

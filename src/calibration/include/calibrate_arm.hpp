@@ -35,21 +35,14 @@ class Calib_Param
 {
 public:
     Calib_Param();
-    void topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                         const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm);
     void topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void topic_callback_joint_(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     int getSceneNum();
     void getNewSceneImage(cv::Mat *image);
     void setCaptureFlag();
     void setCalibrationFlag();
-    bool getSetFlag();
 
 private:
-    void initialization();
-    void process();
-    void input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                    const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_joint);
     void input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void input_joint_data(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     void detect_marker(const cv::Mat &image, std::vector<Marker> *marker);

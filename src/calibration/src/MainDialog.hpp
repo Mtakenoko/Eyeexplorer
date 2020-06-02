@@ -29,9 +29,6 @@ private Q_SLOTS:
     void calibrateToggle();
     void updateImage();
 
-public:
-    // int getSetiingFlag();
-
 private:
     QLabel *label;
     QLineEdit *lineEdit;
@@ -45,10 +42,11 @@ private:
 
 public:
     rclcpp::Node::SharedPtr node_;
+
+private:
+    void createROS2node(const char *node_name);
     std::string topic_sub_image;
     std::string topic_sub_joint;
-    void createROS2node(const char *node_name);
-    
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_image_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr subscription_joint_;
 
