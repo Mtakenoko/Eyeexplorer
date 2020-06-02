@@ -33,7 +33,8 @@ void Marker::setPosition(int marker_id)
 }
 
 Calib_Param::Calib_Param()
-    : scene_counter(0), flag_set(false), flag_finish(false), flag_optimize(false)
+    : scene_counter(0), flag_set(false), flag_set_image(false), flag_set_joint(false),
+      flag_finish(false), flag_optimize(false)
 {
     std::cout << "Welcome to Calibration node!" << std::endl;
 }
@@ -41,6 +42,8 @@ Calib_Param::Calib_Param()
 void Calib_Param::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                   const std::shared_ptr<const sensor_msgs::msg::JointState> &msg_arm)
 {
+    std::cout << "I'm now topic_callback now #" << msg_image->header.frame_id.c_str() << std::endl;
+
     if (flag_set)
     {
         std::cout << "input data #" << scene_counter << std::endl;
@@ -53,6 +56,28 @@ void Calib_Param::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::
                   << "Optimizing..." << std::endl;
         Calib_Param::optimization();
     }
+}
+
+void Calib_Param::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image)
+{
+    // 画像
+    cv::Mat frame_image(msg_image->height, msg_image->width, Calib_Param::encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
+    now_image = frame_image.clone();
+
+    if (flag_set && flag_set_image)
+        Calib_Param::input_image_data(msg_image);
+
+    if (flag_optimize)
+        Calib_Param::optimization();
+}
+
+void Calib_Param::topic_callback_joint_(const sensor_msgs::msg::JointState::SharedPtr msg_joint)
+{
+    if (flag_set && flag_set_joint)
+        Calib_Param::input_joint_data(msg_joint);
+
+    if (flag_optimize)
+        Calib_Param::optimization();
 }
 
 int Calib_Param::encoding2mat_type(const std::string &encoding)
@@ -93,6 +118,16 @@ int Calib_Param::encoding2mat_type(const std::string &encoding)
 
 void Calib_Param::optimization()
 {
+    if (scene_counter < 5)
+    {
+        std::cout << "More than 5 Scenes are needed for Calibration" << std::endl;
+        flag_optimize = false;
+        return;
+    }
+    std::cout << "Start Calibration" << std::endl
+              << scene_counter << " scenes are used for this calibration" << std::endl
+              << "Optimizing..." << std::endl;
+
     //最適化問題解くためのオブジェクト作成
     ceres::Problem problem;
 
@@ -148,6 +183,9 @@ void Calib_Param::optimization()
     //Solve
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
+    rclcpp::shutdown();
+
+    flag_optimize = false;
 }
 
 void Calib_Param::input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
@@ -176,6 +214,61 @@ void Calib_Param::input_data(const std::shared_ptr<const sensor_msgs::msg::Image
     flag_set = false;
 }
 
+void Calib_Param::input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
+{
+    std::cout << "input image data #" << msg_image->header.frame_id.c_str() << std::endl;
+    // 画像
+    cv::Mat frame_image(msg_image->height, msg_image->width, Calib_Param::encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
+    new_Scene.Image = frame_image.clone();
+
+    // マーカー位置検出
+    Calib_Param::detect_marker(new_Scene.Image, &new_Scene.marker);
+
+    flag_set_image = false;
+
+    if (!flag_set_joint)
+        Calib_Param::setNewScene();
+}
+
+void Calib_Param::input_joint_data(const sensor_msgs::msg::JointState::SharedPtr msg_joint)
+{
+    std::cout << "input joint data" << std::endl;
+    // 角度
+    for (int i = 0; i < 5; i++)
+    {
+        new_Scene.joint[i] = msg_joint->position[i];
+    }
+
+    flag_set_joint = false;
+
+    if (!flag_set_image)
+        Calib_Param::setNewScene();
+}
+
+void Calib_Param::setNewScene()
+{
+    scene.push_back(new_Scene);
+    scene_counter++;
+    std::cout << "Scene#" << scene_counter << " was push_backed! " << std::endl;
+    new_Scene.marker.clear();
+    flag_set = false;
+}
+
+void Calib_Param::setCaptureFlag()
+{
+    flag_set = true;
+    flag_set_image = true;
+    flag_set_joint = true;
+}
+
+void Calib_Param::setCalibrationFlag()
+{
+    flag_optimize = true;
+}
+bool Calib_Param::getSetFlag()
+{
+    return flag_set;
+}
 void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marker)
 {
     if (image.empty())
@@ -196,7 +289,7 @@ void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marke
 
     // 検出したマーカーの描画
     cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
-    cv::imshow("marker_detection", image);
+    // cv::imshow("marker_detection", image);
     cv::waitKey(10);
 
     for (auto itr = marker_ids.begin(); itr != marker_ids.end(); itr++)
@@ -215,8 +308,7 @@ int Calib_Param::getSceneNum()
     return scene_counter;
 }
 
-cv::Mat Calib_Param::getNewSceneImage()
+void Calib_Param::getNewSceneImage(cv::Mat *image)
 {
-    cv::Mat image = scene.back().Image;
-    return image;
+    *image = now_image.clone();
 }

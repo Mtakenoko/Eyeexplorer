@@ -78,13 +78,14 @@ int main(int argc, char *argv[])
         q_msg.position[4] = -q_msg.position[3];
         q_msg.position[5] = msg_sub->position[3] - readencoder.offset[3];
         q_msg.position[6] = msg_sub->position[4] - readencoder.offset[4];
-        q_msg.header.stamp = clock->now();
+        q_msg.header.stamp = msg_sub->header.stamp;
+        q_msg.header.frame_id = msg_sub->header.frame_id;
         pub_q->publish(q_msg);
 
         static int count = 0;
         if (count % 10 == 0)
         {
-            printf("q = [%0.4lf %0.4lf %0.4lf %0.4lf %0.4lf %0.4lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5], q_msg.position[6]);
+            // printf("q = [%0.4lf %0.4lf %0.4lf %0.4lf %0.4lf %0.4lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5], q_msg.position[6]);
         }
         count++;
     };

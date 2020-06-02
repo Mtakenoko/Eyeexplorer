@@ -66,3 +66,9 @@ ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK.launch.py
 ros2 bag play rosbag2/topic_BA_mario.bag/
 ros2 run endoscope reconstruction_BA -s 1
 
+## 2020-6-2
+ros2 bag play rosbag2/topic_BA_mario.bag/
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK2.launch.py 
+ros2 run endoscope reconstruction_BA_class
+ros2 run calibration arm_param_calibrator
+

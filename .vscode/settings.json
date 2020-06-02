@@ -70,7 +70,21 @@
         "hash_map": "cpp",
         "hash_set": "cpp",
         "regex": "cpp",
-        "qdialog": "cpp"
+        "qdialog": "cpp",
+        "cholesky": "cpp",
+        "core": "cpp",
+        "eigenvalues": "cpp",
+        "geometry": "cpp",
+        "householder": "cpp",
+        "jacobi": "cpp",
+        "lu": "cpp",
+        "qr": "cpp",
+        "svd": "cpp",
+        "stdvector": "cpp",
+        "qwidget": "cpp",
+        "qslider": "cpp",
+        "qgraphicsview": "cpp",
+        "qgraphicspixmapitem": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/takeyama/workspace/ros2_ws/build/ros2bag",

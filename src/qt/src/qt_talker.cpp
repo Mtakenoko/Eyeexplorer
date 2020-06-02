@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     rclcpp::WallRate loop_rate(20);
     while (rclcpp::ok())
     {
-        // rclcpp::spin(std::make_shared());
+        rclcpp::spin_some(dialog->node_);
         app.processEvents();
         loop_rate.sleep();
     }

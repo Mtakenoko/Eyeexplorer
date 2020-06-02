@@ -13,12 +13,12 @@ class MainDialog : public QDialog
     Q_OBJECT
 public:
     MainDialog(QWidget *parent);
+    rclcpp::Node::SharedPtr node_;
 
 private Q_SLOTS:
     void publishString();
 
 private:
     QPushButton *setButton;
-    rclcpp::Node node_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
 };

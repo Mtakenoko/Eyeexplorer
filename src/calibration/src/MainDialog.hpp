@@ -2,12 +2,14 @@
 #define MAIN_DIALOG_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
+
 #include <QDialog>
 #include <QLabel>
 #include <QPushButton>
 #include <QLineEdit>
 #include <QGraphicsView>
-#include <QGraphicsPixmapItem>
 
 #include "../include/calibrate_arm.hpp"
 
@@ -25,6 +27,7 @@ private Q_SLOTS:
     void setLabelText();
     void inputDataToggle();
     void calibrateToggle();
+    void updateImage();
 
 public:
     // int getSetiingFlag();
@@ -35,17 +38,21 @@ private:
     QPushButton *setButton;
     QPushButton *calibrateButton;
     QGraphicsView *graphics;
-    QGraphicsScene scene;
+    QGraphicsScene *scene;
 
     void setScene();
+    void initImage();
 
 public:
     rclcpp::Node::SharedPtr node_;
     std::string topic_sub_image;
     std::string topic_sub_joint;
     void createROS2node(const char *node_name);
+    
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_image_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr subscription_joint_;
 
-private:
+public:
     Calib_Param calib_param;
 };
 #endif

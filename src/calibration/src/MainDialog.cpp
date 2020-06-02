@@ -1,30 +1,31 @@
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
 #include <std_msgs/msg/string.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 
 #include <QVBoxLayout>
+#include <QGraphicsPixmapItem>
 
 #include "MainDialog.hpp"
 
 MainDialog::MainDialog(QWidget *parent)
-    : QDialog(parent), topic_sub_image("image"), topic_sub_joint("joint_states")
+    : QDialog(parent), topic_sub_image("endoscope_image"), topic_sub_joint("joint_states")
 {
   label = new QLabel(tr("empty"));
   setButton = new QPushButton(tr("Set"));
   calibrateButton = new QPushButton(tr("Calibrate"));
   lineEdit = new QLineEdit;
   graphics = new QGraphicsView;
+  scene = new QGraphicsScene;
 
   // ButtoのSIGNAL SLOT
   connect(setButton, SIGNAL(clicked()), this, SLOT(setLabelText()));
   connect(setButton, SIGNAL(clicked()), this, SLOT(inputDataToggle()));
+  connect(setButton, SIGNAL(clicked()), this, SLOT(updateImage()));
   connect(calibrateButton, SIGNAL(clicked()), this, SLOT(calibrateToggle()));
 
   // 画像情報の入力
-  MainDialog::setScene();
-  graphics->setScene(&scene);
+  MainDialog::initImage();
+  graphics->setScene(scene);
 
   QVBoxLayout *layout = new QVBoxLayout;
   layout->addWidget(graphics);
@@ -40,7 +41,9 @@ MainDialog::MainDialog(QWidget *parent)
 
 void MainDialog::createROS2node(const char *node_name)
 {
-  // ROS2
+  std::cout << "create ROS2 Node" << std::endl;
+
+  // Nodeクラス
   node_ = rclcpp::Node::make_shared(node_name);
 
   //QoSの設定
@@ -51,11 +54,16 @@ void MainDialog::createROS2node(const char *node_name)
   qos.reliability(reliability_policy);
 
   // Subscribeの設定
-  // auto calib_param = Calib_Param();
-  message_filters::Subscriber<sensor_msgs::msg::Image> sub_image_(node_, topic_sub_image);
-  message_filters::Subscriber<sensor_msgs::msg::JointState> sub_arm_(node_, topic_sub_joint);
-  message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::JointState> sync_(sub_image_, sub_arm_, 1000);
-  sync_.registerCallback(std::bind(&Calib_Param::topic_callback_, calib_param, std::placeholders::_1, std::placeholders::_2));
+  subscription_image_ = node_->create_subscription<sensor_msgs::msg::Image>(
+      topic_sub_image, qos,
+      [this](const sensor_msgs::msg::Image::SharedPtr msg) {
+        this->calib_param.topic_callback_image_(msg);
+      });
+  subscription_joint_ = node_->create_subscription<sensor_msgs::msg::JointState>(
+      topic_sub_joint, qos,
+      [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+        this->calib_param.topic_callback_joint_(msg);
+      });
 }
 
 void MainDialog::setLabelText()
@@ -66,27 +74,40 @@ void MainDialog::setLabelText()
 
 void MainDialog::inputDataToggle()
 {
-  calib_param.flag_set = true;
-  printf("counter = %d\n", calib_param.scene_counter);
+  calib_param.setCaptureFlag();
+}
+
+void MainDialog::updateImage()
+{
+  MainDialog::setScene();
+  update();
 }
 
 void MainDialog::calibrateToggle()
 {
-  calib_param.flag_optimize = true;
+  calib_param.setCalibrationFlag();
 }
-
 void MainDialog::setScene()
 {
-  cv::Mat img = cv::imread("/home/takeyama/workspace/ros2_eyeexplorer/src/calibration/data/DSC08982.jpg", cv::IMREAD_UNCHANGED);
-  // cv::Mat img = calib_param.getNewSceneImage();
+  cv::Mat img;
+  calib_param.getNewSceneImage(&img);
   if (img.empty())
   {
     std::cout << "img is empty" << std::endl;
     return;
   }
-
+  cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
   QImage _qImage(img.data, img.cols, img.rows, QImage::Format_RGB888);
-  _qImage = _qImage.rgbSwapped();
   QGraphicsPixmapItem *image_item = new QGraphicsPixmapItem(QPixmap::fromImage(_qImage));
-  scene.addItem(image_item);
+  scene->addItem(image_item);
+}
+
+void MainDialog::initImage()
+{
+  cv::Mat img;
+  img = cv::imread("/home/takeyama/workspace/ros2_eyeexplorer/src/calibration/data/20191020032920502.png", cv::IMREAD_UNCHANGED);
+  cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
+  QImage _qImage(img.data, img.cols, img.rows, QImage::Format_RGB888);
+  QGraphicsPixmapItem *image_item = new QGraphicsPixmapItem(QPixmap::fromImage(_qImage));
+  scene->addItem(image_item);
 }
