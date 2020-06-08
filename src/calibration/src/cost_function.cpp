@@ -3,7 +3,6 @@
 #include <iostream>
 #include "ceres/rotation.h"
 #include <opencv2/opencv.hpp>
-#include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <ktl.h>
 
@@ -11,20 +10,27 @@
 #include "../include/cost_function.hpp"
 #include "../../HTL/include/transform.h"
 
-
-NewProjectionErrorCostFuctor::NewProjectionErrorCostFuctor(double observed_x_, double observed_y_, double marker_x_, double marker_y_, double marker_z_)
+NewProjectionErrorCostFuctor::NewProjectionErrorCostFuctor(double observed_x_, double observed_y_,
+                                                           double marker_x_, double marker_y_, double marker_z_,
+                                                           double angle0_, double angle1_, double angle2_, double angle3_, double angle4_)
     : observed_x(observed_x_), observed_y(observed_y_),
-      marker_x(marker_x_), marker_y(marker_y_), marker_z(marker_z_) {}
+      marker_x(marker_x_), marker_y(marker_y_), marker_z(marker_z_),
+      angle0(angle0_), angle1(angle1_), angle2(angle2_), angle3(angle3_), angle4(angle4_) {}
 
-bool NewProjectionErrorCostFuctor::operator()(const double *const link,
-                                              const double *const angle,
+bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
+                                              const double *const offset_angle1,
+                                              const double *const offset_angle2,
+                                              const double *const offset_angle3,
+                                              const double *const offset_angle4,
                                               double *residuals) const
 {
-    PassiveArm passivearm(link);
-    for (int i = 0; i < 5; i++)
-    {
-        passivearm.q[i] = angle[i];
-    }
+    // PassiveArm passivearm(link);
+    PassiveArm passivearm;
+    passivearm.q[0] = angle0 + offset_angle0[0];
+    passivearm.q[1] = angle1 + offset_angle1[0];
+    passivearm.q[2] = angle2 + offset_angle2[0];
+    passivearm.q[3] = angle3 + offset_angle3[0];
+    passivearm.q[4] = angle4 + offset_angle4[0];
     passivearm.forward_kinematics();
 
     Ktl::Matrix<3, 3> Escope = Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
@@ -68,6 +74,43 @@ bool NewProjectionErrorCostFuctor::operator()(const double *const link,
     double predicted_x = focal_x * xp + u_x;
     double predicted_y = focal_y * yp + u_y;
 
+    /* ここから */
+    // 投影計算をopencvのprojectpoints()に任せる
+    cv::Mat objectPoints = (cv::Mat_<double>(3, 1) << point[0], point[1], point[2]);
+
+    cv::Mat rvec, rotationMatrix = (cv::Mat_<double>(3, 3) << endoscope_pose[0][0], endoscope_pose[0][1], endoscope_pose[0][2],
+                                    endoscope_pose[1][0], endoscope_pose[1][1], endoscope_pose[1][2],
+                                    endoscope_pose[2][0], endoscope_pose[2][1], endoscope_pose[2][2]);
+    ;
+    cv::Rodrigues(rotationMatrix, rvec);
+
+    cv::Mat tvec(3, 1, CV_64FC1);
+    tvec.at<double>(0) = Ptip[0];
+    tvec.at<double>(1) = Ptip[1];
+    tvec.at<double>(2) = Ptip[2];
+
+    cv::Mat cameraMatrix(3, 3, CV_64FC1);
+    const double fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
+    cameraMatrix = (cv::Mat_<double>(3, 3) << fovx, 0.0, u0,
+                    0.0, fovy, v0,
+                    0.0, 0.0, 1.0);
+
+    cv::Mat distcoeffs = (cv::Mat_<double>(5, 1) << 0., 0., 0., 0., 0.);
+
+    cv::Mat imagePoints(2, 1, CV_64FC1);
+    cv::projectPoints(objectPoints, rvec, tvec, cameraMatrix, distcoeffs, imagePoints);
+    double predicted_X = imagePoints.at<double>(0);
+    double predicted_Y = imagePoints.at<double>(1);
+
+    /* ここまで */
+    // printf("mycalc:[%lf %lf]\n", predicted_x, predicted_y);
+    // printf("opencv:[%lf %lf]\n", predicted_X, predicted_Y);
+    // printf("opencv:[%lf %lf]\n", imagePoints.at<double>(0), imagePoints.at<double>(1));
+    // printf("ptip:[%lf %lf %lf]\n", Ptip[0], Ptip[1], Ptip[2]);
+    // printf("tran:[%lf %lf %lf]\n", Transform[0], Transform[1], Transform[2]);
+    // printf("obs:[%lf %lf]\n", observed_x, observed_y);
+    // residuals[0] = predicted_x - observed_x;
+    // residuals[1] = predicted_y - observed_y;
     residuals[0] = predicted_x - observed_x;
     residuals[1] = predicted_y - observed_y;
     return true;
@@ -76,8 +119,13 @@ ceres::CostFunction *NewProjectionErrorCostFuctor::Create(const double observed_
                                                           const double observed_y,
                                                           const double marker_x,
                                                           const double marker_y,
-                                                          const double marker_z)
+                                                          const double marker_z,
+                                                          const double angle0,
+                                                          const double angle1,
+                                                          const double angle2,
+                                                          const double angle3,
+                                                          const double angle4)
 {
-    return (new ceres::NumericDiffCostFunction<NewProjectionErrorCostFuctor, ceres::CENTRAL, 2, 21, 3>(
-        new NewProjectionErrorCostFuctor(observed_x, observed_y, marker_x, marker_y, marker_z)));
+    return (new ceres::NumericDiffCostFunction<NewProjectionErrorCostFuctor, ceres::CENTRAL, 2, 1, 1, 1, 1, 1>(
+        new NewProjectionErrorCostFuctor(observed_x, observed_y, marker_x, marker_y, marker_z, angle0, angle1, angle2, angle3, angle4)));
 }

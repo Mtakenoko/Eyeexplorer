@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         q_msg.position[0] = msg_sub->position[0] - readencoder.offset[0];
         q_msg.position[1] = msg_sub->position[1] - readencoder.offset[1];
         q_msg.position[2] = -q_msg.position[1];
-        q_msg.position[3] = msg_sub->position[2] - readencoder.offset[2] - q_msg.position[1];
+        q_msg.position[3] = msg_sub->position[2] - readencoder.offset[2];
         q_msg.position[4] = -q_msg.position[3];
         q_msg.position[5] = msg_sub->position[3] - readencoder.offset[3];
         q_msg.position[6] = msg_sub->position[4] - readencoder.offset[4];
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
         static int count = 0;
         if (count % 10 == 0)
         {
-            // printf("q = [%0.4lf %0.4lf %0.4lf %0.4lf %0.4lf %0.4lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[2], q_msg.position[4], q_msg.position[5], q_msg.position[6]);
+            printf("q = [%0.4lf %0.4lf %0.4lf %0.4lf %0.4lf]\n", q_msg.position[0], q_msg.position[1], q_msg.position[3], q_msg.position[5], q_msg.position[6]);
         }
         count++;
     };

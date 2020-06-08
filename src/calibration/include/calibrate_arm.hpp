@@ -12,10 +12,6 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 
-struct Marker_dataset
-{
-};
-
 struct Marker
 {
     cv::Point3f Position;
@@ -38,6 +34,7 @@ public:
     void topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void topic_callback_joint_(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     int getSceneNum();
+    void getNowImage(cv::Mat *image);
     void getNewSceneImage(cv::Mat *image);
     void getNewMarkerImage(cv::Mat *image);
     void setCaptureFlag();
@@ -48,6 +45,7 @@ private:
     void input_joint_data(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     void detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
     void optimization();
+    void projectPoint();
     void clear();
     int encoding2mat_type(const std::string &encoding);
     void setNewScene();
@@ -57,10 +55,12 @@ private:
     std::vector<Scene> scene;
     Scene new_Scene;
     cv::Mat now_image;
+    cv::Mat scene_image;
     cv::Mat marker_image;
     // マーカー検出用
     cv::aruco::PREDEFINED_DICTIONARY_NAME dictionary_name;
     cv::Ptr<cv::aruco::Dictionary> dictionary;
+    cv::Ptr<cv::aruco::DetectorParameters> parameters;
 
 public:
     int scene_counter;

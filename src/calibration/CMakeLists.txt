@@ -4,21 +4,21 @@ project(calibration)
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
-  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
+  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread -lboost_system)
 endif()
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
-  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
+  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread -lboost_system)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
+  add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread -lboost_system)
 endif()
 
 set(CMAKE_CXX_COMPILE_FLAGS "-std=c++11 -lktl")
-add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
+add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread -lboost_system)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -27,6 +27,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(pcl_conversions REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -52,6 +53,7 @@ add_definitions(-DQT_NO_KEYWORDS)
 # arm_param_calibrator node
 add_executable(arm_param_calibrator
   src/arm_param_calibrator.cpp
+  src/arm.cpp
   src/MainDialog.cpp
   src/ImageWidget.cpp
   src/calibrate_arm.cpp
@@ -71,6 +73,29 @@ target_link_libraries(arm_param_calibrator
   ${QT_LIBRARIES}
 )
 install(TARGETS arm_param_calibrator
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# markerpoint_publisher node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(markerpoint_publisher
+  src/markerpoint_publisher.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(markerpoint_publisher
+  "rclcpp"
+  "rcl_interfaces"
+  "rcutils"
+  "std_msgs"
+  "sensor_msgs"
+  "pcl_conversions"
+  "tf2_geometry_msgs"
+)
+target_link_libraries(markerpoint_publisher
+  ${Boost_SYSTEM_LIBRARY}
+)
+# 実行ファイルをインストール
+install(TARGETS markerpoint_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 
