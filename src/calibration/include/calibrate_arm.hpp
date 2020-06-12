@@ -45,6 +45,7 @@ private:
     void input_joint_data(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     void detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
     void optimization();
+    void optimization_link();
     void projectPoint();
     void clear();
     int encoding2mat_type(const std::string &encoding);

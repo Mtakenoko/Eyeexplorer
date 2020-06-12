@@ -2,17 +2,32 @@
 
 PassiveArm::PassiveArm() : Ktl::SerialMechanism<ADOF>()
 {
+    // //土台部
+    // setup_link(0, Ktl::Vector<3>(0.009, 0.0, 0.032));
+    // setup_axis(0, Ktl::Z, 0);
+    // //第１リンク
+    // setup_link(1, Ktl::Vector<3>(0.200, 0.0, 0.0), Ktl::Vector<3>(0.03232, 0.0, 0.01768));
+    // setup_axis(1, Ktl::Y, 2);
+    // //第２リンク
+    // setup_link(2, Ktl::Vector<3>(0.0, 0.0, -0.200), Ktl::Vector<3>(0.0415, 0.0005, -0.0190));
+    // setup_axis(2, Ktl::Y, 2);
+    // //ジンバルアルファ軸回転
+    // setup_link(3, Ktl::Vector<3>(0.0949, 0.0, 0.0));
+    // setup_axis(3, Ktl::X, 0);
+    // //ジンバルベータ回転
+    // setup_link(4, 0.0, Ktl::Y);
+    // setup_axis(4, Ktl::Y, 0);
     //土台部
-    setup_link(0, Ktl::Vector<3>(0.009, 0.0, 0.032));
+    setup_link(0, Ktl::Vector<3>(9.0, 0.0, 32.0));
     setup_axis(0, Ktl::Z, 0);
     //第１リンク
-    setup_link(1, Ktl::Vector<3>(0.200, 0.0, 0.0), Ktl::Vector<3>(0.03232, 0.0, 0.01768));
+    setup_link(1, Ktl::Vector<3>(200.0, 0.0, 0.0), Ktl::Vector<3>(32.32, 0.0, 17.68));
     setup_axis(1, Ktl::Y, 2);
     //第２リンク
-    setup_link(2, Ktl::Vector<3>(0.0, 0.0, -0.200), Ktl::Vector<3>(0.0415, 0.0005, -0.0190));
+    setup_link(2, Ktl::Vector<3>(0.0, 0.0, -200.0), Ktl::Vector<3>(41.5, 0.5, -19.0));
     setup_axis(2, Ktl::Y, 2);
     //ジンバルアルファ軸回転
-    setup_link(3, Ktl::Vector<3>(0.0949, 0.0, 0.0));
+    setup_link(3, Ktl::Vector<3>(94.9, 0.0, 0.0));
     setup_axis(3, Ktl::X, 0);
     //ジンバルベータ回転
     setup_link(4, 0.0, Ktl::Y);

@@ -58,6 +58,7 @@ add_executable(arm_param_calibrator
   src/ImageWidget.cpp
   src/calibrate_arm.cpp
   src/cost_function.cpp
+  # src/cost_function_link.cpp
   ../HTL/src/transform.cpp
 )
 ament_target_dependencies(arm_param_calibrator

@@ -4,7 +4,7 @@
 #include <ktl.h>
 
 #define ADOF 5
-#define ENDOSCOPE_LENGTH 0.110
+#define ENDOSCOPE_LENGTH 110.0
 
 class PassiveArm : public Ktl::SerialMechanism<ADOF>
 {
