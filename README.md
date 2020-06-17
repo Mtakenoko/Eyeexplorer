@@ -72,3 +72,9 @@ ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK2.launch.py
 ros2 run endoscope reconstruction_BA_class
 ros2 run calibration arm_param_calibrator
 
+## 
+ros2 run ts01 ts01_sensor
+ros2 run endoscope cap_endoscope -c 2 -s 1
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK2.launch.py
+ros2 run calibration arm_param_calibrator
+

@@ -10,7 +10,7 @@ dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 
 def main():
     # 10枚のマーカーを作るために10回繰り返す
-    for i in range(10):
+    for i in range(40):
 
         ar_image = aruco.drawMarker(dictionary, i, 150)     # ID番号は i ，150x150ピクセルでマーカー画像を作る．
 

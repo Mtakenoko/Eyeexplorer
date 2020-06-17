@@ -33,7 +33,7 @@ geometry_msgs::msg::TransformStamped tf_msg;
 
 void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
                         std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Transform>> pub_tip, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::JointState>> pub_q, rclcpp::Clock::SharedPtr clock,
-                        rclcpp::Logger logger, std::shared_ptr<rclcpp::Node> node)
+                        std::shared_ptr<rclcpp::Node> node)
 {
     //エンコーダの値の向きをあわせる
     Ktl::Vector<ADOF> enc_pos;
@@ -92,8 +92,8 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     count++;
     if (count % 10 == 0)
     {
-        RCLCPP_INFO(logger, "zim: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", passivearm.Pr()[0], passivearm.Pr()[1], passivearm.Pr()[2], rall, pitch, yaw);
-        RCLCPP_INFO(logger, "tip: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        RCLCPP_INFO(node->get_logger(), "zim: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", passivearm.Pr()[0], passivearm.Pr()[1], passivearm.Pr()[2], rall, pitch, yaw);
+        RCLCPP_INFO(node->get_logger(), "tip: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
         printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
         // printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
     }
@@ -169,10 +169,10 @@ int main(int argc, char *argv[])
 
     //エンコーダのオフセット設定
     readencoder.SetOffset();
-    // readencoder.ReadOffsetdat();
+    readencoder.ReadCalibOffsetdat();
 
     auto callback = [pub_tip, pub_q, clock, &node](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
-        forward_kinematics(msg_sub, pub_tip, pub_q, clock, node->get_logger(), node);
+        forward_kinematics(msg_sub, pub_tip, pub_q, clock, node);
     };
 
     //Set QoS to Subscribe

@@ -33,9 +33,20 @@ int main(int argc, char *argv[])
     while (rclcpp::ok())
     {
         pcl::PointCloud<pcl::PointXYZRGB> cloud_;
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 20; i++)
         {
-            pcl::PointXYZRGB pt = pcl::PointXYZRGB(0, 255, 255);
+            //　色
+            pcl::PointXYZRGB pt;
+            if (i < 10)
+            {
+                pt = pcl::PointXYZRGB(0, 255, 255);
+            }
+            else if (i < 20)
+            {
+                pt = pcl::PointXYZRGB(255, 0, 255);
+            }
+
+            // 位置情報
             if (i == 0)
             {
                 pt.x = -0.2335;
@@ -95,6 +106,66 @@ int main(int argc, char *argv[])
                 pt.x = -0.2335;
                 pt.y = -0.1803;
                 pt.z = -0.1610;
+            }
+            else if (i == 10)
+            {
+                pt.x = -0.191;
+                pt.y = 0.3415;
+                pt.z = -0.210;
+            }
+            else if (i == 11)
+            {
+                pt.x = -0.191;
+                pt.y = 0.404;
+                pt.z = -0.210;
+            }
+            else if (i == 12)
+            {
+                pt.x = -0.191;
+                pt.y = 0.467;
+                pt.z = -0.210;
+            }
+            else if (i == 13)
+            {
+                pt.x = -0.191;
+                pt.y = 0.5297;
+                pt.z = -0.210;
+            }
+            else if (i == 14)
+            {
+                pt.x = -0.1388;
+                pt.y = 0.404;
+                pt.z = -0.210;
+            }
+            else if (i == 15)
+            {
+                pt.x = -0.1388;
+                pt.y = 0.467;
+                pt.z = -0.210;
+            }
+            else if (i == 16)
+            {
+                pt.x = -0.086;
+                pt.y = 0.3415;
+                pt.z = -0.210;
+            }
+            else if (i == 17)
+            {
+                pt.x = -0.086;
+                pt.y = 0.404;
+                pt.z = -0.210;
+            }
+            else if (i == 18)
+            {
+                pt.x = -0.086;
+                pt.y = 0.467;
+                pt.z = -0.210;
+            }
+            else if (i == 19)
+            {
+                pt.x = -0.086;
+                pt.y = 0.5297;
+                pt.z = -0.210;
             }
             cloud_.push_back(pt);
         }

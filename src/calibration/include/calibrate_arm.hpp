@@ -39,6 +39,7 @@ public:
     void getNewMarkerImage(cv::Mat *image);
     void setCaptureFlag();
     void setCalibrationFlag();
+    void saveOffsetData();
 
 private:
     void input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image);
@@ -62,6 +63,9 @@ private:
     cv::aruco::PREDEFINED_DICTIONARY_NAME dictionary_name;
     cv::Ptr<cv::aruco::Dictionary> dictionary;
     cv::Ptr<cv::aruco::DetectorParameters> parameters;
+
+private:
+    double *offset_output;
 
 public:
     int scene_counter;

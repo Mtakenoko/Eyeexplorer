@@ -37,35 +37,25 @@ bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
     point[1] = marker_y;
     point[2] = marker_z;
 
-    double p[2];
-    p[0] = endoscope_pose[0][0] * point[0] + endoscope_pose[1][0] * point[1] + endoscope_pose[2][0] * point[2];
-    p[1] = endoscope_pose[0][1] * point[0] + endoscope_pose[1][1] * point[1] + endoscope_pose[2][1] * point[2];
-    p[2] = endoscope_pose[0][2] * point[0] + endoscope_pose[1][2] * point[1] + endoscope_pose[2][2] * point[2];
+    double Point[3];
+    for (int i = 0; i < 3; i++)
+    {
+        Point[i] = endoscope_pose[0][i] * (point[0] - Ptip[0]) + endoscope_pose[1][i] * (point[1] - Ptip[1]) + endoscope_pose[2][i] * (point[2] - Ptip[2]);
+    }
 
-    double t[3];
-    t[0] = endoscope_pose[0][0] * Ptip[0] + endoscope_pose[1][0] * Ptip[1] + endoscope_pose[2][0] * Ptip[2];
-    t[1] = endoscope_pose[0][1] * Ptip[0] + endoscope_pose[1][1] * Ptip[1] + endoscope_pose[2][1] * Ptip[2];
-    t[2] = endoscope_pose[0][2] * Ptip[0] + endoscope_pose[1][2] * Ptip[1] + endoscope_pose[2][2] * Ptip[2];
-
-    double xp = (p[0] - t[0]) / (p[2] - t[2]);
-    double yp = (p[1] - t[1]) / (p[2] - t[2]);
+    double xp = Point[0] / Point[2];
+    double yp = Point[1] / Point[2];
 
     // 最終投影位置の計算
     const double focal_x = 396.7;
     const double focal_y = 396.9;
     const double u_x = 163.6;
     const double u_y = 157.1;
-    residuals[0] = focal_x * xp + u_x;
-    residuals[1] = focal_y * yp + u_y;
+    double predicted_x = focal_x * xp + u_x;
+    double predicted_y = focal_y * yp + u_y;
 
-    // printf("mycalc:[%lf %lf]\n", predicted_x, predicted_y);
-    // printf("opencv:[%lf %lf]\n", predicted_X, predicted_Y);
-    // printf("opencv:[%lf %lf]\n", imagePoints.at<double>(0), imagePoints.at<double>(1));
-    // printf("ptip:[%lf %lf %lf]\n", Ptip[0], Ptip[1], Ptip[2]);
-    // printf("tran:[%lf %lf %lf]\n", Transform[0], Transform[1], Transform[2]);
-    // printf("obs:[%lf %lf]\n", observed_x, observed_y);
-    // residuals[0] = predicted_x - observed_x;
-    // residuals[1] = predicted_y - observed_y;
+    residuals[0] = predicted_x - observed_x;
+    residuals[1] = predicted_y - observed_y;
     return true;
 }
 ceres::CostFunction *NewProjectionErrorCostFuctor::Create(const double observed_x,

@@ -17,7 +17,6 @@
 
 #include "../include/arm/encoder.h"
 
-ReadEncoder readencoder;
 sensor_msgs::msg::JointState q_msg;
 
 int main(int argc, char *argv[])
@@ -67,17 +66,20 @@ int main(int argc, char *argv[])
     q_msg.position.push_back(0.0);
 
     //エンコーダのオフセット設定
+    ReadEncoder readencoder;
+    Ktl::Vector<ADOF> offset;
     readencoder.SetOffset();
-    // readencoder.ReadOffsetdat();
+    readencoder.ReadCalibOffsetdat();
+    offset = readencoder.offset;
 
-    auto callback = [pub_q, clock](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
-        q_msg.position[0] = msg_sub->position[0] - readencoder.offset[0];
-        q_msg.position[1] = msg_sub->position[1] - readencoder.offset[1];
+    auto callback = [pub_q, clock, offset](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
+        q_msg.position[0] = msg_sub->position[0] + offset[0];
+        q_msg.position[1] = msg_sub->position[1] + offset[1];
         q_msg.position[2] = -q_msg.position[1];
-        q_msg.position[3] = msg_sub->position[2] - readencoder.offset[2];
+        q_msg.position[3] = msg_sub->position[2] + offset[2];
         q_msg.position[4] = -q_msg.position[3];
-        q_msg.position[5] = msg_sub->position[3] - readencoder.offset[3];
-        q_msg.position[6] = msg_sub->position[4] - readencoder.offset[4];
+        q_msg.position[5] = msg_sub->position[3] + offset[3];
+        q_msg.position[6] = msg_sub->position[4] + offset[4];
         q_msg.header.stamp = msg_sub->header.stamp;
         q_msg.header.frame_id = msg_sub->header.frame_id;
         pub_q->publish(q_msg);

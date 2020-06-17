@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include <rclcpp/rclcpp.hpp>
 #include <ceres/ceres.h>
 #include "ceres/rotation.h"
@@ -13,54 +15,104 @@ void Marker::setPosition(int marker_id)
     switch (marker_id)
     {
     case 0:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -368.5;
         this->Position.z = -56.0;
         break;
     case 1:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -306.0;
         this->Position.z = -56.0;
         break;
     case 2:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -243.0;
         this->Position.z = -56.0;
         break;
     case 3:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -180.3;
         this->Position.z = -56.0;
         break;
     case 4:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -306.0;
         this->Position.z = -108.2;
         break;
     case 5:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -243.0;
         this->Position.z = -108.2;
         break;
     case 6:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -368.5;
         this->Position.z = -161.0;
         break;
     case 7:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -306.0;
         this->Position.z = -161.0;
         break;
     case 8:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -243.0;
         this->Position.z = -161.0;
         break;
     case 9:
-        this->Position.x = -233.5;
+        this->Position.x = -234.5;
         this->Position.y = -180.3;
         this->Position.z = -161.0;
+        break;
+    case 10:
+        this->Position.x = -192.0;
+        this->Position.y = 341.5;
+        this->Position.z = -210.0;
+        break;
+    case 11:
+        this->Position.x = -192.0;
+        this->Position.y = 404.0;
+        this->Position.z = -210.0;
+        break;
+    case 12:
+        this->Position.x = -192.0;
+        this->Position.y = 467.0;
+        this->Position.z = -210.0;
+        break;
+    case 13:
+        this->Position.x = -192.0;
+        this->Position.y = 529.7;
+        this->Position.z = -210.0;
+        break;
+    case 14:
+        this->Position.x = -139.8;
+        this->Position.y = 404.0;
+        this->Position.z = -210.0;
+        break;
+    case 15:
+        this->Position.x = -139.8;
+        this->Position.y = 467.0;
+        this->Position.z = -210.0;
+        break;
+    case 16:
+        this->Position.x = -87.0;
+        this->Position.y = 341.5;
+        this->Position.z = -210.0;
+        break;
+    case 17:
+        this->Position.x = -87.0;
+        this->Position.y = 404.0;
+        this->Position.z = -210.0;
+        break;
+    case 18:
+        this->Position.x = -87.0;
+        this->Position.y = 467.0;
+        this->Position.z = -210.0;
+        break;
+    case 19:
+        this->Position.x = -87.0;
+        this->Position.y = 529.7;
+        this->Position.z = -210.0;
         break;
     default:
         std::cerr << "marker_id is unsupported" << std::endl;
@@ -215,19 +267,21 @@ void Calib_Param::optimization()
     std::cout << "Optimizing Finished!!!" << std::endl;
     printf("after: [%lf %lf %lf %lf %lf]\n", mutable_angle_param[0], mutable_angle_param[1], mutable_angle_param[2], mutable_angle_param[3], mutable_angle_param[4]);
     // std::cout << summary.FullReport() << std::endl;
-    // std::cout << "mutable_link_param[0] is " << mutable_link_param[0] << ", " << mutable_link_param[1] << ", " << mutable_link_param[2] << std::endl;
-    // std::cout << "mutable_link_param[1] is " << mutable_link_param[3] << ", " << mutable_link_param[4] << ", " << mutable_link_param[5] << std::endl;
-    // std::cout << "mutable_link_param[2] is " << mutable_link_param[6] << ", " << mutable_link_param[7] << ", " << mutable_link_param[8] << std::endl;
-    // std::cout << "mutable_link_param[3] is " << mutable_link_param[9] << ", " << mutable_link_param[10] << ", " << mutable_link_param[11] << std::endl;
-    // std::cout << "mutable_link_param[4] is " << mutable_link_param[12] << ", " << mutable_link_param[13] << ", " << mutable_link_param[14] << std::endl;
-    // std::cout << "mutable_link_param[5] is " << mutable_link_param[15] << ", " << mutable_link_param[16] << ", " << mutable_link_param[17] << std::endl;
-    // std::cout << "mutable_link_param[6] is " << mutable_link_param[18] << ", " << mutable_link_param[19] << ", " << mutable_link_param[20] << std::endl;
+    offset_output = (double *)malloc(sizeof(double) * ADOF);
+    for (int i = 0; i < ADOF; i++)
+    {
+        offset_output[i] = mutable_angle_param[i];
+    }
+    
+    // 結果をファイルに保存
+    Calib_Param::saveOffsetData();
+
     // 終了処理
     flag_optimize = false;
     Calib_Param::clear();
 }
 
-// void Calib_Param::optimization_link()
+/*// void Calib_Param::optimization_link()
 // {
 //     if (scene_counter < 5)
 //     {
@@ -248,27 +302,27 @@ void Calib_Param::optimization()
 //     // // 最適化用パラメータ
 //     double mutable_link_param[21]; // リンクの長さ
 //     // // リンクパラメータの初期値を代入(シーン毎に変化しない)
-//     mutable_link_param[0] = 9. / 1000.;     // [mm]
-//     mutable_link_param[1] = 0. / 1000.;     // [mm]
-//     mutable_link_param[2] = 32. / 1000.;    // [mm]
-//     mutable_link_param[3] = 32.32 / 1000.;  // [mm]
-//     mutable_link_param[4] = 0. / 1000.;     // [mm]
-//     mutable_link_param[5] = 17.68 / 1000.;  // [mm]
-//     mutable_link_param[6] = 200. / 1000.;   // [mm]
-//     mutable_link_param[7] = 0. / 1000.;     // [mm]
-//     mutable_link_param[8] = 0. / 1000.;     // [mm]
-//     mutable_link_param[9] = 41.5 / 1000.;   // [mm]
-//     mutable_link_param[10] = 0.5 / 1000.;   // [mm]
-//     mutable_link_param[11] = -19. / 1000.;  // [mm]
-//     mutable_link_param[12] = 0. / 1000.;    // [mm]
-//     mutable_link_param[13] = 0. / 1000.;    // [mm]
-//     mutable_link_param[14] = -200. / 1000.; // [mm]
-//     mutable_link_param[15] = 94.9 / 1000.;  // [mm]
-//     mutable_link_param[16] = 0. / 1000.;    // [mm]
-//     mutable_link_param[17] = 0. / 1000.;    // [mm]
-//     mutable_link_param[18] = 0. / 1000.;    // [mm]
-//     mutable_link_param[19] = 0. / 1000.;    // [mm]
-//     mutable_link_param[20] = -110. / 1000.; // [mm]
+//     mutable_link_param[0] = 9. ;     // [mm]
+//     mutable_link_param[1] = 0. ;     // [mm]
+//     mutable_link_param[2] = 32. ;    // [mm]
+//     mutable_link_param[3] = 32.32 ;  // [mm]
+//     mutable_link_param[4] = 0. ;     // [mm]
+//     mutable_link_param[5] = 17.68 ;  // [mm]
+//     mutable_link_param[6] = 200. ;   // [mm]
+//     mutable_link_param[7] = 0. ;     // [mm]
+//     mutable_link_param[8] = 0. ;     // [mm]
+//     mutable_link_param[9] = 41.5 ;   // [mm]
+//     mutable_link_param[10] = 0.5 ;   // [mm]
+//     mutable_link_param[11] = -19. ;  // [mm]
+//     mutable_link_param[12] = 0. ;    // [mm]
+//     mutable_link_param[13] = 0. ;    // [mm]
+//     mutable_link_param[14] = -200. ; // [mm]
+//     mutable_link_param[15] = 94.9 ;  // [mm]
+//     mutable_link_param[16] = 0. ;    // [mm]
+//     mutable_link_param[17] = 0. ;    // [mm]
+//     mutable_link_param[18] = 0. ;    // [mm]
+//     mutable_link_param[19] = 0. ;    // [mm]
+//     mutable_link_param[20] = -110. ; // [mm]
 
 //     // 角度量
 //     double mutable_angle_param[5];
@@ -310,7 +364,7 @@ void Calib_Param::optimization()
 //     problem.SetParameterUpperBound(&mutable_angle_param[3], 0, M_PI / 10);
 //     problem.SetParameterUpperBound(&mutable_angle_param[4], 0, M_PI / 10);
 
-//     //Solverのオプション選択
+//     //Solverのオプション選択offset_output
 //     ceres::Solver::Options options;
 //     options.linear_solver_type = ceres::DENSE_QR;
 //     options.minimizer_progress_to_stdout = true;
@@ -338,7 +392,7 @@ void Calib_Param::optimization()
 //     // 終了処理
 //     flag_optimize = false;
 //     Calib_Param::clear();
-// }
+// }*/
 
 void Calib_Param::projectPoint()
 {
@@ -360,109 +414,45 @@ void Calib_Param::projectPoint()
         // 見つけたマーカーの数だけ処理する
         for (auto marker_itr = itr->marker.begin(); marker_itr != itr->marker.end(); marker_itr++)
         {
-            cv::Mat objectPoints = (cv::Mat_<double>(3, 1) << marker_itr->Position.x, marker_itr->Position.y, marker_itr->Position.z);
-
-            cv::Mat rotationMatrix = (cv::Mat_<double>(3, 3) << endoscope_pose[0][0], endoscope_pose[0][1], endoscope_pose[0][2],
-                                      endoscope_pose[1][0], endoscope_pose[1][1], endoscope_pose[1][2],
-                                      endoscope_pose[2][0], endoscope_pose[2][1], endoscope_pose[2][2]);
-            cv::Mat rvec;
-            cv::Rodrigues(rotationMatrix, rvec);
-            // double RotMat[9];
-            // for (int i = 0; i < 3; i++)
-            // {
-            //     for (int j = 0; j < 3; j++)
-            //     {
-            //         RotMat[i * 3 + j] = endoscope_pose[i][j];
-            //     }
-            // }
-            // double angleAxis[3];
-            // ceres::RotationMatrixToAngleAxis(RotMat, angleAxis);
-
-            cv::Mat tvec(3, 1, CV_64FC1);
-            tvec.at<double>(0) = Ptip[0];
-            tvec.at<double>(1) = Ptip[1];
-            tvec.at<double>(2) = Ptip[2];
-
-            cv::Mat cameraMatrix(3, 3, CV_64FC1);
-            const double fovx = 396.7, fovy = 396.9, u0 = 163.6, v0 = 157.1;
-            cameraMatrix = (cv::Mat_<double>(3, 3) << fovx, 0.0, u0,
-                            0.0, fovy, v0,
-                            0.0, 0.0, 1.0);
-
-            cv::Mat distcoeffs = (cv::Mat_<double>(5, 1) << 0., 0., 0., 0., 0.);
-
-            std::vector<cv::Point2d> projectedPoints;
-            cv::projectPoints(objectPoints, -rvec, -tvec, cameraMatrix, distcoeffs, projectedPoints);
-            double predicted_X = projectedPoints[0].x;
-            double predicted_Y = projectedPoints[0].y;
-            projectedPoints.clear();
-
-            // myprojection
-            // double Quaternion[4];
-            // Transform::RotMatToQuaternion(&Quaternion[0], &Quaternion[1], &Quaternion[2], &Quaternion[3],
-            //                               endoscope_pose[0][0], endoscope_pose[0][1], endoscope_pose[0][2],
-            //                               endoscope_pose[1][0], endoscope_pose[1][1], endoscope_pose[1][2],
-            //                               endoscope_pose[2][0], endoscope_pose[2][1], endoscope_pose[2][2]);
-            // ceres::QuaternionRotatePoint(Quaternion, point, p);
-            cv::Mat rvec2;
-            cv::Rodrigues(rotationMatrix.t(), rvec2);
-            double AngleAxis[3];
-            AngleAxis[0] = rvec2.at<double>(0);
-            AngleAxis[1] = rvec2.at<double>(1);
-            AngleAxis[2] = rvec2.at<double>(2);
-
             double point[3]; // マーカーの三次元点(ワールド座標系)
             point[0] = marker_itr->Position.x;
             point[1] = marker_itr->Position.y;
             point[2] = marker_itr->Position.z;
 
-            double p[3]; //カメラ座標系でのマーカー位置に変換（回転のみ）
-            ceres::AngleAxisRotatePoint(AngleAxis, point, p);
-
-            // カメラ座標系への観測点の座標変換（並進）
-            p[0] -= Ptip[0];
-            p[1] -= Ptip[1];
-            p[2] -= Ptip[2];
-
-            // 正規化座標系（ｚ座標を1とする）
-            double xp = p[0] / p[2];
-            double yp = p[1] / p[2];
-
-            // 最終投影位置の計算
-            const double focal_x = 396.7;
-            const double focal_y = 396.9;
-            const double u_x = 163.6;
-            const double u_y = 157.1;
-            double predicted_x = focal_x * xp + u_x;
-            double predicted_y = focal_y * yp + u_y;
-
-            //　3つめの透視射影の計算（これが一番）
-            double p2[3];
-            p2[0] = endoscope_pose[0][0] * point[0] + endoscope_pose[1][0] * point[1] + endoscope_pose[2][0] * point[2];
-            p2[1] = endoscope_pose[0][1] * point[0] + endoscope_pose[1][1] * point[1] + endoscope_pose[2][1] * point[2];
-            p2[2] = endoscope_pose[0][2] * point[0] + endoscope_pose[1][2] * point[1] + endoscope_pose[2][2] * point[2];
+            double pt[3];
+            pt[0] = endoscope_pose[0][0] * point[0] + endoscope_pose[1][0] * point[1] + endoscope_pose[2][0] * point[2];
+            pt[1] = endoscope_pose[0][1] * point[0] + endoscope_pose[1][1] * point[1] + endoscope_pose[2][1] * point[2];
+            pt[2] = endoscope_pose[0][2] * point[0] + endoscope_pose[1][2] * point[1] + endoscope_pose[2][2] * point[2];
 
             double t[3];
             t[0] = endoscope_pose[0][0] * Ptip[0] + endoscope_pose[1][0] * Ptip[1] + endoscope_pose[2][0] * Ptip[2];
             t[1] = endoscope_pose[0][1] * Ptip[0] + endoscope_pose[1][1] * Ptip[1] + endoscope_pose[2][1] * Ptip[2];
             t[2] = endoscope_pose[0][2] * Ptip[0] + endoscope_pose[1][2] * Ptip[1] + endoscope_pose[2][2] * Ptip[2];
 
-            double xp2 = (p2[0] - t[0]) / (p2[2] - t[2]);
-            double yp2 = (p2[1] - t[1]) / (p2[2] - t[2]);
+            double xp = (pt[0] - t[0]) / (pt[2] - t[2]);
+            double yp = (pt[1] - t[1]) / (pt[2] - t[2]);
 
+            double Point[3];
+            for (int i = 0; i < 3; i++)
+            {
+                Point[i] = endoscope_pose[0][i] * (point[0] - Ptip[0]) + endoscope_pose[1][i] * (point[1] - Ptip[1]) + endoscope_pose[2][i] * (point[2] - Ptip[2]);
+            }
+
+            const double focal_x = 396.7;
+            const double focal_y = 396.9;
+            const double u_x = 163.6;
+            const double u_y = 157.1;
             double predicted[2];
-            predicted[0] = focal_x * xp2 + u_x;
-            predicted[1] = focal_y * yp2 + u_y;
+            predicted[0] = focal_x * xp + u_x;
+            predicted[1] = focal_y * yp + u_y;
 
-            printf("#%d ans:[%0.3lf %0.3lf], predict[%0.3lf %0.3lf]\n", marker_itr->ID, marker_itr->Point_Image.x, marker_itr->Point_Image.y, predicted[0], predicted[1]);
-            printf("points[%0.3lf %0.3lf %0.3lf] arm[%0.3lf %0.3lf %0.3lf]\n", marker_itr->Position.x, marker_itr->Position.y, marker_itr->Position.z, Ptip[0], Ptip[1], Ptip[2]);
-            // printf("rvec[%lf %lf %lf]\n", rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
-            // printf("angleAxis[%0.3lf %0.3lf %0.3lf]\n", angleAxis[0], angleAxis[1], angleAxis[2]);
-            // printf("xp,yp:[%0.3lf %0.3lf], p[%0.3lf %0.3lf %0.3lf]\n", xp, yp, p[0], p[1], p[2]);
-            printf("p2[%0.3lf %0.3lf %0.3lf], t[%0.3lf %0.3lf %0.3lf], xp,yp = [%0.3lf %0.3lf]\n", p2[0], p2[1], p2[2], t[0], t[1], t[2], xp2, yp2);
-            // endoscope_pose.print();
-            // std::cout << "mat2" << mat2 << std::endl;
-            // std::cout << "rotationMatrix" << rotationMatrix << std::endl;
+            printf("#%d obs:[%d %d], predict[%0.3lf %0.3lf]\n", marker_itr->ID, (int)marker_itr->Point_Image.x, (int)marker_itr->Point_Image.y, predicted[0], predicted[1]);
+            printf("points[%0.3lf %0.3lf %0.3lf] arm[%0.3lf %0.3lf %0.3lf]\n", point[0], point[1], point[2], Ptip[0], Ptip[1], Ptip[2]);
+            printf("points - arm = [%0.3lf %0.3lf %0.3lf]\n", point[0] - Ptip[0], point[1] - Ptip[1], point[2] - Ptip[2]);
+            printf("pt[%0.3lf %0.3lf %0.3lf], t[%0.3lf %0.3lf %0.3lf]\n", pt[0], pt[1], pt[2], t[0], t[1], t[2]);
+            printf("Point[%0.3lf %0.3lf %0.3lf]\n", Point[0], Point[1], Point[2]);
+            printf("xp,yp = [%0.3lf %0.3lf], focal*xp,yp = [%0.3lf %0.3lf]\n", xp, yp, focal_x * xp, focal_y * yp);
+            endoscope_pose.print();
             // printf("rot[%0.3lf %0.3lf %0.3lf %0.3lf %0.3lf]\n", itr->joint[0], itr->joint[1], itr->joint[2], itr->joint[3], itr->joint[4]);
             std::cout << std::endl;
         }
@@ -553,7 +543,7 @@ void Calib_Param::detect_marker(const cv::Mat &image, std::vector<Marker> *marke
     // 検出したマーカーの数だけmarkerに追加
     for (size_t i = 0; i < marker_ids.size(); i++)
     {
-        if (marker_ids[i] > 0 && marker_ids[i] < 10)
+        if (marker_ids[i] > 0 && marker_ids[i] < 20)
         {
             Marker new_marker;
             new_marker.ID = marker_ids[i];
@@ -600,4 +590,20 @@ void Calib_Param::clear()
     flag_set_image = false;
     flag_set_joint = false;
     flag_finish = true;
+}
+
+void Calib_Param::saveOffsetData()
+{
+    const char *fileName = "/home/takeyama/workspace/ros2_eyeexplorer/src/calibration/Output/offset.txt";
+
+    // ファイル生成
+    std::ofstream ofs(fileName);
+    if (!ofs)
+    {
+        std::cout << "ファイルを開くことができませんでした" << std::endl;
+        std::cin.get();
+        return;
+    }
+    for (int i = 0; i < ADOF; i++)
+        ofs << offset_output[i] << std::endl;
 }

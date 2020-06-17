@@ -13,6 +13,7 @@ private:
 public:
   explicit ReadEncoder();
   void ReadOffsetdat();
+  void ReadCalibOffsetdat();
   void WriteOffsetdat();
   void ResetOffset(Ktl::Vector<ADOF> qoffset);
   Ktl::Vector<ADOF> GetOffset();
