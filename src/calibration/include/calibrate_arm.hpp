@@ -42,6 +42,8 @@ public:
     void setCaptureFlag();
     void setCalibrationFlag();
     void saveOffsetData();
+    void resetScene();
+    void deleteScene();
 
 private:
     void input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image);

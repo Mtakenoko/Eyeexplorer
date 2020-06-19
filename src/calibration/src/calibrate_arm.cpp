@@ -146,7 +146,7 @@ void Calib_Param::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr
     // 画像
     cv::Mat frame_image(msg_image->height, msg_image->width, Calib_Param::encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
     now_image = frame_image.clone();
-    
+
     if (flag_set && flag_set_image)
         Calib_Param::input_image_data(msg_image);
 
@@ -633,4 +633,24 @@ void Calib_Param::saveOffsetData()
     }
     for (int i = 0; i < ADOF; i++)
         ofs << offset_output[i] << std::endl;
+}
+
+void Calib_Param::resetScene()
+{
+    scene.clear();
+    new_Scene.marker.clear();
+    scene_counter = 0;
+    flag_set = false;
+    flag_set_image = false;
+    flag_set_joint = false;
+}
+
+void Calib_Param::deleteScene()
+{
+    if (scene.size() > 0)
+    {
+        scene.pop_back();
+        scene_counter--;
+        std::cout << "scene was pop_bucked" << std::endl;
+    }
 }

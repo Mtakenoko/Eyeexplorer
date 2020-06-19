@@ -27,6 +27,8 @@ private Q_SLOTS:
     void setLabelText();
     void inputDataToggle();
     void calibrateToggle();
+    void resetToggle();
+    void deleteToggle();
     void updateSceneImage();
     void updateMarkerImage();
     void setSceneNum();
@@ -38,6 +40,8 @@ private:
     QLineEdit *lineEdit;
     QPushButton *setButton;
     QPushButton *calibrateButton;
+    QPushButton *resetButton;
+    QPushButton *deleteButton;
     QGraphicsView *graphics;
     QGraphicsView *graphics_marker;
     QGraphicsView *graphics_cam;

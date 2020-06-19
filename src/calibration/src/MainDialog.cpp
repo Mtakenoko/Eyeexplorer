@@ -16,6 +16,8 @@ MainDialog::MainDialog(QWidget *parent)
 {
   label = new QLabel(tr("empty"));
   setButton = new QPushButton(tr("Set"));
+  resetButton = new QPushButton(tr("Reset"));
+  deleteButton = new QPushButton(tr("Delete"));
   calibrateButton = new QPushButton(tr("Calibrate"));
   lineEdit = new QLineEdit;
   graphics = new QGraphicsView;
@@ -30,6 +32,8 @@ MainDialog::MainDialog(QWidget *parent)
   // ButtoのSIGNAL SLOT
   connect(setButton, SIGNAL(clicked()), this, SLOT(setLabelText()));
   connect(setButton, SIGNAL(clicked()), this, SLOT(inputDataToggle()));
+  connect(resetButton, SIGNAL(clicked()), this, SLOT(resetToggle()));
+  connect(deleteButton, SIGNAL(clicked()), this, SLOT(deleteToggle()));
   connect(calibrateButton, SIGNAL(clicked()), this, SLOT(calibrateToggle()));
 
   // 画像情報の入力
@@ -55,6 +59,8 @@ MainDialog::MainDialog(QWidget *parent)
 
   QHBoxLayout *layout_Botton_H = new QHBoxLayout;
   layout_Botton_H->addWidget(setButton);
+  layout_Botton_H->addWidget(resetButton);
+  layout_Botton_H->addWidget(deleteButton);
   layout_Botton_H->addWidget(calibrateButton);
 
   QVBoxLayout *layout_V = new QVBoxLayout;
@@ -138,6 +144,17 @@ void MainDialog::inputDataToggle()
 {
   calib_param.setCaptureFlag();
 }
+
+void MainDialog::resetToggle()
+{
+  calib_param.resetScene();
+}
+
+void MainDialog::deleteToggle()
+{
+  calib_param.deleteScene();
+}
+
 
 void MainDialog::updateNowImage()
 {
