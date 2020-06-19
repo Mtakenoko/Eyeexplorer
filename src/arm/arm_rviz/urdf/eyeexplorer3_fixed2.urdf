@@ -107,9 +107,9 @@
   <link name="arm_link_para2">
     <visual>
       <geometry>
-        <box size="0.054 0.0005 -0.019"/>
+        <box size="0.054 0.02 -0.019"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0.027 0.00025 -0.0095"/>
+      <origin rpy="0 0 0" xyz="0.027 0.0 -0.0095"/>
       <material name="ARM/orange"/>
     </visual>
   </link>
@@ -117,7 +117,7 @@
   <joint name="arm_joint4" type="continuous">
     <parent link="arm_link_para2"/>
     <child link="arm_link50"/>
-    <origin rpy="0 0 0" xyz="0.054 0.005 -0.019"/>
+    <origin rpy="0 0 0" xyz="0.054 0.0005 -0.019"/>
     <axis xyz="1 0 0"/>
   </joint>
 

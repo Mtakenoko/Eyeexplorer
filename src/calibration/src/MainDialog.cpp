@@ -139,13 +139,23 @@ void MainDialog::inputDataToggle()
   calib_param.setCaptureFlag();
 }
 
+void MainDialog::updateNowImage()
+{
+  cv::Mat img;
+  calib_param.getNowImage(&img);
+  if (img.empty())
+    return;
+  this->setItemToScene(scene_cam, img);
+  update();
+}
+
 void MainDialog::updateSceneImage()
 {
   cv::Mat img;
   calib_param.getNewSceneImage(&img);
   if (img.empty())
     return;
-  MainDialog::setItemToScene(scene, img);
+  this->setItemToScene(scene, img);
   update();
 }
 
@@ -155,30 +165,22 @@ void MainDialog::updateMarkerImage()
   calib_param.getNewMarkerImage(&img);
   if (img.empty())
     return;
-  MainDialog::setItemToScene(scene_marker, img);
+  this->setItemToScene(scene_marker, img);
   update();
 }
 
-void MainDialog::updateNowImage()
-{
-  cv::Mat img;
-  calib_param.getNowImage(&img);
-  if (img.empty())
-    return;
-  MainDialog::setItemToScene(scene_cam, img);
-  update();
-}
 
 void MainDialog::calibrateToggle()
 {
   calib_param.setCalibrationFlag();
 }
 
-void MainDialog::setItemToScene(QGraphicsScene *qscene, const cv::Mat img)
+void MainDialog::setItemToScene(QGraphicsScene *qscene, cv::Mat img)
 {
   cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
   QImage _qImage(img.data, img.cols, img.rows, QImage::Format_RGB888);
   QGraphicsPixmapItem *image_item = new QGraphicsPixmapItem(QPixmap::fromImage(_qImage));
+  qscene->clear();
   qscene->addItem(image_item);
 }
 

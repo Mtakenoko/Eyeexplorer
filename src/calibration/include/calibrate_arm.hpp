@@ -50,7 +50,6 @@ private:
     void optimization();
     void optimization_link();
     void projectPoint();
-    int projectPoint_scene(Scene scene);
     void clear();
     int encoding2mat_type(const std::string &encoding);
     void setNewScene();
