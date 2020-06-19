@@ -121,7 +121,7 @@ void Marker::setPosition(int marker_id)
 }
 
 Calib_Param::Calib_Param()
-    : scene_counter(0), flag_set(false), flag_set_image(false), flag_set_joint(false),
+    : scene_counter(0), use_scene_counter(0), flag_set(false), flag_set_image(false), flag_set_joint(false),
       flag_finish(false), flag_optimize(false)
 {
     std::cout << "Welcome to Calibration node!" << std::endl;
@@ -146,7 +146,7 @@ void Calib_Param::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr
     // 画像
     cv::Mat frame_image(msg_image->height, msg_image->width, Calib_Param::encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
     now_image = frame_image.clone();
-
+    
     if (flag_set && flag_set_image)
         Calib_Param::input_image_data(msg_image);
 
@@ -272,12 +272,13 @@ void Calib_Param::optimization()
     {
         offset_output[i] = mutable_angle_param[i];
     }
-    
+
     // 結果をファイルに保存
     Calib_Param::saveOffsetData();
 
     // 終了処理
     flag_optimize = false;
+    flag_finish = true;
     Calib_Param::clear();
 }
 
@@ -446,6 +447,17 @@ void Calib_Param::projectPoint()
             predicted[0] = focal_x * xp + u_x;
             predicted[1] = focal_y * yp + u_y;
 
+            double error[2];
+            error[0] = predicted[0] - (double)marker_itr->Point_Image.x;
+            error[1] = predicted[1] - (double)marker_itr->Point_Image.x;
+
+            double error_distance = sqrt(error[0] * error[0] + error[1] * error[1]);
+
+            if (error_distance < 100.)
+            {
+                use_scene_counter++;
+            }
+
             printf("#%d obs:[%d %d], predict[%0.3lf %0.3lf]\n", marker_itr->ID, (int)marker_itr->Point_Image.x, (int)marker_itr->Point_Image.y, predicted[0], predicted[1]);
             printf("points[%0.3lf %0.3lf %0.3lf] arm[%0.3lf %0.3lf %0.3lf]\n", point[0], point[1], point[2], Ptip[0], Ptip[1], Ptip[2]);
             printf("points - arm = [%0.3lf %0.3lf %0.3lf]\n", point[0] - Ptip[0], point[1] - Ptip[1], point[2] - Ptip[2]);
@@ -469,6 +481,9 @@ void Calib_Param::input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_
     // マーカー位置検出
     Calib_Param::detect_marker(frame_image, &new_Scene.marker);
 
+    flag_set_image = false;
+    flag_finish = false;
+
     // 画像・角度ともにinputされているならば
     if (flag_set && !flag_set_image && !flag_set_joint)
         Calib_Param::setNewScene();
@@ -484,6 +499,7 @@ void Calib_Param::input_joint_data(const sensor_msgs::msg::JointState::SharedPtr
     new_Scene.joint[4] = msg_joint->position[6];
 
     flag_set_joint = false;
+    flag_finish = false;
 
     // 画像・角度ともにinputされているならば
     if (flag_set && !flag_set_image && !flag_set_joint)
@@ -504,6 +520,7 @@ void Calib_Param::setCaptureFlag()
     flag_set = true;
     flag_set_image = true;
     flag_set_joint = true;
+    use_scene_counter = 0;
 }
 
 void Calib_Param::setCalibrationFlag()
@@ -566,6 +583,11 @@ int Calib_Param::getSceneNum()
     return scene_counter;
 }
 
+int Calib_Param::getUseSceneNum()
+{
+    return use_scene_counter;
+}
+
 void Calib_Param::getNowImage(cv::Mat *image)
 {
     *image = now_image.clone();
@@ -579,6 +601,11 @@ void Calib_Param::getNewSceneImage(cv::Mat *image)
 void Calib_Param::getNewMarkerImage(cv::Mat *image)
 {
     *image = marker_image.clone();
+}
+
+bool Calib_Param::getFinishFlag()
+{
+    return flag_finish;
 }
 
 void Calib_Param::clear()

@@ -34,9 +34,11 @@ public:
     void topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void topic_callback_joint_(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     int getSceneNum();
+    int getUseSceneNum();
     void getNowImage(cv::Mat *image);
     void getNewSceneImage(cv::Mat *image);
     void getNewMarkerImage(cv::Mat *image);
+    bool getFinishFlag();
     void setCaptureFlag();
     void setCalibrationFlag();
     void saveOffsetData();
@@ -48,6 +50,7 @@ private:
     void optimization();
     void optimization_link();
     void projectPoint();
+    int projectPoint_scene(Scene scene);
     void clear();
     int encoding2mat_type(const std::string &encoding);
     void setNewScene();
@@ -69,6 +72,7 @@ private:
 
 public:
     int scene_counter;
+    int use_scene_counter;
 
 private:
     bool flag_set;

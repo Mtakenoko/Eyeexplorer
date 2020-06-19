@@ -89,7 +89,7 @@ void MainDialog::createROS2node(const char *node_name)
         this->updateNowImage();
         this->updateSceneImage();
         this->updateMarkerImage();
-        this->setSceneNum();
+        this->setString();
       });
   subscription_joint_ = node_->create_subscription<sensor_msgs::msg::JointState>(
       topic_sub_joint, qos,
@@ -112,6 +112,27 @@ void MainDialog::setSceneNum()
   label->setText(qstr);
 }
 
+void MainDialog::setUsedSceneNum()
+{
+  char str[100];
+  sprintf(str, "Calibrated! (%d marker were used for this calibration) ", calib_param.getUseSceneNum());
+  QString qstr(str);
+  label->setText(qstr);
+}
+
+void MainDialog::setString()
+{
+  if (calib_param.getFinishFlag())
+  {
+    // 終わった
+    this->setUsedSceneNum();
+  }
+  else
+  {
+    // まだ終わってない
+    this->setSceneNum();
+  }
+}
 
 void MainDialog::inputDataToggle()
 {

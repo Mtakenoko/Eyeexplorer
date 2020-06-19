@@ -62,6 +62,9 @@ private:
     double angle2;
     double angle3;
     double angle4;
+
+public:
+    int counter;
 };
 
 #endif

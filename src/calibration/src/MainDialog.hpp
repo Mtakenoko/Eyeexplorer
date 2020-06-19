@@ -30,6 +30,8 @@ private Q_SLOTS:
     void updateSceneImage();
     void updateMarkerImage();
     void setSceneNum();
+    void setUsedSceneNum();
+    void setString();
 
 private:
     QLabel *label;

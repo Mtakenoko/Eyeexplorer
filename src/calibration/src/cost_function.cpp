@@ -8,7 +8,8 @@ NewProjectionErrorCostFuctor::NewProjectionErrorCostFuctor(double observed_x_, d
                                                            double angle0_, double angle1_, double angle2_, double angle3_, double angle4_)
     : observed_x(observed_x_), observed_y(observed_y_),
       marker_x(marker_x_), marker_y(marker_y_), marker_z(marker_z_),
-      angle0(angle0_), angle1(angle1_), angle2(angle2_), angle3(angle3_), angle4(angle4_) {}
+      angle0(angle0_), angle1(angle1_), angle2(angle2_), angle3(angle3_), angle4(angle4_),
+      counter(0){}
 
 bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
                                               const double *const offset_angle1,
@@ -54,8 +55,23 @@ bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
     double predicted_x = focal_x * xp + u_x;
     double predicted_y = focal_y * yp + u_y;
 
-    residuals[0] = predicted_x - observed_x;
-    residuals[1] = predicted_y - observed_y;
+    double error[2];
+    error[0] = predicted_x - observed_x;
+    error[1] = predicted_y - observed_y;
+    double error_distance = sqrt(error[0] * error[0] + error[1] * error[1]);
+
+    if (error_distance > 100.)
+    {
+        // デカすぎで逆におかしいので誤差に追加しない
+        residuals[0] = 0.0;
+        residuals[1] = 0.0;
+    }
+    else
+    {
+        residuals[0] = error[0];
+        residuals[1] = error[1];
+    }
+
     return true;
 }
 ceres::CostFunction *NewProjectionErrorCostFuctor::Create(const double observed_x,
