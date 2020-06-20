@@ -46,7 +46,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     //エンコーダーの値を読んで運動学を解く
     for (int i = 0; i < ADOF; i++)
     {
-        passivearm.q[i] = enc_pos[i] - readencoder.offset[i];
+        passivearm.q[i] = enc_pos[i] + readencoder.offset[i];
     }
     passivearm.forward_kinematics();
 

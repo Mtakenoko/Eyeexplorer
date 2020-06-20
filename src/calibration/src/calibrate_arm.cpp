@@ -643,6 +643,7 @@ void Calib_Param::resetScene()
     flag_set = false;
     flag_set_image = false;
     flag_set_joint = false;
+    std::cout << "scene was reseted" << std::endl;
 }
 
 void Calib_Param::deleteScene()
