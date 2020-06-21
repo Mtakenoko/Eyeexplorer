@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(calibration)
+project(calibration_delay)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -50,17 +50,16 @@ set(QT_LIBRARIES Qt5::Widgets)
 add_definitions(-DQT_NO_KEYWORDS)
 
 ################  node setting  ###############
-# arm_param_calibrator node
-add_executable(arm_param_calibrator
-  src/arm_param_calibrator.cpp
+# delay_calibrator node
+add_executable(delay_calibrator
+  src/delay_calibrator.cpp
   src/arm.cpp
   src/MainDialog.cpp
-  src/ImageWidget.cpp
-  src/calibrate_arm.cpp
+  src/calibrate.cpp
   src/cost_function.cpp
-  # src/cost_function_link.cpp
+  src/Scene.cpp
 )
-ament_target_dependencies(arm_param_calibrator
+ament_target_dependencies(delay_calibrator
   "rclcpp"
   "sensor_msgs"
   "geometry_msgs"
@@ -68,36 +67,14 @@ ament_target_dependencies(arm_param_calibrator
   "OpenCV"
   "ceres"
 )
-target_link_libraries(arm_param_calibrator
+target_link_libraries(delay_calibrator
   ceres ts01 ktl ktlrt
   ${QT_LIBRARIES}
 )
-install(TARGETS arm_param_calibrator
+install(TARGETS delay_calibrator
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# markerpoint_publisher node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(markerpoint_publisher
-  src/markerpoint_publisher.cpp
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(markerpoint_publisher
-  "rclcpp"
-  "rcl_interfaces"
-  "rcutils"
-  "std_msgs"
-  "sensor_msgs"
-  "pcl_conversions"
-  "tf2_geometry_msgs"
-)
-target_link_libraries(markerpoint_publisher
-  ${Boost_SYSTEM_LIBRARY}
-)
-# 実行ファイルをインストール
-install(TARGETS markerpoint_publisher
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
