@@ -13,7 +13,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include "Scene.hpp"
 
-#define SCENE_NUM 30
+#define SCENE_NUM 50
 
 class Calib_Param
 {
@@ -24,7 +24,6 @@ public:
     int getSceneNum();
     int getUseSceneNum();
     void getNowImage(cv::Mat *image);
-    void getNewSceneImage(cv::Mat *image);
     void getNewMarkerImage(cv::Mat *image);
     bool getFinishFlag();
     void setCalibrationFlag();
@@ -33,9 +32,8 @@ public:
 private:
     void input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void input_joint_data(const sensor_msgs::msg::JointState::SharedPtr msg_image);
-    int detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
-    void optimization();
-    void projectPoint();
+    bool detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
+    void optimization_without_ceres();
     void clear();
     int encoding2mat_type(const std::string &encoding);
     void setNewScene();
@@ -46,7 +44,6 @@ private:
     Scene new_Scene[SCENE_NUM];
     int handle_scene;
     cv::Mat now_image;
-    cv::Mat scene_image;
     cv::Mat marker_image;
     // マーカー検出用
     cv::aruco::PREDEFINED_DICTIONARY_NAME dictionary_name;
@@ -55,6 +52,7 @@ private:
 
 private:
     double *offset_output;
+    int delay;
 
 public:
     int scene_counter;

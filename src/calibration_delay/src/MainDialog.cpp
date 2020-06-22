@@ -118,8 +118,6 @@ void MainDialog::setString()
   }
 }
 
-
-
 void MainDialog::updateNowImage()
 {
   cv::Mat img;
@@ -145,7 +143,6 @@ void MainDialog::startToggle()
   calib_param.setStartFlag();
 }
 
-
 void MainDialog::calibrateToggle()
 {
   calib_param.setCalibrationFlag();
@@ -167,5 +164,6 @@ void MainDialog::initImage(QGraphicsScene *qscene, std::string file_path)
   cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
   QImage _qImage(img.data, img.cols, img.rows, QImage::Format_RGB888);
   QGraphicsPixmapItem *image_item = new QGraphicsPixmapItem(QPixmap::fromImage(_qImage));
+  qscene->clear();
   qscene->addItem(image_item);
 }

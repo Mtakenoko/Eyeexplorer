@@ -8,12 +8,14 @@ ProjectionErrorCostFuctor::ProjectionErrorCostFuctor(double observed_x_, double 
                                                      Joint *angle_)
     : observed_x(observed_x_), observed_y(observed_y_),
       marker_x(marker_x_), marker_y(marker_y_), marker_z(marker_z_),
+      angle(angle_),
       counter(0) {}
 
 bool ProjectionErrorCostFuctor::operator()(const double *const time_delay,
                                            double *residuals) const
 {
     int num = (int)(time_delay[0] * 1000.);
+    printf("num = %d\n", num);
 
     PassiveArm passivearm;
     passivearm.q[0] = angle[num].theta_0;
