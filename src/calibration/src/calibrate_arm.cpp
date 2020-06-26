@@ -224,6 +224,10 @@ void Calib_Param::optimization()
     mutable_angle_param[3] = 0.;
     mutable_angle_param[4] = 0.;
 
+    double mutable_endoscope_deflection[2];
+    mutable_endoscope_deflection[0] = 0.0; //内視鏡視線方向回転量
+    mutable_endoscope_deflection[1] = 0.0; // たわみ量について（M/EIに相当）
+
     // コスト関数生成
     for (auto itr = scene.begin(); itr != scene.end(); itr++)
     {
@@ -233,7 +237,9 @@ void Calib_Param::optimization()
             ceres::CostFunction *cost_function = NewProjectionErrorCostFuctor::Create((double)marker_itr->Point_Image.x, (double)marker_itr->Point_Image.y,
                                                                                       (double)marker_itr->Position.x, (double)marker_itr->Position.y, (double)marker_itr->Position.z,
                                                                                       itr->joint[0], itr->joint[1], itr->joint[2], itr->joint[3], itr->joint[4]);
-            problem.AddResidualBlock(cost_function, NULL, &mutable_angle_param[0], &mutable_angle_param[1], &mutable_angle_param[2], &mutable_angle_param[3], &mutable_angle_param[4]);
+            problem.AddResidualBlock(cost_function, NULL,
+                                     &mutable_angle_param[0], &mutable_angle_param[1], &mutable_angle_param[2], &mutable_angle_param[3], &mutable_angle_param[4],
+                                     &mutable_endoscope_deflection[0], &mutable_endoscope_deflection[1]);
         }
     }
     // 制約設定
@@ -247,6 +253,11 @@ void Calib_Param::optimization()
     problem.SetParameterUpperBound(&mutable_angle_param[2], 0, M_PI / 10);
     problem.SetParameterUpperBound(&mutable_angle_param[3], 0, M_PI / 10);
     problem.SetParameterUpperBound(&mutable_angle_param[4], 0, M_PI / 10);
+
+    problem.SetParameterLowerBound(&mutable_endoscope_deflection[0], 0, -M_PI / 2);
+    problem.SetParameterUpperBound(&mutable_endoscope_deflection[0], 0, M_PI / 2);
+    problem.SetParameterLowerBound(&mutable_endoscope_deflection[1], 0, 0.);
+    problem.SetParameterUpperBound(&mutable_endoscope_deflection[1], 0, 0.2);
 
     //Solverのオプション選択
     ceres::Solver::Options options;
@@ -264,12 +275,18 @@ void Calib_Param::optimization()
 
     // 結果を出力
     std::cout << "Optimizing Finished!!!" << std::endl;
-    printf("after: [%lf %lf %lf %lf %lf]\n", mutable_angle_param[0], mutable_angle_param[1], mutable_angle_param[2], mutable_angle_param[3], mutable_angle_param[4]);
+    printf("after: [%lf %lf %lf %lf %lf] [%lf %lf]\n",
+           mutable_angle_param[0], mutable_angle_param[1], mutable_angle_param[2], mutable_angle_param[3], mutable_angle_param[4],
+           mutable_endoscope_deflection[0], mutable_endoscope_deflection[1]);
     // std::cout << summary.FullReport() << std::endl;
-    offset_output = (double *)malloc(sizeof(double) * ADOF);
+    offset_output = (double *)malloc(sizeof(double) * (ADOF + 2));
     for (int i = 0; i < ADOF; i++)
     {
         offset_output[i] = mutable_angle_param[i];
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        offset_output[ADOF + i] = mutable_endoscope_deflection[i];
     }
 
     // 結果をファイルに保存
@@ -630,7 +647,7 @@ void Calib_Param::saveOffsetData()
         std::cin.get();
         return;
     }
-    for (int i = 0; i < ADOF; i++)
+    for (int i = 0; i < ADOF + 2; i++)
         ofs << offset_output[i] << std::endl;
 }
 

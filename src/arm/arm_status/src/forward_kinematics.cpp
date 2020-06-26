@@ -62,11 +62,20 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     q_msg.header.stamp = clock->now();
 
     //位置・姿勢計算
+    // 内視鏡針部の付け根までの運動学
     Ktl::Matrix<3, 3> Escope = Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
-                               Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
-    Ktl::Matrix<3, 3> endoscope_pose = passivearm.Rr() * Escope;     // 内視鏡姿勢行列
-    Ktl::Vector<3> n = endoscope_pose.column(2);                     // 内視鏡の向き
-    Ktl::Vector<3> Ptip = passivearm.Pr() + ENDOSCOPE_LENGTH * n;
+                               Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG);  //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
+    Ktl::Matrix<3, 3> endoscope_root_pose = passivearm.Rr() * Escope; // 内視鏡姿勢行列
+    Ktl::Vector<3> n = endoscope_root_pose.column(2);                 // 内視鏡の向き
+    Ktl::Vector<3> P_root = passivearm.Pr() + ENDOSCOPE_ROOT * n;
+
+    // 内視鏡針部のたわみについて
+    // 梁の曲げモデルを考える。x軸回りの曲げ回転とその方向を選択するz方向の回転の2つで成り立つ
+    Ktl::Matrix<3, 3> Rot_r_e = Ktl::Matrix<3, 3>(Ktl::Z, DEFLECTION_DERECT / DEG);                   // 針部の曲がる平面（力方向に水平な平面）への座標変換行列（内視鏡姿勢座標からみた）
+    Ktl::Matrix<3, 3> Rot_deflect_r = Ktl::Matrix<3, 3>(Ktl::X, -M_EI * ENDOSCOPE_NEEDLE);            // 針部の曲げを表す回転行列（力に水平な面から見た）
+    Ktl::Vector<3> needle_r(0., M_EI * ENDOSCOPE_NEEDLE * ENDOSCOPE_NEEDLE / 2., ENDOSCOPE_NEEDLE);   // 内視鏡根本から内視鏡先端までのベクトル（力に水平な面から見た）
+    Ktl::Matrix<3, 3> endoscope_pose = endoscope_root_pose * Rot_r_e * Rot_deflect_r * Rot_r_e.inv(); // 絶対座標系から見た、内視鏡先端の座標系
+    Ktl::Vector<3> Ptip = P_root + endoscope_root_pose * Rot_r_e * needle_r;
 
     //並進成分
     tip_msg.translation.x = Ptip[0];
@@ -94,6 +103,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
     {
         RCLCPP_INFO(node->get_logger(), "zim: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", passivearm.Pr()[0], passivearm.Pr()[1], passivearm.Pr()[2], rall, pitch, yaw);
         RCLCPP_INFO(node->get_logger(), "tip: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
+        RCLCPP_INFO(node->get_logger(), "root: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", P_root[0], P_root[1], P_root[2], rall, pitch, yaw);
         printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
         // printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
     }
@@ -104,18 +114,18 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     //ここからtf
     //送信するメッセージ
-    // tf2_ros::StaticTransformBroadcaster broadcaster(node);
+    tf2_ros::StaticTransformBroadcaster broadcaster(node);
 
-    // tf_msg.transform.translation.x = Ptip[0] / 1000.;
-    // tf_msg.transform.translation.y = Ptip[1] / 1000.;
-    // tf_msg.transform.translation.z = Ptip[2] / 1000.;
-    // tf_msg.transform.rotation.x = qx;
-    // tf_msg.transform.rotation.y = qy;
-    // tf_msg.transform.rotation.z = qz;
-    // tf_msg.transform.rotation.w = qw;
-    // tf_msg.header.frame_id = "world";
-    // tf_msg.child_frame_id = "arm_tip";
-    // broadcaster.sendTransform(tf_msg);
+    tf_msg.transform.translation.x = Ptip[0] / 1000.;
+    tf_msg.transform.translation.y = Ptip[1] / 1000.;
+    tf_msg.transform.translation.z = Ptip[2] / 1000.;
+    tf_msg.transform.rotation.x = qx;
+    tf_msg.transform.rotation.y = qy;
+    tf_msg.transform.rotation.z = qz;
+    tf_msg.transform.rotation.w = qw;
+    tf_msg.header.frame_id = "world";
+    tf_msg.child_frame_id = "arm_tip";
+    broadcaster.sendTransform(tf_msg);
 }
 
 int main(int argc, char *argv[])

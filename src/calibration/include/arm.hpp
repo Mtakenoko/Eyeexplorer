@@ -5,6 +5,8 @@
 
 #define ADOF 5
 #define ENDOSCOPE_LENGTH 90.0
+#define ENDOSCOPE_ROOT 60.0
+#define ENDOSCOPE_NEEDLE 30.0
 
 class PassiveArm : public Ktl::SerialMechanism<ADOF>
 {
@@ -20,6 +22,12 @@ public:
 
   template <typename T>
   PassiveArm(const T *link);
+
+public:
+  void calc();
+  void calcDeflection(double rot_z, double M_EI);
+  Ktl::Vector<3> Ptip;
+  Ktl::Matrix<3, 3> endoscope_pose;
 };
 
 #endif

@@ -67,3 +67,31 @@ PassiveArm::PassiveArm(const T link[21]) : Ktl::SerialMechanism<ADOF>()
     setup_link(5, Ktl::Vector<3>(link[18], link[19], link[20]));
     setup_axis(5, Ktl::Z, 0);
 }
+
+void PassiveArm::calc()
+{
+    // 内視鏡針部の付け根までの運動学
+    Ktl::Matrix<3, 3> Escope = Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
+                               Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
+    endoscope_pose = this->Rr() * Escope;                            // 内視鏡姿勢行列
+    Ktl::Vector<3> n = endoscope_pose.column(2);                     // 内視鏡の向き
+    Ptip = this->Pr() + ENDOSCOPE_LENGTH * n;
+}
+
+void PassiveArm::calcDeflection(double rot_z, double M_EI)
+{
+    // 内視鏡針部の付け根までの運動学
+    Ktl::Matrix<3, 3> Escope = Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
+                               Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
+    Ktl::Matrix<3, 3> endoscope_root_pose = this->Rr() * Escope;     // 内視鏡姿勢行列
+    Ktl::Vector<3> n = endoscope_root_pose.column(2);                // 内視鏡の向き
+    Ktl::Vector<3> P_root = this->Pr() + ENDOSCOPE_ROOT * n;
+
+    // 内視鏡針部のたわみについて
+    // 梁の曲げモデルを考える。x軸回りの曲げ回転とその方向を選択するz方向の回転の2つで成り立つ
+    Ktl::Matrix<3, 3> Rot_r_e = Ktl::Matrix<3, 3>(Ktl::Z, rot_z);                                   // 針部の曲がる平面（力方向に水平な平面）への座標変換行列（内視鏡姿勢座標からみた）
+    Ktl::Matrix<3, 3> Rot_deflect_r = Ktl::Matrix<3, 3>(Ktl::X, -M_EI * ENDOSCOPE_NEEDLE);          // 針部の曲げを表す回転行列（力に水平な面から見た）
+    Ktl::Vector<3> needle_r(0., M_EI * ENDOSCOPE_NEEDLE * ENDOSCOPE_NEEDLE / 2., ENDOSCOPE_NEEDLE); // 内視鏡根本から内視鏡先端までのベクトル（力に水平な面から見た）
+    endoscope_pose = endoscope_root_pose * Rot_r_e * Rot_deflect_r * Rot_r_e.inv();                 // 絶対座標系から見た、内視鏡先端の座標系
+    Ptip = P_root + endoscope_root_pose * Rot_r_e * needle_r;
+}

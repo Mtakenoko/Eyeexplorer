@@ -9,13 +9,15 @@ NewProjectionErrorCostFuctor::NewProjectionErrorCostFuctor(double observed_x_, d
     : observed_x(observed_x_), observed_y(observed_y_),
       marker_x(marker_x_), marker_y(marker_y_), marker_z(marker_z_),
       angle0(angle0_), angle1(angle1_), angle2(angle2_), angle3(angle3_), angle4(angle4_),
-      counter(0){}
+      counter(0) {}
 
 bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
                                               const double *const offset_angle1,
                                               const double *const offset_angle2,
                                               const double *const offset_angle3,
                                               const double *const offset_angle4,
+                                              const double *const deflection0,
+                                              const double *const deflection1,
                                               double *residuals) const
 {
     PassiveArm passivearm;
@@ -25,12 +27,7 @@ bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
     passivearm.q[3] = angle3 + offset_angle3[0];
     passivearm.q[4] = angle4 + offset_angle4[0];
     passivearm.forward_kinematics();
-
-    Ktl::Matrix<3, 3> Escope = Ktl::Matrix<3, 3>(Ktl::Y, 180.0 / DEG) *
-                               Ktl::Matrix<3, 3>(Ktl::Z, 0.0 / DEG); //現状は内視鏡の姿勢はx軸が視線方向なので画像座標と等しく（z正方向が視線方向）するための回転行列?
-    Ktl::Matrix<3, 3> endoscope_pose = passivearm.Rr() * Escope;     // 内視鏡姿勢行列
-    Ktl::Vector<3> n = endoscope_pose.column(2);                     // 内視鏡の向き
-    Ktl::Vector<3> Ptip = passivearm.Pr() + ENDOSCOPE_LENGTH * n;
+    passivearm.calcDeflection(deflection0[0], deflection1[0]);
 
     //　3つめの透視射影
     double point[3]; // マーカーの三次元点(ワールド座標系)
@@ -41,7 +38,9 @@ bool NewProjectionErrorCostFuctor::operator()(const double *const offset_angle0,
     double Point[3];
     for (int i = 0; i < 3; i++)
     {
-        Point[i] = endoscope_pose[0][i] * (point[0] - Ptip[0]) + endoscope_pose[1][i] * (point[1] - Ptip[1]) + endoscope_pose[2][i] * (point[2] - Ptip[2]);
+        Point[i] = passivearm.endoscope_pose[0][i] * (point[0] - passivearm.Ptip[0]) +
+                   passivearm.endoscope_pose[1][i] * (point[1] - passivearm.Ptip[1]) +
+                   passivearm.endoscope_pose[2][i] * (point[2] - passivearm.Ptip[2]);
     }
 
     double xp = Point[0] / Point[2];
@@ -85,6 +84,6 @@ ceres::CostFunction *NewProjectionErrorCostFuctor::Create(const double observed_
                                                           const double angle3,
                                                           const double angle4)
 {
-    return (new ceres::NumericDiffCostFunction<NewProjectionErrorCostFuctor, ceres::CENTRAL, 2, 1, 1, 1, 1, 1>(
+    return (new ceres::NumericDiffCostFunction<NewProjectionErrorCostFuctor, ceres::CENTRAL, 2, 1, 1, 1, 1, 1, 1, 1>(
         new NewProjectionErrorCostFuctor(observed_x, observed_y, marker_x, marker_y, marker_z, angle0, angle1, angle2, angle3, angle4)));
 }

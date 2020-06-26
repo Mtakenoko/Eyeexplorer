@@ -14,6 +14,8 @@ struct NewProjectionErrorCostFuctor
                     const double *const offset_angle2,
                     const double *const offset_angle3,
                     const double *const offset_angle4,
+                    const double *const deflection0_,
+                    const double *const deflection1_,
                     double *residuals) const;
 
     // Factory to hide the construction of the CostFunction object from

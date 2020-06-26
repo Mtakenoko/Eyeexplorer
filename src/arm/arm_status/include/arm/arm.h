@@ -3,6 +3,10 @@
 
 #define ADOF 5
 #define ENDOSCOPE_LENGTH 90.0
+#define ENDOSCOPE_ROOT 60.0
+#define ENDOSCOPE_NEEDLE 30.0
+#define M_EI 0.0
+#define DEFLECTION_DERECT 0.0
 
 class PassiveArm : public Ktl::SerialMechanism<ADOF>
 {
