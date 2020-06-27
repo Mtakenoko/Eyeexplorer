@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     auto reconstructor = Reconstruction();
 
     // node
-    auto node = rclcpp::Node::make_shared("reconstruction_BA_class"); //Set QoS to Publish
+    auto node = rclcpp::Node::make_shared("reconstructor"); //Set QoS to Publish
 
     // Set quality of service profile based on command line options.
     // コマンドラインでのQoSの設定（よくわからん）

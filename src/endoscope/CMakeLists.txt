@@ -53,17 +53,17 @@ cap_endoscope
 DESTINATION lib/${PROJECT_NAME}
 )
 
-# reconstruction_BA node
-add_executable(reconstruction_BA
-  src/reconstruction_BA.cpp
-  option/options_reconstruction_BA.cpp
+# reconstructor node
+add_executable(reconstructor
+  src/reconstructor.cpp
+  src/Reconstruction.cpp
   ../HTL/src/transform.cpp
   ../HTL/src/msg_converter.cpp
 )
-target_link_libraries(reconstruction_BA
+target_link_libraries(reconstructor
   ceres
 )
-ament_target_dependencies(reconstruction_BA
+ament_target_dependencies(reconstructor
   "rclcpp"
   "sensor_msgs"
   "geometry_msgs"
@@ -72,29 +72,7 @@ ament_target_dependencies(reconstruction_BA
   "message_filters"
   "ceres"
 )
-install(TARGETS reconstruction_BA
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# Reconstruct_class node
-add_executable(reconstruction_BA_class
-  src/reconstruction_BA_class.cpp
-  ../HTL/src/transform.cpp
-  ../HTL/src/msg_converter.cpp
-)
-target_link_libraries(reconstruction_BA_class
-  ceres
-)
-ament_target_dependencies(reconstruction_BA_class
-  "rclcpp"
-  "sensor_msgs"
-  "geometry_msgs"
-  "std_msgs"
-  "OpenCV"
-  "message_filters"
-  "ceres"
-)
-install(TARGETS reconstruction_BA_class
+install(TARGETS reconstructor
   DESTINATION lib/${PROJECT_NAME}
 )
 

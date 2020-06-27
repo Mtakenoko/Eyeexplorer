@@ -24,15 +24,20 @@ struct SnavelyReprojectionError
         // cameraはワールド座標系でのカメラ位置姿勢
         // pointはワールド座標系での観測点の位置
         // pはカメラ座標系での観測点の位置
-        T p_[3], p[3];
+        // T p_[3];
+        T p[3];
 
         // 観測点の座標変換（並進）camera[3,4,5]
-        p_[0] = point[0] - camera[3];
-        p_[1] = point[1] - camera[4];
-        p_[2] = point[2] - camera[5];
+        // p_[0] = point[0] - camera[3];
+        // p_[1] = point[1] - camera[4];
+        // p_[2] = point[2] - camera[5];
 
         // 観測点の座標変換（回転）camera[0,1,2]
-        ceres::AngleAxisRotatePoint(camera, p_, p);
+        ceres::AngleAxisRotatePoint(camera, point, p);
+
+        p[0] += camera[3];
+        p[1] += camera[4];
+        p[2] += camera[5];
 
         // ｚ座標を1とする
         T xp = p[0] / p[2];
@@ -47,14 +52,14 @@ struct SnavelyReprojectionError
         T predicted_x = 396.7 * xp + 163.6;
         T predicted_y = 396.9 * yp + 157.1;
 
-        // 観測点との誤差の計算
+        // // 観測点との誤差の計算
         // static int count = 0;
-        // count++;
         // if (count % 10 == 0)
         // {
-        //     printf("predicted=[%lf %lf]\n", predicted_x, predicted_y);
-        //     printf("observed=[%lf %lf]\n", observed_x, observed_y);
+        //     std::cout << "predicted = " << predicted_x << ", " << predicted_y << std::endl
+        //               << "observed  = " << observed_x << ", " << observed_y << std::endl;
         // }
+        // count++;
         residuals[0] = predicted_x - observed_x;
         residuals[1] = predicted_y - observed_y;
 

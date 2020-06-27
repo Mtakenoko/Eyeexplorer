@@ -118,7 +118,6 @@ public:
                                 0., 0., -1.);*/
         cv::hconcat(/*M_reflection */Rotation, /*M_reflection */ Transform, CamPose);
         CameraPose = CamPose.clone();
-
         cv::Mat ProjMat = CameraMatrix * CameraPose;
         ProjectionMatrix = ProjMat.clone();
     }
