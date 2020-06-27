@@ -318,7 +318,7 @@ void Calib_Param::saveOffsetData()
         std::cin.get();
         return;
     }
-    ofs << delay << std::endl;
+    ofs << delay;
 }
 
 int Calib_Param::encoding2mat_type(const std::string &encoding)
