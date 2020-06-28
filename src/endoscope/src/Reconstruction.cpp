@@ -12,7 +12,7 @@ Reconstruction::Reconstruction()
     if (flag_showImage)
     {
         cv::namedWindow("matching_image", cv::WINDOW_AUTOSIZE);
-        cv::namedWindow("nomatching_image", cv::WINDOW_AUTOSIZE);
+        // cv::namedWindow("nomatching_image", cv::WINDOW_AUTOSIZE);
     }
 }
 
@@ -47,12 +47,12 @@ void Reconstruction::chooseKeyFrame()
             // 判定条件1: Z方向の変化が少ない
             // カメラ座標での移動量の計算
             cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-            if (abs(t_endo.at<float>(2)) < 0.005)
+            if (abs(t_endo.at<float>(2)) < 5.)
             {
                 // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
                 // xy方向の移動量
                 cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-                bool moving_xy = cv::norm(t_move_xy) < 0.008 && cv::norm(t_move_xy) > 0.002;
+                bool moving_xy = cv::norm(t_move_xy) < 8. && cv::norm(t_move_xy) > 2.;
 
                 // 仰角
                 float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
@@ -170,7 +170,7 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
 
     // 運動学で求めたグローバル座標からみたカメラの位置姿勢
     frame_data.camerainfo.Rotation_world = transform.QuaternionToRotMat(msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
-    frame_data.camerainfo.Transform_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x, msg_arm->translation.y, msg_arm->translation.z);
+    frame_data.camerainfo.Transform_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x * 1000., msg_arm->translation.y * 1000., msg_arm->translation.z * 1000.);
 
     // 画像のID情報
     frame_data.camerainfo.frame_num = atoi(msg_image->header.frame_id.c_str());
@@ -291,7 +291,9 @@ void Reconstruction::triangulation()
 {
     // カメラ座標の計算
     frame_data.camerainfo.Rotation = keyframe_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world;
-    frame_data.camerainfo.Transform = keyframe_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - keyframe_data.camerainfo.Transform_world);
+    frame_data.camerainfo.Transform = keyframe_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - keyframe_data.camerainfo.Transform_world) * 7;
+    // ↑なぜか距離を7倍くらいずらしてやると実寸と合うっぽい
+    // @TODO: このバグ修正
     keyframe_data.camerainfo.Rotation = Rotation_eye.clone();
     keyframe_data.camerainfo.Transform = Transform_zeros.clone();
     frame_data.camerainfo.setData();
@@ -300,19 +302,23 @@ void Reconstruction::triangulation()
     keyframe_data.extractor.match2point_train(inliners_matches);
 
     // 三角測量
+    std::cout << "triangulation" << std::endl;
     cv::Mat point4D(4, match_num, CV_32FC1);
     cv::Mat p3, p3_arm;
+    cv::Mat M = (cv::Mat_<float>(3, 3) << -1., 0., 0., 0., -1., 0., 0., 0., -1.); // triangulatePointsの関数の結果がなぜか各軸方向が逆の結果がでるのでそれを打ち消す用
     for (size_t i = 0; i < match_num; i++)
     {
         cv::Mat point3D_result, point3D_result_arm;
-        cv::triangulatePoints(frame_data.camerainfo.ProjectionMatrix, keyframe_data.camerainfo.ProjectionMatrix,
-                              cv::Mat(frame_data.extractor.point[i]), cv::Mat(keyframe_data.extractor.point[i]),
+        cv::triangulatePoints(keyframe_data.camerainfo.ProjectionMatrix, frame_data.camerainfo.ProjectionMatrix,
+                              cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
                               point4D);
         cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-        point3D_result_arm = keyframe_data.camerainfo.Rotation_world * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world;
+        point3D_result_arm = (keyframe_data.camerainfo.Rotation_world * M * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world) / 1000.;
         p3.push_back(point3D_result);
         p3_arm.push_back(point3D_result_arm.reshape(3, 1));
         // std::cout << "ID: " << i << std::endl
+        //           << "keyframe: " << cv::Mat(keyframe_data.extractor.point[i]) << std::endl
+        //           << "frame   :" << cv::Mat(frame_data.extractor.point[i]) << std::endl
         //           << "point4D :" << point4D << std::endl
         //           << "point3D :" << point3D_result << std::endl;
     }
@@ -351,6 +357,7 @@ void Reconstruction::triangulation_est()
     keyframe_data.extractor.match2point_train(inliners_matches);
 
     // 三角測量
+    std::cout << "triangulation" << std::endl;
     cv::Mat point4D(4, match_num, CV_32FC1);
     cv::Mat M = (cv::Mat_<float>(3, 3) << 1., 0., 0.,
                  0., 1., 0.,
@@ -364,7 +371,7 @@ void Reconstruction::triangulation_est()
                               cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
                               point4D);
         cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-        point3D_result_arm = keyframe_data.camerainfo.Rotation_world * M * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world;
+        point3D_result_arm = (keyframe_data.camerainfo.Rotation_world * M * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world) / 1000.;
         point3D.push_back(point3D_result);
         point3D_arm.push_back(point3D_result_arm.reshape(3, 1));
     }
@@ -526,7 +533,7 @@ void Reconstruction::showImage()
 
     // 表示
     cv::imshow("matching_image", matching_image);
-    cv::imshow("nomatching_image", nomatching_image);
+    // cv::imshow("nomatching_image", nomatching_image);
     cv::waitKey(5);
 }
 
