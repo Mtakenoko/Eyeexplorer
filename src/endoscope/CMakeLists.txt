@@ -57,6 +57,7 @@ DESTINATION lib/${PROJECT_NAME}
 add_executable(reconstructor
   src/reconstructor.cpp
   src/Reconstruction.cpp
+  src/cost_function.cpp
   ../HTL/src/transform.cpp
   ../HTL/src/msg_converter.cpp
 )

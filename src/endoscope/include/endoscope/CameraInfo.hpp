@@ -113,10 +113,15 @@ public:
     void setData()
     {
         cv::Mat CamPose(3, 4, CV_32FC1);
-        cv::hconcat(Rotation, Transform, CamPose);
-        CameraPose = CamPose.clone();
-        cv::Mat ProjMat = CameraMatrix * CameraPose;
-        ProjectionMatrix = ProjMat.clone();
+        // 並進についてはカメラ→ワールド座標原点のベクトル（ワールド座標系）
+        // 回転についてはカメラ→ワールド座標系の回転行列
+        cv::hconcat(Rotation_world.t(), -Rotation_world.t() * Transform_world, CamPose);
+        this->CameraPose = CamPose.clone();
+
+        // 射影行列
+        cv::Mat ProjMat(3, 4, CV_32FC1);
+        ProjMat = CameraMatrix * CameraPose;
+        this->ProjectionMatrix = ProjMat.clone();
     }
 
 public:

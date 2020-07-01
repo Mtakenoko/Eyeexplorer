@@ -13,13 +13,14 @@
 #include <ceres/rotation.h>
 
 #include "CameraInfo.hpp"
-#include "KeyFrame.hpp"
 #include "Bundler.hpp"
+#include "cost_function.hpp"
 
 #define FOCAL_X 396.7
 #define FOCAL_Y 396.9
-#define U0 163.6
-#define V0 157.1
+#define U0 160
+#define V0 160
+#define TRI_ITERATIVE_TERM 10
 
 class Reconstruction
 {
@@ -47,8 +48,18 @@ private:
     void BF_matching();
     void knn_outlier_remover();
     void BF_outlier_remover();
+    
     void triangulation();
+    cv::Mat triangulate(const cv::Point2f &pnt1, const cv::Mat &PrjMat1,
+                        const cv::Point2f &pnt2, const cv::Mat &PrjMat2);
+    void BuildInhomogeneousEqnSystemForTriangulation(
+        const cv::Point3f &norm_p1, const cv::Mat &P1,
+        const cv::Point3f &norm_p2, const cv::Mat &P2,
+        double w1, double w2, cv::Matx43f &A, cv::Matx41f &B);
+    void SolveLinearEqn(const cv::Matx43f &A, const cv::Matx41f &B, cv::Matx41f &X);
+
     void triangulation_est();
+    void triangulation_test();
     void bundler();
     void setFirstFrame();
     void setKeyFrame();
@@ -68,8 +79,8 @@ private:
     bool flag_showImage;
     bool flag_estimate_move;
     const cv::Mat CameraMat = (cv::Mat_<float>(3, 3) << FOCAL_X, 0.0, U0,
-                         0.0, FOCAL_Y, V0,
-                         0.0, 0.0, 1.0);
+                               0.0, FOCAL_Y, V0,
+                               0.0, 0.0, 1.0);
 
     float threshold_knn_ratio;
     float threshold_ransac;
