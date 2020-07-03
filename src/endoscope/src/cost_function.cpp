@@ -48,8 +48,8 @@ bool ProjectionErrorCostFuctor::operator()(const double *const camera_angle_0,
     double predicted_y = focal_y * yp + u_y;
     residuals[0] = predicted_x - observed_x;
     residuals[1] = predicted_y - observed_y;
-    // std::cout << "predicted: " << predicted_x << ", " << predicted_y << std::endl;
-    // std::cout << "observed : " << observed_x << ", " << observed_y << std::endl;
+    // std::cout << "predicted: " << predicted_x << ", " << predicted_y
+    //           << "observed : " << observed_x << ", " << observed_y << std::endl;
 
     return true;
 }

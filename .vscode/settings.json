@@ -256,5 +256,6 @@
         "/home/takeyama/workspace/ros2_ws/install/ament_clang_format/lib/python3.6/site-packages",
         "/opt/ros/dashing/lib/python3.6/site-packages"
     ],
-    "ros.distro": "dashing"
+    "ros.distro": "dashing",
+    "git.ignoreLimitWarning": true
 }
