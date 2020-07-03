@@ -89,6 +89,7 @@ install(TARGETS
 # pointcloud_filter node
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(pointcloud_filter
+  src/filter.cpp
   src/pointcloud_filter.cpp
 )
 target_link_libraries(pointcloud_filter
