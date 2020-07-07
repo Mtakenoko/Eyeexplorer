@@ -69,6 +69,7 @@ void TrackingSubscriber::topic_callback_(const sensor_msgs::msg::Image::SharedPt
     // tracking
     tracker_->setFrame_Id(msg_image->header.frame_id);
     tracker_->process(frame_image);
+    // tracker_->calcFindTrack();
     tracker_->showMatchedImage();
 
     auto msg_pointcloud2 = std::make_unique<sensor_msgs::msg::PointCloud2>();

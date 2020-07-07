@@ -135,6 +135,21 @@ public:
     int frame_num;
 };
 
+class MatchedData
+{
+public:
+    MatchedData();
+    MatchedData(cv::Point2f point, cv::Mat PrjMat, int Frame_Num)
+    {
+        image_points = point;
+        ProjectionMatrix = PrjMat.clone();
+        frame_num = Frame_Num;
+    };
+    cv::Point2f image_points;
+    cv::Mat ProjectionMatrix;
+    int frame_num;
+};
+
 class FrameDatabase
 {
 public:
@@ -144,7 +159,7 @@ public:
     }
     Extractor extractor;
     CameraInfo camerainfo;
-    // std::vector<FrameDatabase> framedatabase;
+    std::multimap<unsigned int, MatchedData> keyponit_map;
 };
 
 #endif

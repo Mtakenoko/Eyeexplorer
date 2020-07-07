@@ -1,6 +1,8 @@
 #ifndef RECONSTRUCTION_HPP__
 #define RECONSTRUCTION_HPP__
 
+#include <map>
+
 #include <opencv2/opencv.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -35,7 +37,7 @@ public:
     FrameDatabase frame_data;
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
-    cv::Mat point3D, point3D_arm, point3D_BA;
+    cv::Mat point3D, point3D_BA;
     cv::Mat matching_image;
 
 private:
@@ -58,8 +60,10 @@ private:
         double w1, double w2, cv::Matx43f &A, cv::Matx41f &B);
     void SolveLinearEqn(const cv::Matx43f &A, const cv::Matx41f &B, cv::Matx41f &X);
 
+    void mappingKeyPoint();
     void triangulation_est();
     void triangulation_test();
+    void triangulation_multiscene();
     void bundler();
     void setFirstFrame();
     void setKeyFrame();
@@ -93,5 +97,6 @@ private:
     cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
     cv::Ptr<cv::DescriptorMatcher> matcher;
     cv::Mat R_est, t_est;
+    std::vector<FrameDatabase>::iterator keyframe_itr;
 };
 #endif

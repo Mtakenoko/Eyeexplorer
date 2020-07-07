@@ -26,10 +26,10 @@ class Tracker
 {
 public:
     Tracker()
-        : track_no(0), threshold_ratio(0.7f), threshold_ratio_other(0.7f), threshold_ransac(5.), threshold_track_no(500), flag_showimage(false), flag_setfirstframe(true){};
+        : track_no(0), threshold_ratio(0.7f), threshold_ratio_other(0.7f), threshold_ransac(5.), threshold_track_no(5000), flag_showimage(false), flag_setfirstframe(true){};
 
     Tracker(const int _detector, const int _matcher)
-        : track_no(0), threshold_ratio(0.7f), threshold_ratio_other(0.7f), threshold_ransac(5.), threshold_track_no(500), flag_showimage(false), flag_setfirstframe(true)
+        : track_no(0), threshold_ratio(0.7f), threshold_ratio_other(0.7f), threshold_ransac(5.), threshold_track_no(5000), flag_showimage(false), flag_setfirstframe(true)
     {
         setDetector(_detector);
         setMatcher(_matcher);
@@ -342,7 +342,7 @@ void Tracker::process(const cv::Mat frame)
 
         if (!last_frame.empty())
         {
-            // 現在のフレームでのidx1とlast_frameでのidx2が同じ値で設定されているか？
+            // 現在のフレームでのidx1とlast_frameの一番最後でのidx2が同じ値で設定されているか？
             // 同じ値であれば連続して追跡できていることを意味する
             auto itr = last_frame.back().find(idx1);
             if (itr != last_frame.back().end())
@@ -376,11 +376,21 @@ void Tracker::process(const cv::Mat frame)
     find_track.push_back(track);
     last_frame.push_back(current_frame);
 
-    // printf("last_frame.size() = %zu\n", last_frame.size());
-    // printf("track_no = %d\n", track_no);
-    if (track_no > threshold_track_no)
+    printf("last_frame.size() = %zu\n", last_frame.size());
+    printf("last_frame[0].size() = %zu\n", last_frame[0].size());
+    printf("find_track.size() = %zu\n", find_track.size());
+    printf("current_frame.size() = %zu\n", current_frame.size());
+    printf("track.size() = %zu\n", track.size());
+    printf("track_no = %d\n", track_no);
+
+    if (track_no > threshold_track_no && last_frame.size() > 100)
     {
         last_frame.erase(last_frame.begin());
+    }
+
+    if (track_no > threshold_track_no && find_track.size() > 100)
+    {
+        find_track.erase(find_track.begin());
     }
 
     if (flag_showimage)
@@ -402,11 +412,9 @@ void Tracker::calcFindTrack()
     for (size_t i = 0; i < last_frame.size(); i++)
     {
         std::map<unsigned int, LastFrame> track;
-        auto itr = last_frame[i].begin();
-        while (itr != last_frame[i].end())
+        for (auto itr = last_frame[i].begin(); itr != last_frame[i].end(); itr++)
         {
             track.insert(std::make_pair(itr->second.track_no, itr->second));
-            itr++;
         }
         find_track.push_back(track);
     }

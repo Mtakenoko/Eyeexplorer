@@ -6,14 +6,14 @@ Transform transform;
 Converter converter;
 
 Reconstruction::Reconstruction()
-    : flag_reconstruction(true), flag_setFirstFrame(true), flag_showImage(true), flag_estimate_move(true),
+    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(true), flag_estimate_move(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0)
 {
     if (flag_showImage)
     {
         //ウィンドウの用意
         cv::namedWindow("matching_image", cv::WINDOW_AUTOSIZE);
-        // cv::namedWindow("nomatching_image", cv::WINDOW_AUTOSIZE);
+        cv::namedWindow("nomatching_image", cv::WINDOW_AUTOSIZE);
     }
 }
 
@@ -48,22 +48,25 @@ void Reconstruction::chooseKeyFrame()
             // 判定条件1: Z方向の変化が少ない
             // カメラ座標での移動量の計算
             cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-            if (abs(t_endo.at<float>(2)) < 0.005)
+            if (abs(t_endo.at<float>(2)) < 0.01)
             {
                 // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
                 // xy方向の移動量
                 cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-                bool moving_xy = cv::norm(t_move_xy) < 0.05 && cv::norm(t_move_xy) > 0.01;
-
+                bool moving_xy = cv::norm(t_move_xy) < 0.03 && cv::norm(t_move_xy) > 0.005;
                 // 仰角
                 float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-                bool moving_phi = abs(phi) < 0.1 && abs(phi) > 0.001;
+                bool moving_phi = abs(phi) < 0.05 && abs(phi) > 0.005;
                 if (moving_xy && moving_phi)
                 {
                     // printf("あったぞ＾＾(xy: %f, phi: %f)\n", cv::norm(t_move_xy), abs(phi));
-                    keyframe_data = *itr;
+                    std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used." << std::endl;
+                    keyframe_itr = itr;
+                    keyframe_data = *keyframe_itr;
+                    flag_reconstruction = true;
                     return;
                 }
+                // printf("ないぞ(xy: %f, phi: %f)\n", cv::norm(t_move_xy), abs(phi));
             }
             // printf("t_endo_z = %f\n", abs(t_endo.at<float>(2)));
             // printf("move_xy = %f, phi = %f\n", cv::norm(t_move_xy), abs(phi));
@@ -78,7 +81,10 @@ void Reconstruction::chooseKeyFrame()
     }
     else
     {
-        keyframe_data = keyframe_database[keyframe_database.size() - 1];
+        std::cout << "KeyFrame_Databade size is " << keyframe_database.size() << std::endl;
+        flag_reconstruction = false;
+        this->setKeyFrame();
+        return;
     }
 }
 
@@ -100,7 +106,7 @@ bool Reconstruction::checkKeyFrame()
     int frame_span = frame_data.camerainfo.frame_num - itr_endo->camerainfo.frame_num;
 
     // xy方向の移動量
-    cv::Mat t_move = itr_endo->camerainfo.Rotation_world.t() * frame_data.camerainfo.Transform_world;
+    cv::Mat t_move = itr_endo->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr_endo->camerainfo.Transform_world);
     cv::Point2f t_move_xy;
     t_move_xy.x = t_move.at<float>(0);
     t_move_xy.y = t_move.at<float>(1);
@@ -109,8 +115,12 @@ bool Reconstruction::checkKeyFrame()
     // 仰角
     float phi = transform.RevFromRotMat(itr_endo->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
 
-    if (frame_span > 10 && (t_move_norm > 3. || phi > M_PI / 540.))
+    if (frame_span > 1 && (t_move_norm > 0.01 || abs(phi) > 0.05))
+    {
+        // printf("(xy: %f, phi: %f)\n", t_move_norm, abs(phi));
         return true;
+    }
+    // printf("(xy: %f, phi: %f)\n", t_move_norm, abs(phi));
     return false;
 }
 
@@ -172,6 +182,7 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
     // 運動学で求めたグローバル座標からみたカメラの位置姿勢
     frame_data.camerainfo.Rotation_world = transform.QuaternionToRotMat(msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
     frame_data.camerainfo.Transform_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x, msg_arm->translation.y, msg_arm->translation.z);
+    frame_data.camerainfo.setData();
 
     // 画像のID情報
     frame_data.camerainfo.frame_num = atoi(msg_image->header.frame_id.c_str());
@@ -193,7 +204,7 @@ void Reconstruction::knn_matching()
     if (keyframe_data.extractor.descirptors.type() != CV_32F)
         keyframe_data.extractor.descirptors.convertTo(keyframe_data.extractor.descirptors, CV_32F);
     matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
-    matcher->knnMatch(frame_data.extractor.descirptors, keyframe_data.extractor.descirptors, knn_matches, 2);
+    matcher->knnMatch(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, knn_matches, 2);
 }
 
 void Reconstruction::BF_matching()
@@ -209,7 +220,7 @@ void Reconstruction::BF_matching()
     if (keyframe_data.extractor.descirptors.type() != CV_32F)
         keyframe_data.extractor.descirptors.convertTo(keyframe_data.extractor.descirptors, CV_32F);
     matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
-    matcher->match(frame_data.extractor.descirptors, keyframe_data.extractor.descirptors, dmatch);
+    matcher->match(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, dmatch);
 }
 
 void Reconstruction::knn_outlier_remover()
@@ -227,15 +238,15 @@ void Reconstruction::knn_outlier_remover()
     {
         if (knn_matches[i][0].distance < threshold_knn_ratio * knn_matches[i][1].distance)
         {
-            match_point1.push_back(frame_data.extractor.keypoints[knn_matches[i][0].queryIdx].pt);
-            match_point2.push_back(keyframe_data.extractor.keypoints[knn_matches[i][0].trainIdx].pt);
+            match_point1.push_back(keyframe_data.extractor.keypoints[knn_matches[i][0].queryIdx].pt);
+            match_point2.push_back(frame_data.extractor.keypoints[knn_matches[i][0].trainIdx].pt);
             dmatch.push_back(knn_matches[i][0]);
         }
     }
 
     // 誤対応除去②：ホモグラフィ変換を行うときのRANSACを用いる
     cv::Mat homography, inliner_mask;
-    std::vector<cv::KeyPoint> inliners1_keypoints, inliners2_keypoints;
+    // std::vector<cv::KeyPoint> inliners1_keypoints, inliners2_keypoints;
     std::vector<int> inliners_idx;
     homography = cv::findHomography(match_point1, match_point2, cv::RANSAC, threshold_ransac, inliner_mask);
     inliners_idx.clear();
@@ -247,8 +258,8 @@ void Reconstruction::knn_outlier_remover()
             // inliners2_keypoints.push_back(matched2_keypoints[i]);
             inliners_matches.push_back(dmatch[i]);
             inliners_idx.push_back(i); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
-            matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt);
-            matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].trainIdx].pt);
+            matched_point1.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
+            matched_point2.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
         }
     }
     match_num = inliners_matches.size();
@@ -265,8 +276,8 @@ void Reconstruction::BF_outlier_remover()
     std::vector<cv::Point2f> match_point1, match_point2;
     for (size_t i = 0; i < dmatch.size(); ++i)
     {
-        match_point1.push_back(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt);
-        match_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].trainIdx].pt);
+        match_point1.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
+        match_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
     }
 
     // 誤対応除去：ホモグラフィ変換を行うときのRANSACを用いる
@@ -275,17 +286,48 @@ void Reconstruction::BF_outlier_remover()
     std::vector<cv::KeyPoint> inliners1_keypoints, inliners2_keypoints;
     inliners_idx.clear();
     homography = cv::findHomography(match_point1, match_point2, inliner_mask, cv::RANSAC, 5.);
+
+    std::cout << "before map.size() = " << keyframe_data.keyponit_map.size() << std::endl;
     for (int i = 0; i < inliner_mask.rows; i++)
     {
         if (inliner_mask.at<uchar>(i))
         {
             inliners_matches.push_back(dmatch[i]);
             inliners_idx.push_back(i); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
-            matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt);
-            matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].trainIdx].pt);
+            matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
+            matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
+
+            // keyframe_dataにマッチングした点のindexをkeyとして辞書(multimap)として登録
+            MatchedData matchData(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt,
+                                  frame_data.camerainfo.ProjectionMatrix.clone(),
+                                  frame_data.camerainfo.frame_num);
+            keyframe_data.keyponit_map.insert(std::make_pair(dmatch[i].queryIdx, matchData));
         }
     }
+    std::cout << "after map.size() = " << keyframe_data.keyponit_map.size() << std::endl;
+
     match_num = inliners_matches.size();
+
+    // keyframe_databaseの中から抽出したkeyframe_dataを変更する
+    // keyframe_databaseからkeyframeを一旦削除し、新たに作成したkeyframe_dataを同じ位置を指定して挿入する
+    keyframe_database.erase(keyframe_itr);
+    FrameDatabase newKeyFrameData = keyframe_data;
+    keyframe_database.insert(keyframe_itr, newKeyFrameData);
+}
+
+void Reconstruction::mappingKeyPoint()
+{
+    // // マッチング辞書の中で5個以上マッチングframeを発見したものを探索
+    // for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
+    // {
+    //     size_t counter = keyframe_data.keyponit_map.count(i);
+    //     if (counter > 5)
+    //     {
+    //         std::cout << "あった！！" << std::endl;
+    //     }
+    //     // std::cout << "counter : " << counter << std::endl;
+    //     // std::cout << "keypoint.size() : " << keyframe_data.extractor.keypoints.size() << std::endl;
+    // }
 }
 
 void Reconstruction::triangulation()
@@ -299,8 +341,8 @@ void Reconstruction::triangulation()
     keyframe_data.camerainfo.Transform = Transform_zeros.clone();
     frame_data.camerainfo.setData();
     keyframe_data.camerainfo.setData();
-    frame_data.extractor.match2point_query(inliners_matches);
-    keyframe_data.extractor.match2point_train(inliners_matches);
+    keyframe_data.extractor.match2point_query(inliners_matches);
+    frame_data.extractor.match2point_train(inliners_matches);
 
     // 三角測量
     std::cout << "triangulation" << std::endl;
@@ -308,89 +350,86 @@ void Reconstruction::triangulation()
     for (size_t i = 0; i < match_num; i++)
     {
         cv::Mat point4D(4, match_num, CV_32FC1);
-        cv::Mat point3D_result, point3D_result_arm;
+        cv::Mat point3D_result;
         cv::triangulatePoints(keyframe_data.camerainfo.ProjectionMatrix, frame_data.camerainfo.ProjectionMatrix,
                               cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
                               point4D);
         cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
         cv::Mat point3D_mine = triangulate(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
                                            frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
-        // point3D_result_arm = keyframe_data.camerainfo.Rotation_world * point3D_result.reshape(1, 3) + keyframe_data.camerainfo.Transform_world;
-        point3D_result_arm = point3D_result.clone();
         p3.push_back(point3D_result);
-        p3_arm.push_back(point3D_result_arm.reshape(3, 1));
+        p3_arm.push_back(point3D_result.reshape(3, 1));
 
         // 復元した点を再投影
         /* ここから */
-        float point[3];
-        point[0] = point3D_result_arm.at<float>(0);
-        point[1] = point3D_result_arm.at<float>(1);
-        point[2] = point3D_result_arm.at<float>(2);
+        // float point[3];
+        // point[0] = point3D_result.at<float>(0);
+        // point[1] = point3D_result.at<float>(1);
+        // point[2] = point3D_result.at<float>(2);
 
-        float pt_keyframe[3];
-        pt_keyframe[0] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 0) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 0) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 0) * point[2];
-        pt_keyframe[1] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 1) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 1) * point[2];
-        pt_keyframe[2] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 2) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 2) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 2) * point[2];
+        // float pt_keyframe[3];
+        // pt_keyframe[0] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 0) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 0) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 0) * point[2];
+        // pt_keyframe[1] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 1) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 1) * point[2];
+        // pt_keyframe[2] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 2) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 2) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 2) * point[2];
 
-        float pt_frame[3];
-        pt_frame[0] = frame_data.camerainfo.Rotation_world.at<float>(0, 0) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 0) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 0) * point[2];
-        pt_frame[1] = frame_data.camerainfo.Rotation_world.at<float>(0, 1) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 1) * point[2];
-        pt_frame[2] = frame_data.camerainfo.Rotation_world.at<float>(0, 2) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 2) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 2) * point[2];
+        // float pt_frame[3];
+        // pt_frame[0] = frame_data.camerainfo.Rotation_world.at<float>(0, 0) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 0) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 0) * point[2];
+        // pt_frame[1] = frame_data.camerainfo.Rotation_world.at<float>(0, 1) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 1) * point[2];
+        // pt_frame[2] = frame_data.camerainfo.Rotation_world.at<float>(0, 2) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 2) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 2) * point[2];
 
-        float t_keyframe[3];
-        t_keyframe[0] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 0) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 0) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 0) * keyframe_data.camerainfo.Transform_world.at<float>(2);
-        t_keyframe[1] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 1) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 1) * keyframe_data.camerainfo.Transform_world.at<float>(2);
-        t_keyframe[2] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 2) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 2) * keyframe_data.camerainfo.Transform_world.at<float>(2);
+        // float t_keyframe[3];
+        // t_keyframe[0] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 0) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 0) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 0) * keyframe_data.camerainfo.Transform_world.at<float>(2);
+        // t_keyframe[1] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 1) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 1) * keyframe_data.camerainfo.Transform_world.at<float>(2);
+        // t_keyframe[2] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 2) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 2) * keyframe_data.camerainfo.Transform_world.at<float>(2);
 
-        float t_frame[3];
-        t_frame[0] = frame_data.camerainfo.Rotation_world.at<float>(0, 0) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 0) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 0) * frame_data.camerainfo.Transform_world.at<float>(2);
-        t_frame[1] = frame_data.camerainfo.Rotation_world.at<float>(0, 1) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 1) * frame_data.camerainfo.Transform_world.at<float>(2);
-        t_frame[2] = frame_data.camerainfo.Rotation_world.at<float>(0, 2) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 2) * frame_data.camerainfo.Transform_world.at<float>(2);
+        // float t_frame[3];
+        // t_frame[0] = frame_data.camerainfo.Rotation_world.at<float>(0, 0) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 0) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 0) * frame_data.camerainfo.Transform_world.at<float>(2);
+        // t_frame[1] = frame_data.camerainfo.Rotation_world.at<float>(0, 1) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 1) * frame_data.camerainfo.Transform_world.at<float>(2);
+        // t_frame[2] = frame_data.camerainfo.Rotation_world.at<float>(0, 2) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 2) * frame_data.camerainfo.Transform_world.at<float>(2);
 
-        float xp_keyframe = (pt_keyframe[0] - t_keyframe[0]) / (pt_keyframe[2] - t_keyframe[2]);
-        float yp_keyframe = (pt_keyframe[1] - t_keyframe[1]) / (pt_keyframe[2] - t_keyframe[2]);
+        // float xp_keyframe = (pt_keyframe[0] - t_keyframe[0]) / (pt_keyframe[2] - t_keyframe[2]);
+        // float yp_keyframe = (pt_keyframe[1] - t_keyframe[1]) / (pt_keyframe[2] - t_keyframe[2]);
 
-        float xp_frame = (pt_frame[0] - t_frame[0]) / (pt_frame[2] - t_frame[2]);
-        float yp_frame = (pt_frame[1] - t_frame[1]) / (pt_frame[2] - t_frame[2]);
+        // float xp_frame = (pt_frame[0] - t_frame[0]) / (pt_frame[2] - t_frame[2]);
+        // float yp_frame = (pt_frame[1] - t_frame[1]) / (pt_frame[2] - t_frame[2]);
 
-        const float focal_x = 396.7;
-        const float focal_y = 396.9;
-        const float u_x = 163.6;
-        const float u_y = 157.1;
-        float predicted_keyframe[2];
-        predicted_keyframe[0] = focal_x * xp_keyframe + u_x;
-        predicted_keyframe[1] = focal_y * yp_keyframe + u_y;
-        float predicted_frame[2];
-        predicted_frame[0] = focal_x * xp_frame + u_x;
-        predicted_frame[1] = focal_y * yp_frame + u_y;
+        // const float focal_x = 396.7;
+        // const float focal_y = 396.9;
+        // const float u_x = 163.6;
+        // const float u_y = 157.1;
+        // float predicted_keyframe[2];
+        // predicted_keyframe[0] = focal_x * xp_keyframe + u_x;
+        // predicted_keyframe[1] = focal_y * yp_keyframe + u_y;
+        // float predicted_frame[2];
+        // predicted_frame[0] = focal_x * xp_frame + u_x;
+        // predicted_frame[1] = focal_y * yp_frame + u_y;
         /* ここまで */
 
-        std::cout
-            << "ID: " << i << std::endl
-            << "keyframe: " << cv::Mat(keyframe_data.extractor.point[i]).reshape(2, 1) << std::endl
-            << "frame   :" << cv::Mat(frame_data.extractor.point[i]).reshape(2, 1) << std::endl
-            // << "point4D :" << point4D.reshape(4, 1) << std::endl
-            << "point3D :" << point3D_result << std::endl
-            << "point3D_mine :" << point3D_mine.reshape(3, 1) << std::endl
-            << "predict_key :" << predicted_keyframe[0] << ", " << predicted_keyframe[1] << std::endl
-            << "predict_fra :" << predicted_frame[0] << ", " << predicted_frame[1] << std::endl;
-        std::cout << std::endl;
+        // std::cout
+        // << "ID: " << i << std::endl
+        // << "keyframe: " << cv::Mat(keyframe_data.extractor.point[i]).reshape(2, 1) << std::endl
+        // << "frame   :" << cv::Mat(frame_data.extractor.point[i]).reshape(2, 1) << std::endl
+        // << "point4D :" << point4D.reshape(4, 1) << std::endl
+        // << "point3D :" << point3D_result << std::endl
+        // << "point3D_mine :" << point3D_mine.reshape(3, 1) << std::endl
+        // << "predict_key :" << predicted_keyframe[0] << ", " << predicted_keyframe[1] << std::endl
+        // << "predict_fra :" << predicted_frame[0] << ", " << predicted_frame[1] << std::endl;
+        // std::cout << std::endl;
     }
     point3D = p3.clone();
-    point3D_arm = p3_arm.clone();
 
-    std::cout << "R_keyframe" << keyframe_data.camerainfo.Rotation_world << std::endl;
-    std::cout << "t_keyframe" << keyframe_data.camerainfo.Transform_world.reshape(3, 1) << std::endl;
-    std::cout << "R_frame" << frame_data.camerainfo.Rotation_world << std::endl;
-    std::cout << "t_frame" << frame_data.camerainfo.Transform_world.reshape(3, 1) << std::endl;
-    std::cout << "R_endo_key" << keyframe_data.camerainfo.Rotation << std::endl;
-    std::cout << "t_endo_key" << keyframe_data.camerainfo.Transform << std::endl;
-    std::cout << "R_endo" << frame_data.camerainfo.Rotation << std::endl;
-    std::cout << "t_endo" << frame_data.camerainfo.Transform.reshape(3, 1) << std::endl;
-    std::cout << "Rt_kf" << keyframe_data.camerainfo.CameraPose << std::endl;
-    std::cout << "Rt_f" << frame_data.camerainfo.CameraPose << std::endl;
-    std::cout << "Prj_kf" << keyframe_data.camerainfo.ProjectionMatrix << std::endl;
-    std::cout << "Prj_f" << frame_data.camerainfo.ProjectionMatrix << std::endl;
+    // std::cout << "R_keyframe" << keyframe_data.camerainfo.Rotation_world << std::endl;
+    // std::cout << "t_keyframe" << keyframe_data.camerainfo.Transform_world.reshape(3, 1) << std::endl;
+    // std::cout << "R_frame" << frame_data.camerainfo.Rotation_world << std::endl;
+    // std::cout << "t_frame" << frame_data.camerainfo.Transform_world.reshape(3, 1) << std::endl;
+    // std::cout << "R_endo_key" << keyframe_data.camerainfo.Rotation << std::endl;
+    // std::cout << "t_endo_key" << keyframe_data.camerainfo.Transform << std::endl;
+    // std::cout << "R_endo" << frame_data.camerainfo.Rotation << std::endl;
+    // std::cout << "t_endo" << frame_data.camerainfo.Transform.reshape(3, 1) << std::endl;
+    // std::cout << "Rt_kf" << keyframe_data.camerainfo.CameraPose << std::endl;
+    // std::cout << "Rt_f" << frame_data.camerainfo.CameraPose << std::endl;
+    // std::cout << "Prj_kf" << keyframe_data.camerainfo.ProjectionMatrix << std::endl;
+    // std::cout << "Prj_f" << frame_data.camerainfo.ProjectionMatrix << std::endl;
     // std::cout << "p1" << cv::Mat(keyframe_data.extractor.point) << std::endl;
     // std::cout << "point_key" << keyframe_data.extractor.point[0] << std::endl;
     // std::cout << "point" << frame_data.extractor.point[0] << std::endl;
@@ -458,7 +497,7 @@ void Reconstruction::BuildInhomogeneousEqnSystemForTriangulation(
     const cv::Point3f &norm_p2, const cv::Mat &P2,
     double w1, double w2, cv::Matx43f &A, cv::Matx41f &B)
 {
-    cv::Matx43d A_((norm_p1.x * P1.at<float>(2, 0) - P1.at<float>(0, 0)) / w1,
+    cv::Matx43f A_((norm_p1.x * P1.at<float>(2, 0) - P1.at<float>(0, 0)) / w1,
                    (norm_p1.x * P1.at<float>(2, 1) - P1.at<float>(0, 1)) / w1,
                    (norm_p1.x * P1.at<float>(2, 2) - P1.at<float>(0, 2)) / w1,
                    (norm_p1.y * P1.at<float>(2, 0) - P1.at<float>(1, 0)) / w1,
@@ -471,7 +510,7 @@ void Reconstruction::BuildInhomogeneousEqnSystemForTriangulation(
                    (norm_p2.y * P2.at<float>(2, 1) - P2.at<float>(1, 1)) / w2,
                    (norm_p2.y * P2.at<float>(2, 2) - P2.at<float>(1, 2)) / w2);
 
-    cv::Matx41d B_(-(norm_p1.x * P1.at<float>(2, 3) - P1.at<float>(0, 3)) / w1,
+    cv::Matx41f B_(-(norm_p1.x * P1.at<float>(2, 3) - P1.at<float>(0, 3)) / w1,
                    -(norm_p1.y * P1.at<float>(2, 3) - P1.at<float>(1, 3)) / w1,
                    -(norm_p2.x * P2.at<float>(2, 3) - P2.at<float>(0, 3)) / w2,
                    -(norm_p2.y * P2.at<float>(2, 3) - P2.at<float>(1, 3)) / w2);
@@ -618,8 +657,8 @@ void Reconstruction::triangulation_est()
     frame_data.camerainfo.Transform = t_endo.clone();
     frame_data.camerainfo.setData();
     keyframe_data.camerainfo.setData();
-    frame_data.extractor.match2point_query(inliners_matches);
-    keyframe_data.extractor.match2point_train(inliners_matches);
+    keyframe_data.extractor.match2point_query(inliners_matches);
+    frame_data.extractor.match2point_train(inliners_matches);
 
     // 三角測量
     std::cout << "triangulation" << std::endl;
@@ -646,6 +685,31 @@ void Reconstruction::triangulation_est()
     // std::cout << "R_keyframe" << keyframe_data.camerainfo.Rotation_world << std::endl;
     // std::cout << "t_keyframe" << keyframe_data.camerainfo.Transform_world << std::endl;
     // std::cout << "point1" << frame_data.extractor.point << std::endl;
+}
+
+void Reconstruction::triangulation_multiscene()
+{
+    // マッチング辞書の中で5個以上マッチングframeを発見したものを探索
+    for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
+    {
+        size_t counter = keyframe_data.keyponit_map.count(i);
+        if (counter > 5)
+        {
+            typedef std::multimap<unsigned int, MatchedData>::iterator iterator;
+            std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(i);
+            for (iterator itr = range.first; itr != range.second; itr++)
+            {
+                // std::cout << "ここで三次元復元するよ" << std::endl;
+                std::cout << "KeyPoint_num: " << itr->first << std::endl;
+                std::cout << "Frame_num: " << itr->second.frame_num << std::endl;
+                std::cout << "PrjMat: " << itr->second.ProjectionMatrix << std::endl;
+                std::cout << "frame.PrjMat: " << frame_data.camerainfo.ProjectionMatrix << std::endl;
+                std::cout << "point: " << itr->second.image_points << std::endl;
+            }
+        }
+        // std::cout << "counter : " << counter << std::endl;
+        // std::cout << "keypoint.size() : " << keyframe_data.extractor.keypoints.size() << std::endl;
+    }
 }
 
 void Reconstruction::bundler()
@@ -681,12 +745,12 @@ void Reconstruction::bundler()
 
     for (size_t i = 0; i < match_num; i++)
     {
-        mutable_point_for_observations[i][0] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[0];
-        mutable_point_for_observations[i][1] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[1];
-        mutable_point_for_observations[i][2] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[2];
-        mutable_point_for_observations[i + match_num][0] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[0];
-        mutable_point_for_observations[i + match_num][1] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[1];
-        mutable_point_for_observations[i + match_num][2] = (double)point3D_arm.at<cv::Vec3f>(i, 0)[2];
+        mutable_point_for_observations[i][0] = (double)point3D.at<cv::Vec3f>(i, 0)[0];
+        mutable_point_for_observations[i][1] = (double)point3D.at<cv::Vec3f>(i, 0)[1];
+        mutable_point_for_observations[i][2] = (double)point3D.at<cv::Vec3f>(i, 0)[2];
+        mutable_point_for_observations[i + match_num][0] = (double)point3D.at<cv::Vec3f>(i, 0)[0];
+        mutable_point_for_observations[i + match_num][1] = (double)point3D.at<cv::Vec3f>(i, 0)[1];
+        mutable_point_for_observations[i + match_num][2] = (double)point3D.at<cv::Vec3f>(i, 0)[2];
 
         //コスト関数
         // ceres::CostFunction *cost_function_train = SnavelyReprojectionError::Create((double)keyframe_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.x,
@@ -696,15 +760,15 @@ void Reconstruction::bundler()
         // problem.AddResidualBlock(cost_function_train, NULL, mutable_camera_for_observations[0], mutable_point_for_observations[i]);
         // problem.AddResidualBlock(cost_function_query, NULL, mutable_camera_for_observations[1], mutable_point_for_observations[i + match_num]);
 
-        ceres::CostFunction *cost_function_train = ProjectionErrorCostFuctor::Create((double)keyframe_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.x,
-                                                                                     (double)keyframe_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.y);
-        ceres::CostFunction *cost_function_query = ProjectionErrorCostFuctor::Create((double)frame_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.x,
-                                                                                     (double)frame_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.y);
-        problem.AddResidualBlock(cost_function_train, NULL,
+        ceres::CostFunction *cost_function_query = ProjectionErrorCostFuctor::Create((double)keyframe_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.x,
+                                                                                     (double)keyframe_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.y);
+        ceres::CostFunction *cost_function_train = ProjectionErrorCostFuctor::Create((double)frame_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.x,
+                                                                                     (double)frame_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.y);
+        problem.AddResidualBlock(cost_function_query, NULL,
                                  &mutable_camera_for_observations[0][0], &mutable_camera_for_observations[0][1], &mutable_camera_for_observations[0][2],
                                  &mutable_camera_for_observations[0][3], &mutable_camera_for_observations[0][4], &mutable_camera_for_observations[0][5],
                                  &mutable_point_for_observations[i][0], &mutable_point_for_observations[i][1], &mutable_point_for_observations[i][2]);
-        problem.AddResidualBlock(cost_function_query, NULL,
+        problem.AddResidualBlock(cost_function_train, NULL,
                                  &mutable_camera_for_observations[1][0], &mutable_camera_for_observations[1][1], &mutable_camera_for_observations[1][2],
                                  &mutable_camera_for_observations[1][3], &mutable_camera_for_observations[1][4], &mutable_camera_for_observations[1][5],
                                  &mutable_point_for_observations[i + match_num][0], &mutable_point_for_observations[i + match_num][1], &mutable_point_for_observations[i + match_num][2]);
@@ -785,9 +849,9 @@ void Reconstruction::bundler()
     //           << std::endl;
     // for (size_t i = 0; i < match_num; i++)
     // {
-    //     std::cout << "point_x: " << point3D_arm.at<cv::Vec3f>(i, 0)[0] << " -> " << mutable_point_for_observations[i][0] << " & " << mutable_point_for_observations[i + match_num][0] << std::endl;
-    //     std::cout << "point_y: " << point3D_arm.at<cv::Vec3f>(i, 0)[1] << " -> " << mutable_point_for_observations[i][1] << " & " << mutable_point_for_observations[i + match_num][1] << std::endl;
-    //     std::cout << "point_z: " << point3D_arm.at<cv::Vec3f>(i, 0)[2] << " -> " << mutable_point_for_observations[i][2] << " & " << mutable_point_for_observations[i + match_num][2] << std::endl
+    //     std::cout << "point_x: " << point3D.at<cv::Vec3f>(i, 0)[0] << " -> " << mutable_point_for_observations[i][0] << " & " << mutable_point_for_observations[i + match_num][0] << std::endl;
+    //     std::cout << "point_y: " << point3D.at<cv::Vec3f>(i, 0)[1] << " -> " << mutable_point_for_observations[i][1] << " & " << mutable_point_for_observations[i + match_num][1] << std::endl;
+    //     std::cout << "point_z: " << point3D.at<cv::Vec3f>(i, 0)[2] << " -> " << mutable_point_for_observations[i][2] << " & " << mutable_point_for_observations[i + match_num][2] << std::endl
     //               << std::endl;
     // }
 
@@ -837,8 +901,8 @@ void Reconstruction::showImage()
     // マッチングの様子を図示
     cv::Scalar match_line_color = cv::Scalar(255, 0, 0);
     cv::Scalar match_point_color = cv::Scalar(255, 255, 0);
-    cv::drawMatches(frame_data.extractor.image, frame_data.extractor.keypoints,
-                    keyframe_data.extractor.image, keyframe_data.extractor.keypoints,
+    cv::drawMatches(keyframe_data.extractor.image, keyframe_data.extractor.keypoints,
+                    frame_data.extractor.image, frame_data.extractor.keypoints,
                     inliners_matches, matching_image, match_line_color, match_point_color);
 
     // カメラのuv方向への移動量を矢印で追加で図示
@@ -860,7 +924,7 @@ void Reconstruction::showImage()
 
     // 表示
     cv::imshow("matching_image", matching_image);
-    // cv::imshow("nomatching_image", nomatching_image);
+    cv::imshow("nomatching_image", nomatching_image);
     cv::waitKey(5);
 }
 
@@ -872,16 +936,10 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
         return;
     }
 
-    // cv::Mat pointCloud(match_num, 1, CV_32FC3);
-    // point3D.convertTo(pointCloud, CV_32FC3);
-    // auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    // converter.cvMat_to_msgPointCloud2(pointCloud, *msg_cloud_pub, 0);
-    // pub_pointcloud->publish(std::move(msg_cloud_pub));
-
-    cv::Mat pointCloud_arm(match_num, 1, CV_32FC3);
-    point3D_arm.convertTo(pointCloud_arm, CV_32FC3);
+    cv::Mat pointCloud(match_num, 1, CV_32FC3);
+    point3D.convertTo(pointCloud, CV_32FC3);
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_arm, *msg_cloud_pub, 0);
+    converter.cvMat_to_msgPointCloud2(pointCloud, *msg_cloud_pub, 0);
     pub_pointcloud->publish(std::move(msg_cloud_pub));
 
     // cv::Mat pointCloud_BA(match_num, 1, CV_32FC3);
@@ -893,7 +951,7 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
 
 void Reconstruction::process()
 {
-    flag_reconstruction = true;
+    flag_reconstruction = false;
 
     if (flag_setFirstFrame)
     {
@@ -904,9 +962,6 @@ void Reconstruction::process()
 
     // どのKFを使うか選択しkeyframe_dataに入力
     this->chooseKeyFrame();
-
-    // 現在のフレームがKeyFrameの候補であれば
-    this->setKeyFrame();
 
     if (!flag_reconstruction)
         return;
@@ -922,15 +977,19 @@ void Reconstruction::process()
         return;
 
     // もし眼球移動を検知すれば
-    this->estimate_move();
+    // this->estimate_move();
+
+    // 特徴点を新たに辞書に登録
+    this->mappingKeyPoint();
 
     // 三角測量
     this->triangulation();
     // this->triangulation_test();
     // this->triangulation_est();
+    // this->triangulation_multiscene();
 
     // バンドル調整
-    // this->bundler();
+    this->bundler();
 
     // 図示
     this->showImage();
@@ -940,7 +999,7 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
                                      const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
 {
-    printf("Received image #%s\n", msg_image->header.frame_id.c_str());
+    printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
     // 初期化
     this->initialize();
     // Subscribeしたものをframe_dataに入力
