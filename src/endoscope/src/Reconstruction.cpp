@@ -1,4 +1,5 @@
 #include "../include/endoscope/Reconstruction.hpp"
+#include "../include/endoscope/triangulate.hpp"
 #include "../../HTL/include/transform.h"
 #include "../../HTL/include/msg_converter.h"
 
@@ -189,6 +190,11 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
 
     // 特徴点検出・特徴量記述
     frame_data.extractor.extractAndcompute(Extractor::DetectorType::AKAZE);
+
+    // コマンドラインに表示
+    // std::cout << "frame_id : " << frame_data.camerainfo.frame_num << std::endl;
+    // std::cout << "Rotation_world : " << frame_data.camerainfo.Rotation_world << std::endl;
+    // std::cout << "Trans_world : " << frame_data.camerainfo.Transform_world << std::endl;
 }
 
 void Reconstruction::knn_matching()
@@ -345,7 +351,7 @@ void Reconstruction::triangulation()
     frame_data.extractor.match2point_train(inliners_matches);
 
     // 三角測量
-    std::cout << "triangulation" << std::endl;
+    // std::cout << "triangulation" << std::endl;
     cv::Mat p3, p3_arm;
     for (size_t i = 0; i < match_num; i++)
     {
@@ -355,8 +361,8 @@ void Reconstruction::triangulation()
                               cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
                               point4D);
         cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-        cv::Mat point3D_mine = triangulate(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
-                                           frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
+        cv::Mat point3D_mine = Triangulate::triangulation(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
+                                                          frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
         p3.push_back(point3D_result);
         p3_arm.push_back(point3D_result.reshape(3, 1));
 
@@ -436,103 +442,6 @@ void Reconstruction::triangulation()
     // std::cout << "match_num " << match_num << std::endl;
     // std::cout << "p3_arm: " << p3_arm.rows << std::endl;
     std::cout << std::endl;
-}
-
-cv::Mat Reconstruction::triangulate(const cv::Point2f &pnt1, const cv::Mat &PrjMat1,
-                                    const cv::Point2f &pnt2, const cv::Mat &PrjMat2)
-{
-    double w1(1.0), w2(1.0);
-    cv::Matx43f A;
-    cv::Matx41f B, X;
-    cv::Point3f norm_pnt1, norm_pnt2;
-    norm_pnt1.x = pnt1.x;
-    norm_pnt1.y = pnt1.y;
-    norm_pnt1.z = 1.0;
-    norm_pnt2.x = pnt2.x;
-    norm_pnt2.y = pnt2.y;
-    norm_pnt2.z = 1.0;
-
-    BuildInhomogeneousEqnSystemForTriangulation(norm_pnt1, PrjMat1, norm_pnt2, PrjMat2,
-                                                w1, w2, A, B);
-    SolveLinearEqn(A, B, X);
-
-    // Iteratively refine triangulation.
-    for (int i = 0; i < 10; i++)
-    {
-        cv::Matx34f P1, P2;
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 4; j++)
-            {
-                P1(i, j) = PrjMat1.at<float>(i, j);
-                P2(i, j) = PrjMat2.at<float>(i, j);
-            }
-        }
-        // Calculate weight.
-        double p2x1 = (P1.row(2) * X)(0);
-        double p2x2 = (P2.row(2) * X)(0);
-
-        if (std::abs(w1 - p2x1) < TRI_ITERATIVE_TERM && std::abs(w2 - p2x2) < TRI_ITERATIVE_TERM)
-        {
-            break;
-        }
-
-        w1 = p2x1;
-        w2 = p2x2;
-
-        BuildInhomogeneousEqnSystemForTriangulation(norm_pnt1, PrjMat1, norm_pnt2, PrjMat2,
-                                                    w1, w2, A, B);
-
-        SolveLinearEqn(A, B, X);
-    }
-    cv::Mat ans_X(3, 1, CV_32FC1);
-    ans_X.at<float>(0) = X(0);
-    ans_X.at<float>(1) = X(1);
-    ans_X.at<float>(2) = X(2);
-    return ans_X;
-}
-
-void Reconstruction::BuildInhomogeneousEqnSystemForTriangulation(
-    const cv::Point3f &norm_p1, const cv::Mat &P1,
-    const cv::Point3f &norm_p2, const cv::Mat &P2,
-    double w1, double w2, cv::Matx43f &A, cv::Matx41f &B)
-{
-    cv::Matx43f A_((norm_p1.x * P1.at<float>(2, 0) - P1.at<float>(0, 0)) / w1,
-                   (norm_p1.x * P1.at<float>(2, 1) - P1.at<float>(0, 1)) / w1,
-                   (norm_p1.x * P1.at<float>(2, 2) - P1.at<float>(0, 2)) / w1,
-                   (norm_p1.y * P1.at<float>(2, 0) - P1.at<float>(1, 0)) / w1,
-                   (norm_p1.y * P1.at<float>(2, 1) - P1.at<float>(1, 1)) / w1,
-                   (norm_p1.y * P1.at<float>(2, 2) - P1.at<float>(1, 2)) / w1,
-                   (norm_p2.x * P2.at<float>(2, 0) - P2.at<float>(0, 0)) / w2,
-                   (norm_p2.x * P2.at<float>(2, 1) - P2.at<float>(0, 1)) / w2,
-                   (norm_p2.x * P2.at<float>(2, 2) - P2.at<float>(0, 2)) / w2,
-                   (norm_p2.y * P2.at<float>(2, 0) - P2.at<float>(1, 0)) / w2,
-                   (norm_p2.y * P2.at<float>(2, 1) - P2.at<float>(1, 1)) / w2,
-                   (norm_p2.y * P2.at<float>(2, 2) - P2.at<float>(1, 2)) / w2);
-
-    cv::Matx41f B_(-(norm_p1.x * P1.at<float>(2, 3) - P1.at<float>(0, 3)) / w1,
-                   -(norm_p1.y * P1.at<float>(2, 3) - P1.at<float>(1, 3)) / w1,
-                   -(norm_p2.x * P2.at<float>(2, 3) - P2.at<float>(0, 3)) / w2,
-                   -(norm_p2.y * P2.at<float>(2, 3) - P2.at<float>(1, 3)) / w2);
-
-    A = A_;
-    B = B_;
-}
-
-void Reconstruction::SolveLinearEqn(const cv::Matx43f &A, const cv::Matx41f &B,
-                                    cv::Matx41f &X)
-{
-    cv::Matx31f tmp_X;
-    tmp_X(0) = X(0);
-    tmp_X(1) = X(1);
-    tmp_X(2) = X(2);
-
-    cv::solve(A, B, tmp_X, cv::DECOMP_SVD);
-
-    X(0) = tmp_X(0);
-    X(1) = tmp_X(1);
-    X(2) = tmp_X(2);
-    X(3) = 1.0;
 }
 
 void Reconstruction::triangulation_test()
@@ -695,17 +604,29 @@ void Reconstruction::triangulation_multiscene()
         size_t counter = keyframe_data.keyponit_map.count(i);
         if (counter > 5)
         {
+            std::cout << "ここで三次元復元するよ" << std::endl;
+
+            // 3次元復元用データコンテナ
+            std::vector<cv::Point2f> point2D;
+            std::vector<cv::Mat> ProjectMat;
+
             typedef std::multimap<unsigned int, MatchedData>::iterator iterator;
             std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(i);
             for (iterator itr = range.first; itr != range.second; itr++)
             {
-                // std::cout << "ここで三次元復元するよ" << std::endl;
-                std::cout << "KeyPoint_num: " << itr->first << std::endl;
-                std::cout << "Frame_num: " << itr->second.frame_num << std::endl;
-                std::cout << "PrjMat: " << itr->second.ProjectionMatrix << std::endl;
-                std::cout << "frame.PrjMat: " << frame_data.camerainfo.ProjectionMatrix << std::endl;
-                std::cout << "point: " << itr->second.image_points << std::endl;
+                point2D.push_back(itr->second.image_points);
+                ProjectMat.push_back(itr->second.ProjectionMatrix);
+                // std::cout << "KeyPoint_num: " << itr->first << std::endl;
+                // std::cout << "Frame_num: " << itr->second.frame_num << std::endl;
+                // std::cout << "PrjMat: " << itr->second.ProjectionMatrix << std::endl;
+                // std::cout << "frame.PrjMat: " << frame_data.camerainfo.ProjectionMatrix << std::endl;
+                // std::cout << "point: " << itr->second.image_points << std::endl;
+                // std::cout << std::endl;
             }
+
+            // 三次元復元
+            point3D = Triangulate::triangulation(point2D, ProjectMat);
+            std::cout << "point3D: " << point3D << std::endl;
         }
         // std::cout << "counter : " << counter << std::endl;
         // std::cout << "keypoint.size() : " << keyframe_data.extractor.keypoints.size() << std::endl;
@@ -983,13 +904,13 @@ void Reconstruction::process()
     this->mappingKeyPoint();
 
     // 三角測量
-    this->triangulation();
+    // this->triangulation();
     // this->triangulation_test();
     // this->triangulation_est();
-    // this->triangulation_multiscene();
+    this->triangulation_multiscene();
 
     // バンドル調整
-    this->bundler();
+    // this->bundler();
 
     // 図示
     this->showImage();

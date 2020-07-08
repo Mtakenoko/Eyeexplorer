@@ -52,14 +52,6 @@ private:
     void BF_outlier_remover();
     
     void triangulation();
-    cv::Mat triangulate(const cv::Point2f &pnt1, const cv::Mat &PrjMat1,
-                        const cv::Point2f &pnt2, const cv::Mat &PrjMat2);
-    void BuildInhomogeneousEqnSystemForTriangulation(
-        const cv::Point3f &norm_p1, const cv::Mat &P1,
-        const cv::Point3f &norm_p2, const cv::Mat &P2,
-        double w1, double w2, cv::Matx43f &A, cv::Matx41f &B);
-    void SolveLinearEqn(const cv::Matx43f &A, const cv::Matx41f &B, cv::Matx41f &X);
-
     void mappingKeyPoint();
     void triangulation_est();
     void triangulation_test();
