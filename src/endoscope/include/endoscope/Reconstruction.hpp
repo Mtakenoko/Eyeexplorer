@@ -15,14 +15,12 @@
 #include <ceres/rotation.h>
 
 #include "CameraInfo.hpp"
-#include "Bundler.hpp"
-#include "cost_function.hpp"
 
 #define FOCAL_X 396.7
 #define FOCAL_Y 396.9
 #define U0 160
 #define V0 160
-#define TRI_ITERATIVE_TERM 10
+#define KEYPOINT_SCENE 5
 
 class Reconstruction
 {
@@ -37,7 +35,7 @@ public:
     FrameDatabase frame_data;
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
-    cv::Mat point3D, point3D_BA;
+    cv::Mat point3D, point3D_BA, point3D_hold;
     cv::Mat matching_image;
 
 private:
@@ -52,9 +50,6 @@ private:
     void BF_outlier_remover();
     
     void triangulation();
-    void mappingKeyPoint();
-    void triangulation_est();
-    void triangulation_test();
     void triangulation_multiscene();
     void bundler();
     void setFirstFrame();

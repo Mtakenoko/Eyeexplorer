@@ -1,5 +1,7 @@
 #include "../include/endoscope/Reconstruction.hpp"
 #include "../include/endoscope/triangulate.hpp"
+#include "../include/endoscope/Bundler.hpp"
+#include "../include/endoscope/cost_function.hpp"
 #include "../../HTL/include/transform.h"
 #include "../../HTL/include/msg_converter.h"
 
@@ -201,7 +203,7 @@ void Reconstruction::knn_matching()
 {
     if (keyframe_database.empty())
     {
-        printf("    keyframe_database is empty!\n");
+        printf("keyframe_database is empty!\n");
         return;
     }
     // descriptorはCV_32FじゃないとFLANNでのマッチングはできないらしい
@@ -217,7 +219,7 @@ void Reconstruction::BF_matching()
 {
     if (keyframe_database.empty())
     {
-        printf("    keyframe_database is empty!\n");
+        printf("keyframe_database is empty!\n");
         return;
     }
     // descriptorはCV_32FじゃないとFLANNでのマッチングはできないらしい
@@ -293,7 +295,6 @@ void Reconstruction::BF_outlier_remover()
     inliners_idx.clear();
     homography = cv::findHomography(match_point1, match_point2, inliner_mask, cv::RANSAC, 5.);
 
-    std::cout << "before map.size() = " << keyframe_data.keyponit_map.size() << std::endl;
     for (int i = 0; i < inliner_mask.rows; i++)
     {
         if (inliner_mask.at<uchar>(i))
@@ -303,15 +304,22 @@ void Reconstruction::BF_outlier_remover()
             matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
             matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
 
+            // まだ特徴点辞書にindexの登録がなければkeyframeのぶんもここでいれとく
+            if (keyframe_data.keyponit_map.count(dmatch[i].queryIdx) == 0)
+            {
+                MatchedData matchData_key(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt,
+                                          keyframe_data.camerainfo.ProjectionMatrix.clone(),
+                                          keyframe_data.camerainfo.frame_num);
+                keyframe_data.keyponit_map.insert(std::make_pair(dmatch[i].queryIdx, matchData_key));
+            }
+
             // keyframe_dataにマッチングした点のindexをkeyとして辞書(multimap)として登録
-            MatchedData matchData(frame_data.extractor.keypoints[dmatch[i].queryIdx].pt,
+            MatchedData matchData(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt,
                                   frame_data.camerainfo.ProjectionMatrix.clone(),
                                   frame_data.camerainfo.frame_num);
             keyframe_data.keyponit_map.insert(std::make_pair(dmatch[i].queryIdx, matchData));
         }
     }
-    std::cout << "after map.size() = " << keyframe_data.keyponit_map.size() << std::endl;
-
     match_num = inliners_matches.size();
 
     // keyframe_databaseの中から抽出したkeyframe_dataを変更する
@@ -319,21 +327,6 @@ void Reconstruction::BF_outlier_remover()
     keyframe_database.erase(keyframe_itr);
     FrameDatabase newKeyFrameData = keyframe_data;
     keyframe_database.insert(keyframe_itr, newKeyFrameData);
-}
-
-void Reconstruction::mappingKeyPoint()
-{
-    // // マッチング辞書の中で5個以上マッチングframeを発見したものを探索
-    // for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
-    // {
-    //     size_t counter = keyframe_data.keyponit_map.count(i);
-    //     if (counter > 5)
-    //     {
-    //         std::cout << "あった！！" << std::endl;
-    //     }
-    //     // std::cout << "counter : " << counter << std::endl;
-    //     // std::cout << "keypoint.size() : " << keyframe_data.extractor.keypoints.size() << std::endl;
-    // }
 }
 
 void Reconstruction::triangulation()
@@ -351,8 +344,7 @@ void Reconstruction::triangulation()
     frame_data.extractor.match2point_train(inliners_matches);
 
     // 三角測量
-    // std::cout << "triangulation" << std::endl;
-    cv::Mat p3, p3_arm;
+    cv::Mat p3;
     for (size_t i = 0; i < match_num; i++)
     {
         cv::Mat point4D(4, match_num, CV_32FC1);
@@ -363,249 +355,24 @@ void Reconstruction::triangulation()
         cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
         cv::Mat point3D_mine = Triangulate::triangulation(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
                                                           frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
-        p3.push_back(point3D_result);
-        p3_arm.push_back(point3D_result.reshape(3, 1));
-
-        // 復元した点を再投影
-        /* ここから */
-        // float point[3];
-        // point[0] = point3D_result.at<float>(0);
-        // point[1] = point3D_result.at<float>(1);
-        // point[2] = point3D_result.at<float>(2);
-
-        // float pt_keyframe[3];
-        // pt_keyframe[0] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 0) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 0) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 0) * point[2];
-        // pt_keyframe[1] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 1) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 1) * point[2];
-        // pt_keyframe[2] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 2) * point[0] + keyframe_data.camerainfo.Rotation_world.at<float>(1, 2) * point[1] + keyframe_data.camerainfo.Rotation_world.at<float>(2, 2) * point[2];
-
-        // float pt_frame[3];
-        // pt_frame[0] = frame_data.camerainfo.Rotation_world.at<float>(0, 0) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 0) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 0) * point[2];
-        // pt_frame[1] = frame_data.camerainfo.Rotation_world.at<float>(0, 1) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 1) * point[2];
-        // pt_frame[2] = frame_data.camerainfo.Rotation_world.at<float>(0, 2) * point[0] + frame_data.camerainfo.Rotation_world.at<float>(1, 2) * point[1] + frame_data.camerainfo.Rotation_world.at<float>(2, 2) * point[2];
-
-        // float t_keyframe[3];
-        // t_keyframe[0] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 0) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 0) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 0) * keyframe_data.camerainfo.Transform_world.at<float>(2);
-        // t_keyframe[1] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 1) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 1) * keyframe_data.camerainfo.Transform_world.at<float>(2);
-        // t_keyframe[2] = keyframe_data.camerainfo.Rotation_world.at<float>(0, 2) * keyframe_data.camerainfo.Transform_world.at<float>(0) + keyframe_data.camerainfo.Rotation_world.at<float>(1, 1) * keyframe_data.camerainfo.Transform_world.at<float>(1) + keyframe_data.camerainfo.Rotation_world.at<float>(2, 2) * keyframe_data.camerainfo.Transform_world.at<float>(2);
-
-        // float t_frame[3];
-        // t_frame[0] = frame_data.camerainfo.Rotation_world.at<float>(0, 0) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 0) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 0) * frame_data.camerainfo.Transform_world.at<float>(2);
-        // t_frame[1] = frame_data.camerainfo.Rotation_world.at<float>(0, 1) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 1) * frame_data.camerainfo.Transform_world.at<float>(2);
-        // t_frame[2] = frame_data.camerainfo.Rotation_world.at<float>(0, 2) * frame_data.camerainfo.Transform_world.at<float>(0) + frame_data.camerainfo.Rotation_world.at<float>(1, 1) * frame_data.camerainfo.Transform_world.at<float>(1) + frame_data.camerainfo.Rotation_world.at<float>(2, 2) * frame_data.camerainfo.Transform_world.at<float>(2);
-
-        // float xp_keyframe = (pt_keyframe[0] - t_keyframe[0]) / (pt_keyframe[2] - t_keyframe[2]);
-        // float yp_keyframe = (pt_keyframe[1] - t_keyframe[1]) / (pt_keyframe[2] - t_keyframe[2]);
-
-        // float xp_frame = (pt_frame[0] - t_frame[0]) / (pt_frame[2] - t_frame[2]);
-        // float yp_frame = (pt_frame[1] - t_frame[1]) / (pt_frame[2] - t_frame[2]);
-
-        // const float focal_x = 396.7;
-        // const float focal_y = 396.9;
-        // const float u_x = 163.6;
-        // const float u_y = 157.1;
-        // float predicted_keyframe[2];
-        // predicted_keyframe[0] = focal_x * xp_keyframe + u_x;
-        // predicted_keyframe[1] = focal_y * yp_keyframe + u_y;
-        // float predicted_frame[2];
-        // predicted_frame[0] = focal_x * xp_frame + u_x;
-        // predicted_frame[1] = focal_y * yp_frame + u_y;
-        /* ここまで */
-
-        // std::cout
-        // << "ID: " << i << std::endl
-        // << "keyframe: " << cv::Mat(keyframe_data.extractor.point[i]).reshape(2, 1) << std::endl
-        // << "frame   :" << cv::Mat(frame_data.extractor.point[i]).reshape(2, 1) << std::endl
-        // << "point4D :" << point4D.reshape(4, 1) << std::endl
-        // << "point3D :" << point3D_result << std::endl
-        // << "point3D_mine :" << point3D_mine.reshape(3, 1) << std::endl
-        // << "predict_key :" << predicted_keyframe[0] << ", " << predicted_keyframe[1] << std::endl
-        // << "predict_fra :" << predicted_frame[0] << ", " << predicted_frame[1] << std::endl;
-        // std::cout << std::endl;
+        // std::cout << "rows, cols, ch: " << point3D_result.rows << ", " << point3D_result.cols << ", " << point3D_result.channels() << std::endl;
+        // std::cout << "point3D_mine : " << point3D_mine << std::endl;
+        p3.push_back(point3D_mine.reshape(3, 1));
+        point3D_hold.push_back(point3D_mine.reshape(3, 1));
     }
     point3D = p3.clone();
-
-    // std::cout << "R_keyframe" << keyframe_data.camerainfo.Rotation_world << std::endl;
-    // std::cout << "t_keyframe" << keyframe_data.camerainfo.Transform_world.reshape(3, 1) << std::endl;
-    // std::cout << "R_frame" << frame_data.camerainfo.Rotation_world << std::endl;
-    // std::cout << "t_frame" << frame_data.camerainfo.Transform_world.reshape(3, 1) << std::endl;
-    // std::cout << "R_endo_key" << keyframe_data.camerainfo.Rotation << std::endl;
-    // std::cout << "t_endo_key" << keyframe_data.camerainfo.Transform << std::endl;
-    // std::cout << "R_endo" << frame_data.camerainfo.Rotation << std::endl;
-    // std::cout << "t_endo" << frame_data.camerainfo.Transform.reshape(3, 1) << std::endl;
-    // std::cout << "Rt_kf" << keyframe_data.camerainfo.CameraPose << std::endl;
-    // std::cout << "Rt_f" << frame_data.camerainfo.CameraPose << std::endl;
-    // std::cout << "Prj_kf" << keyframe_data.camerainfo.ProjectionMatrix << std::endl;
-    // std::cout << "Prj_f" << frame_data.camerainfo.ProjectionMatrix << std::endl;
-    // std::cout << "p1" << cv::Mat(keyframe_data.extractor.point) << std::endl;
-    // std::cout << "point_key" << keyframe_data.extractor.point[0] << std::endl;
-    // std::cout << "point" << frame_data.extractor.point[0] << std::endl;
-    // std::cout << "match_num " << match_num << std::endl;
-    // std::cout << "p3_arm: " << p3_arm.rows << std::endl;
-    std::cout << std::endl;
-}
-
-void Reconstruction::triangulation_test()
-{
-    //３次元点群の座標位置を設定（８個）
-    std::vector<cv::Point3f> point3D;
-    point3D.push_back(cv::Point3f(-100, -100, -100));
-    point3D.push_back(cv::Point3f(100, -100, -100));
-    point3D.push_back(cv::Point3f(100, -100, 100));
-    point3D.push_back(cv::Point3f(-100, -100, 100));
-    point3D.push_back(cv::Point3f(-100, 100, -100));
-    point3D.push_back(cv::Point3f(100, 100, -100));
-    point3D.push_back(cv::Point3f(100, 100, 100));
-    point3D.push_back(cv::Point3f(-100, 100, 100));
-
-    //カメラの位置を設定
-    float hbl = 150, hbly = 0, distance = 800;
-    float thetaL = 1.6, thetaR = -0.1;
-
-    //カメラの内部パラメータを設定
-    cv::Mat cameraMatrix = (cv::Mat_<float>(3, 3) << 320, 0, 160,
-                            0, 320, 160,
-                            0, 0, 1);
-    cv::Mat distCoeffs = (cv::Mat_<float>(5, 1) << 0, 0, 0, 0, 0);
-
-    //回転ベクトルを設定
-    cv::Mat RotL = (cv::Mat_<float>(3, 3) << std::cos(thetaL), -std::sin(thetaL), 0,
-                    std::sin(thetaL), std::cos(thetaL), 0,
-                    0, 0, 1);
-    cv::Mat RotR = (cv::Mat_<float>(3, 3) << std::cos(thetaR), -std::sin(thetaR), 0,
-                    std::sin(thetaR), std::cos(thetaR), 0,
-                    0, 0, 1);
-    cv::Mat revcL, revcR;
-    cv::Rodrigues(RotL, revcL);
-    cv::Rodrigues(RotR, revcR);
-
-    //並進ベクトルを設定
-    cv::Mat tvecL = (cv::Mat_<float>(3, 1) << hbl, hbly, distance);
-    cv::Mat tvecR = (cv::Mat_<float>(3, 1) << -hbl, -hbly, distance);
-
-    //左画像, 右画像に射影する
-    std::vector<cv::Point2f> imagePointsL, imagePointsR;
-    cv::projectPoints(point3D, revcL, tvecL, cameraMatrix, distCoeffs, imagePointsL);
-    cv::projectPoints(point3D, revcR, tvecR, cameraMatrix, distCoeffs, imagePointsR);
-
-    //printf
-    std::cout << "imagePointsL" << std::endl;
-    std::cout << imagePointsL << std::endl
-              << std::endl;
-    std::cout << "imagePointsR" << std::endl;
-    std::cout << imagePointsR << std::endl
-              << std::endl;
-
-    //描画
-    cv::Mat dst_imageL = cv::Mat(cv::Size(320, 320), CV_8UC3, cv::Scalar::all(255));
-    cv::Mat dst_imageR = cv::Mat(cv::Size(320, 320), CV_8UC3, cv::Scalar::all(255));
-
-    cv::circle(dst_imageL, imagePointsL[0], 2, cv::Scalar(255, 0, 255), -1);
-    cv::circle(dst_imageR, imagePointsR[0], 2, cv::Scalar(255, 0, 255), -1);
-    for (int i = 1; i < 8; i++)
-    {
-        cv::circle(dst_imageL, imagePointsL[i], 2, cv::Scalar::all(0), -1);
-        cv::circle(dst_imageR, imagePointsR[i], 2, cv::Scalar::all(0), -1);
-    }
-    for (int i = 0; i < 4; i++)
-    {
-        cv::line(dst_imageL, imagePointsL[i], imagePointsL[(i + 1) % 4], cv::Scalar::all(0));
-        cv::line(dst_imageL, imagePointsL[i + 4], imagePointsL[((i + 1) % 4) + 4], cv::Scalar::all(0));
-        cv::line(dst_imageL, imagePointsL[i], imagePointsL[i + 4], cv::Scalar::all(0));
-        cv::line(dst_imageR, imagePointsR[i], imagePointsR[(i + 1) % 4], cv::Scalar::all(0));
-        cv::line(dst_imageR, imagePointsR[i + 4], imagePointsR[((i + 1) % 4) + 4], cv::Scalar::all(0));
-        cv::line(dst_imageR, imagePointsR[i], imagePointsR[i + 4], cv::Scalar::all(0));
-    }
-    cv::Mat showimage;
-    cv::hconcat(dst_imageL, dst_imageR, showimage);
-    cv::imshow("L, R画像(基準長 = 300)", showimage);
-
-    // ここから三角測量
-    // 画像上の点の位置を少しだけいじってみる
-    imagePointsL[0].x += 5;
-    imagePointsL[0].y -= 5;
-    imagePointsL[1].x += 10;
-    imagePointsL[1].y -= 10;
-    imagePointsL[2].x += 15;
-    imagePointsL[2].y -= 15;
-    imagePointsL[3].x += 20;
-    imagePointsL[3].y -= 20;
-
-    //左右のカメラの射影行列を設定する
-    cv::Mat RtL(3, 4, CV_32FC1), RtR(3, 4, CV_32FC1);
-    cv::hconcat(RotL, tvecL, RtL);
-    cv::hconcat(RotR, tvecR, RtR);
-
-    cv::Mat projectionMatrixL(3, 4, CV_32FC1), projectionMatrixR(3, 4, CV_32FC1);
-    projectionMatrixL = cameraMatrix * RtL;
-    projectionMatrixR = cameraMatrix * RtR;
-
-    //三次元復元
-    cv::Mat points4D;
-    std::vector<cv::Point3f> point3D_result1, point3D_result2, point3D_result3;
-    std::cout << "RtL: " << RtL << std::endl;
-    std::cout << "RtR: " << RtR << std::endl;
-    std::cout << "projectionMatrixL: " << projectionMatrixL << std::endl;
-    std::cout << "projectionMatrixR: " << projectionMatrixR << std::endl;
-    std::cout << "座標位置(X, Y, Z)" << std::endl;
-    for (int i = 0; i < 8; i++)
-    {
-        cv::triangulatePoints(projectionMatrixL, projectionMatrixR, cv::Mat(imagePointsL[i]), cv::Mat(imagePointsR[i]), points4D);
-        cv::convertPointsFromHomogeneous(points4D.reshape(4, 1), point3D_result1);
-        std::cout << point3D_result1 << std::endl;
-    }
-    cv::waitKey(3);
-}
-
-void Reconstruction::triangulation_est()
-{
-    // カメラ座標の計算
-    cv::Mat R_endo, t_endo;
-    R_est.convertTo(R_endo, CV_32FC1);
-    t_est.convertTo(t_endo, CV_32FC1);
-    frame_data.camerainfo.Rotation = R_endo.clone();
-    frame_data.camerainfo.Transform = t_endo.clone();
-    frame_data.camerainfo.setData();
-    keyframe_data.camerainfo.setData();
-    keyframe_data.extractor.match2point_query(inliners_matches);
-    frame_data.extractor.match2point_train(inliners_matches);
-
-    // 三角測量
-    std::cout << "triangulation" << std::endl;
-    point3D.zeros(match_num, 1, CV_32F);
-    for (size_t i = 0; i < match_num; i++)
-    {
-        cv::Mat point4D(4, match_num, CV_32FC1);
-        cv::Mat point3D_result;
-        cv::triangulatePoints(keyframe_data.camerainfo.ProjectionMatrix, frame_data.camerainfo.ProjectionMatrix,
-                              cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
-                              point4D);
-        cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-        point3D.push_back(point3D_result);
-    }
-    // std::cout << "R_frame" << frame_data.camerainfo.Rotation_world << std::endl;
-    // std::cout << "t_frame" << frame_data.camerainfo.Transform_world << std::endl;
-    // std::cout << "R_endo" << frame_data.camerainfo.Rotation << std::endl;
-    // std::cout << "t_endo" << frame_data.camerainfo.Transform << std::endl;
-    // std::cout << "Rt_f" << frame_data.camerainfo.CameraPose << std::endl;
-    // std::cout << "Rt_kf" << keyframe_data.camerainfo.CameraPose << std::endl;
-    // std::cout << "Prj_kf" << keyframe_data.camerainfo.ProjectionMatrix << std::endl;
-    // std::cout << "Prj_f" << frame_data.camerainfo.ProjectionMatrix << std::endl;
-    // std::cout << "p1" << cv::Mat(keyframe_data.extractor.point) << std::endl;
-    // std::cout << "R_keyframe" << keyframe_data.camerainfo.Rotation_world << std::endl;
-    // std::cout << "t_keyframe" << keyframe_data.camerainfo.Transform_world << std::endl;
-    // std::cout << "point1" << frame_data.extractor.point << std::endl;
 }
 
 void Reconstruction::triangulation_multiscene()
 {
-    // マッチング辞書の中で5個以上マッチングframeを発見したものを探索
+    cv::Mat p3;
+    // printf("keyframe_data.extractor.keypoints.size() = %zu\n", keyframe_data.extractor.keypoints.size());
+    // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
     for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
     {
-        size_t counter = keyframe_data.keyponit_map.count(i);
-        if (counter > 5)
+        // マッチング辞書の中で5個以上マッチングframeを発見したものを探索
+        if (keyframe_data.keyponit_map.count(i) >= KEYPOINT_SCENE)
         {
-            std::cout << "ここで三次元復元するよ" << std::endl;
-
             // 3次元復元用データコンテナ
             std::vector<cv::Point2f> point2D;
             std::vector<cv::Mat> ProjectMat;
@@ -616,21 +383,21 @@ void Reconstruction::triangulation_multiscene()
             {
                 point2D.push_back(itr->second.image_points);
                 ProjectMat.push_back(itr->second.ProjectionMatrix);
-                // std::cout << "KeyPoint_num: " << itr->first << std::endl;
-                // std::cout << "Frame_num: " << itr->second.frame_num << std::endl;
-                // std::cout << "PrjMat: " << itr->second.ProjectionMatrix << std::endl;
-                // std::cout << "frame.PrjMat: " << frame_data.camerainfo.ProjectionMatrix << std::endl;
-                // std::cout << "point: " << itr->second.image_points << std::endl;
-                // std::cout << std::endl;
             }
 
             // 三次元復元
-            point3D = Triangulate::triangulation(point2D, ProjectMat);
-            std::cout << "point3D: " << point3D << std::endl;
+            cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
+            // std::cout << "KeyPoint Index : " << i << std::endl;
+            // std::cout << "point3D_result : " << std::endl
+            //           << point3D_result << std::endl;
+            p3.push_back(point3D_result.reshape(3, 1));
+            point3D_hold.push_back(point3D_result.reshape(3, 1));
+
+            // 終わったら保持してたものを削除
+            keyframe_data.keyponit_map.erase(i);
         }
-        // std::cout << "counter : " << counter << std::endl;
-        // std::cout << "keypoint.size() : " << keyframe_data.extractor.keypoints.size() << std::endl;
     }
+    point3D = p3.clone();
 }
 
 void Reconstruction::bundler()
@@ -857,10 +624,16 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
         return;
     }
 
-    cv::Mat pointCloud(match_num, 1, CV_32FC3);
-    point3D.convertTo(pointCloud, CV_32FC3);
+    // cv::Mat pointCloud(match_num, 1, CV_32FC3);
+    // point3D.convertTo(pointCloud, CV_32FC3);
+    // auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    // converter.cvMat_to_msgPointCloud2(pointCloud, *msg_cloud_pub, 0);
+    // pub_pointcloud->publish(std::move(msg_cloud_pub));
+
+    cv::Mat pointCloud_hold(match_num, 1, CV_32FC3);
+    point3D_hold.convertTo(pointCloud_hold, CV_32FC3);
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud, *msg_cloud_pub, 0);
+    converter.cvMat_to_msgPointCloud2(pointCloud_hold, *msg_cloud_pub, 0);
     pub_pointcloud->publish(std::move(msg_cloud_pub));
 
     // cv::Mat pointCloud_BA(match_num, 1, CV_32FC3);
@@ -900,13 +673,8 @@ void Reconstruction::process()
     // もし眼球移動を検知すれば
     // this->estimate_move();
 
-    // 特徴点を新たに辞書に登録
-    this->mappingKeyPoint();
-
     // 三角測量
     // this->triangulation();
-    // this->triangulation_test();
-    // this->triangulation_est();
     this->triangulation_multiscene();
 
     // バンドル調整

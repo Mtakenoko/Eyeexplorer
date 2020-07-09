@@ -45,7 +45,7 @@ cv::Mat Triangulate::triangulation(const std::vector<cv::Point2f> &point,
         std::vector<cv::Mat> PrjMat;
         for (size_t t = 0; t < size; t++)
         {
-            cv::Mat prjMat;
+            cv::Mat prjMat(3, 4, CV_32FC1);
             for (int i = 0; i < 3; i++)
             {
                 for (int j = 0; j < 4; j++)
@@ -71,9 +71,10 @@ cv::Mat Triangulate::triangulation(const std::vector<cv::Point2f> &point,
         bool iter_end = true;
         for (size_t i = 0; i < size; i++)
         {
-            if (std::abs(weight[i] - p2[i] > TRI_ITERATIVE_TERM))
+            // printf("[weight, p2] = [%lf %lf]\n", weight[i], p2[i]);
+            // 一個でもおかしいのがあれば反復計算は引き続き実行
+            if (std::abs(weight[i] - p2[i]) > TRI_ITERATIVE_TERM)
             {
-                // 一個でもおかしいのがあれば反復計算は引き続き実行
                 iter_end = false;
             }
         }
@@ -81,7 +82,7 @@ cv::Mat Triangulate::triangulation(const std::vector<cv::Point2f> &point,
             break;
 
         // 重みを更新
-        weight.clear(); // push_back()するので、一旦要素を空にしたい
+        weight.clear(); // push_back()するので、一旦要素を空にする
         for (size_t i = 0; i < size; i++)
         {
             double w = p2[i];
@@ -127,8 +128,8 @@ void Triangulate::BuildInhomogeneousEqnSystemForTriangulation(
     cv::Mat B_(2 * size_point, 1, CV_32FC1);
     for (size_t i = 0; i < size_PrjMat; i++)
     {
-        B_.at<float>(2 * i, 0) = (norm_point[i].x * ProjectionMatrix[i].at<float>(2, 3) - ProjectionMatrix[i].at<float>(0, 3)) / weight[i];
-        B_.at<float>(2 * i + 1, 0) = (norm_point[i].y * ProjectionMatrix[i].at<float>(2, 3) - ProjectionMatrix[i].at<float>(1, 3)) / weight[i];
+        B_.at<float>(2 * i, 0) = -(norm_point[i].x * ProjectionMatrix[i].at<float>(2, 3) - ProjectionMatrix[i].at<float>(0, 3)) / weight[i];
+        B_.at<float>(2 * i + 1, 0) = -(norm_point[i].y * ProjectionMatrix[i].at<float>(2, 3) - ProjectionMatrix[i].at<float>(1, 3)) / weight[i];
     }
 
     A = A_.clone();
