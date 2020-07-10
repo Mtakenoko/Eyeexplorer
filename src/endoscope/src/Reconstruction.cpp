@@ -20,6 +20,64 @@ Reconstruction::Reconstruction()
     }
 }
 
+void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
+                                     const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
+{
+    printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
+    // 初期化
+    this->initialize();
+    // Subscribeしたものをframe_dataに入力
+    this->input_data(msg_image, msg_arm);
+    // メインの処理
+    this->process();
+    // Publish
+    this->publish(pub_pointcloud);
+}
+
+void Reconstruction::process()
+{
+    if (flag_setFirstFrame)
+    {
+        this->setFirstFrame();
+        printf("FirstFrame was setted!\n");
+        return;
+    }
+
+    // どのKFを使うか選択しkeyframe_dataに入力
+    this->chooseKeyFrame();
+
+    // Keyframeならば挿入する
+    this->setKeyFrame();
+
+    if (!flag_reconstruction)
+        return;
+
+    // 特徴点マッチング
+    this->BF_matching();
+
+    // 誤対応除去
+    this->BF_outlier_remover();
+
+    // マッチング量が5未満は眼球移動量推定できないのでパス
+    if (match_num < 20)
+        return;
+
+    // もし眼球移動を検知すれば
+    // this->estimate_move();
+
+    // 三角測量
+    // this->triangulation();
+    this->triangulation_multiscene(); //バンドル調整機能付き
+    // this->triangulation_test();
+
+    // バンドル調整
+    // this->bundler();
+
+    // 図示
+    this->showImage();
+}
+
 void Reconstruction::initialize()
 {
     knn_matches.clear();
@@ -41,90 +99,88 @@ void Reconstruction::setFirstFrame()
     keyframe_database.push_back(frame_data);
 }
 
+// 現在のフレームとマッチングさせるKeyFrameをKeyFrameDatabaseから一つ選ぶ
 void Reconstruction::chooseKeyFrame()
 {
-    if (keyframe_database.size() >= 10)
-    {
-        // 新しく登録したキーフレームから探索する
-        for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
-        {
-            // 判定条件1: Z方向の変化が少ない
-            // カメラ座標での移動量の計算
-            cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-            if (abs(t_endo.at<float>(2)) < 0.01)
-            {
-                // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
-                // xy方向の移動量
-                cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-                bool moving_xy = cv::norm(t_move_xy) < 0.03 && cv::norm(t_move_xy) > 0.005;
-                // 仰角
-                float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-                bool moving_phi = abs(phi) < 0.05 && abs(phi) > 0.005;
-                if (moving_xy && moving_phi)
-                {
-                    // printf("あったぞ＾＾(xy: %f, phi: %f)\n", cv::norm(t_move_xy), abs(phi));
-                    std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used." << std::endl;
-                    keyframe_itr = itr;
-                    keyframe_data = *keyframe_itr;
-                    flag_reconstruction = true;
-                    return;
-                }
-                // printf("ないぞ(xy: %f, phi: %f)\n", cv::norm(t_move_xy), abs(phi));
-            }
-            // printf("t_endo_z = %f\n", abs(t_endo.at<float>(2)));
-            // printf("move_xy = %f, phi = %f\n", cv::norm(t_move_xy), abs(phi));
-            // printf("戻るぞ\n");
-        }
-        // 何一つ当てはまるのがなければ
-        // 三次元復元は行わず、KFの候補であれば登録だけはする
-        // printf("一つもなかったよ；；\n");
-        flag_reconstruction = false;
-        this->setKeyFrame();
-        return;
-    }
-    else
+    // keyframe_databaseの中身が充実してないときは、とにかくkeyframeを挿入するだけ行う
+    if (keyframe_database.size() <= 10)
     {
         std::cout << "KeyFrame_Databade size is " << keyframe_database.size() << std::endl;
         flag_reconstruction = false;
         this->setKeyFrame();
         return;
     }
+
+    // 新しく登録したキーフレームから探索する
+    for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
+    {
+        // 判定条件1: Z方向の変化が少ない
+        // カメラ座標での移動量の計算
+        cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
+        if (abs(t_endo.at<float>(2)) < CHOOSE_KF_Z_MAX)
+        {
+            // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
+            // xy方向の移動量
+            cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
+            bool moving_xy = cv::norm(t_move_xy) < CHOOSE_KF_XY_MAX && cv::norm(t_move_xy) > CHOOSE_KF_XY_MIN;
+            // 仰角
+            float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+            bool moving_phi = abs(phi) < CHOOSE_KF_PHI_MAX && abs(phi) > CHOOSE_KF_PHI_MIN;
+            if (moving_xy && moving_phi)
+            {
+                // printf("あったぞ＾＾(xy: %f, phi: %f)\n", cv::norm(t_move_xy), abs(phi));
+                std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used." << std::endl;
+                keyframe_itr = itr;
+                keyframe_data = *keyframe_itr;
+                flag_reconstruction = true;
+                return;
+            }
+        }
+        // printf("t_endo_z = %f\n", abs(t_endo.at<float>(2)));
+        // printf("move_xy = %f, phi = %f\n", cv::norm(t_move_xy), abs(phi));
+        // printf("戻るぞ\n");
+    }
+    // 何一つ当てはまるのがなければ三次元復元は行わない
+    // printf("一つもなかったよ；；\n");
+    flag_reconstruction = false;
+    return;
 }
 
 void Reconstruction::setKeyFrame()
 {
-    if (this->checkKeyFrame())
+    // keyframeが見つかっているときなので、今回はkeyframeは設定しない
+    if (flag_reconstruction)
     {
-        printf("KeyFrame was setted!\n");
-        frame_data.camerainfo.Rotation = Rotation_eye.clone();
-        frame_data.camerainfo.Transform = Transform_zeros.clone();
-        keyframe_database.push_back(frame_data);
+        return;
     }
-}
 
-bool Reconstruction::checkKeyFrame()
-{
-    // KeyFrameに新たに登録してからのフレーム間隔
-    auto itr_endo = keyframe_database.end() - 1;
-    int frame_span = frame_data.camerainfo.frame_num - itr_endo->camerainfo.frame_num;
-
-    // xy方向の移動量
-    cv::Mat t_move = itr_endo->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr_endo->camerainfo.Transform_world);
-    cv::Point2f t_move_xy;
-    t_move_xy.x = t_move.at<float>(0);
-    t_move_xy.y = t_move.at<float>(1);
-    float t_move_norm = cv::norm(t_move_xy);
-
-    // 仰角
-    float phi = transform.RevFromRotMat(itr_endo->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-
-    if (frame_span > 1 && (t_move_norm > 0.01 || abs(phi) > 0.05))
+    // 新しく登録したキーフレームから探索する
+    for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
     {
-        // printf("(xy: %f, phi: %f)\n", t_move_norm, abs(phi));
-        return true;
+        // 判定条件1: Z方向の変化が少ない
+        // カメラ座標での移動量の計算
+        cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
+        if (abs(t_endo.at<float>(2)) < SET_KF_Z_MAX)
+        {
+            // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
+            // xy方向の移動量
+            cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
+            bool moving_xy = cv::norm(t_move_xy) < SET_KF_XY_MAX;
+            // 仰角
+            float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+            bool moving_phi = abs(phi) < SET_KF_PHI_MAX;
+            if (moving_xy && moving_phi)
+            {
+                return;
+            }
+        }
     }
-    // printf("(xy: %f, phi: %f)\n", t_move_norm, abs(phi));
-    return false;
+    // 何一つ当てはまるのがなければKFとする
+    frame_data.camerainfo.Rotation = Rotation_eye.clone();
+    frame_data.camerainfo.Transform = Transform_zeros.clone();
+    keyframe_database.push_back(frame_data);
+    printf("KeyFrame was setted!\n");
+    return;
 }
 
 int Reconstruction::encoding2mat_type(const std::string &encoding)
@@ -351,18 +407,10 @@ void Reconstruction::triangulation()
     cv::Mat p3;
     for (size_t i = 0; i < match_num; i++)
     {
-        cv::Mat point4D(4, match_num, CV_32FC1);
-        cv::Mat point3D_result;
-        cv::triangulatePoints(keyframe_data.camerainfo.ProjectionMatrix, frame_data.camerainfo.ProjectionMatrix,
-                              cv::Mat(keyframe_data.extractor.point[i]), cv::Mat(frame_data.extractor.point[i]),
-                              point4D);
-        cv::convertPointsFromHomogeneous(point4D.reshape(4, 1), point3D_result);
-        cv::Mat point3D_mine = Triangulate::triangulation(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
-                                                          frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
-        // std::cout << "rows, cols, ch: " << point3D_result.rows << ", " << point3D_result.cols << ", " << point3D_result.channels() << std::endl;
-        // std::cout << "point3D_mine : " << point3D_mine << std::endl;
-        p3.push_back(point3D_mine.reshape(3, 1));
-        point3D_hold.push_back(point3D_mine.reshape(3, 1));
+        cv::Mat point3D_result = Triangulate::triangulation(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
+                                                            frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
+        p3.push_back(point3D_result.reshape(3, 1));
+        point3D_hold.push_back(point3D_result.reshape(3, 1));
     }
     point3D = p3.clone();
 }
@@ -370,11 +418,10 @@ void Reconstruction::triangulation()
 void Reconstruction::triangulation_multiscene()
 {
     cv::Mat p3, p3_BA;
-    // printf("keyframe_data.extractor.keypoints.size() = %zu\n", keyframe_data.extractor.keypoints.size());
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
     for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
     {
-        // マッチング辞書の中で5個以上マッチングframeを発見したものを探索
+        // マッチング辞書の中でKEYPOINT_SCENE個以上マッチングframeを発見したものを探索
         if (keyframe_data.keyponit_map.count(i) >= KEYPOINT_SCENE)
         {
             // 3次元復元用データコンテナ
@@ -403,7 +450,7 @@ void Reconstruction::triangulation_multiscene()
             p3_BA.push_back(point3D_bundler.reshape(3, 1));
             point3D_BA_hold.push_back(point3D_bundler.reshape(3, 1));
 
-            // 終わったら保持してたものを削除
+            // 終わったら辞書に登録してたフレーム情報を削除
             keyframe_data.keyponit_map.erase(i);
         }
     }
@@ -639,7 +686,7 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     p3_BA.at<float>(1) = (float)mutable_point_for_observations[1];
     p3_BA.at<float>(2) = (float)mutable_point_for_observations[2];
 
-    // delete
+    // メモリ解放
     for (size_t i = 0; i < size; i++)
     {
         delete[] mutable_camera_for_observations[i];
@@ -733,61 +780,4 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     // auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     // converter.cvMat_to_msgPointCloud2(pointCloud_BA_hold, *msg_cloud_pub, 0);
     // pub_pointcloud->publish(std::move(msg_cloud_pub));
-}
-
-void Reconstruction::process()
-{
-    flag_reconstruction = false;
-
-    if (flag_setFirstFrame)
-    {
-        this->setFirstFrame();
-        printf("FirstFrame was setted!\n");
-        return;
-    }
-
-    // どのKFを使うか選択しkeyframe_dataに入力
-    this->chooseKeyFrame();
-
-    if (!flag_reconstruction)
-        return;
-
-    // 特徴点マッチング
-    this->BF_matching();
-
-    // 誤対応除去
-    this->BF_outlier_remover();
-
-    // マッチング量が5未満は眼球移動量推定できないのでパス
-    if (match_num < 20)
-        return;
-
-    // もし眼球移動を検知すれば
-    // this->estimate_move();
-
-    // 三角測量
-    // this->triangulation();
-    this->triangulation_multiscene();
-    // this->triangulation_test();
-
-    // バンドル調整
-    // this->bundler();
-
-    // 図示
-    this->showImage();
-}
-
-void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
-                                     const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
-{
-    printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
-    // 初期化
-    this->initialize();
-    // Subscribeしたものをframe_dataに入力
-    this->input_data(msg_image, msg_arm);
-    // メインの処理
-    this->process();
-    // Publish
-    this->publish(pub_pointcloud);
 }

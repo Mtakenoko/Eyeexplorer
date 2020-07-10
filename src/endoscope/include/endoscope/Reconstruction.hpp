@@ -21,6 +21,22 @@
 #define U0 160
 #define V0 160
 
+#define CHOOSE_KF_Z_MAX 0.01
+#define CHOOSE_KF_XY_MIN 0.005
+#define CHOOSE_KF_XY_MAX 0.03
+#define CHOOSE_KF_PHI_MIN 0.005
+#define CHOOSE_KF_PHI_MAX 0.05
+
+#define CHECK_KF_FRAMESPAN 1
+#define CHECK_KF_XY 0.01
+#define CHECK_KF_PHI 0.05
+
+#define SET_KF_Z_MAX 0.02
+#define SET_KF_XY_MAX 0.03
+#define SET_KF_PHI_MAX 0.05
+
+#define KEYPOINT_SCENE 5
+
 class Reconstruction
 {
 public:
@@ -56,7 +72,6 @@ private:
     void setFirstFrame();
     void setKeyFrame();
     void chooseKeyFrame();
-    bool checkKeyFrame();
     void keyframe_detector();
     void estimate_move();
     void process();

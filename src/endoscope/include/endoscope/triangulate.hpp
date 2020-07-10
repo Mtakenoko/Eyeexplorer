@@ -4,7 +4,6 @@
 #include <opencv2/opencv.hpp>
 #define ITR_TRIANGULATE 10
 #define TRI_ITERATIVE_TERM 0.1
-#define KEYPOINT_SCENE 5
 
 class Triangulate
 {
