@@ -20,7 +20,6 @@
 #define FOCAL_Y 396.9
 #define U0 160
 #define V0 160
-#define KEYPOINT_SCENE 5
 
 class Reconstruction
 {
@@ -35,7 +34,7 @@ public:
     FrameDatabase frame_data;
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
-    cv::Mat point3D, point3D_BA, point3D_hold;
+    cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold;
     cv::Mat matching_image;
 
 private:
@@ -48,10 +47,12 @@ private:
     void BF_matching();
     void knn_outlier_remover();
     void BF_outlier_remover();
-    
+
     void triangulation();
     void triangulation_multiscene();
     void bundler();
+    cv::Mat bundler_multiscene(const std::vector<MatchedData> &matchdata,
+                               const cv::Mat &point3D);
     void setFirstFrame();
     void setKeyFrame();
     void chooseKeyFrame();

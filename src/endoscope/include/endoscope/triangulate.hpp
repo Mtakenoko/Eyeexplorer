@@ -3,7 +3,8 @@
 
 #include <opencv2/opencv.hpp>
 #define ITR_TRIANGULATE 10
-#define TRI_ITERATIVE_TERM 1
+#define TRI_ITERATIVE_TERM 0.1
+#define KEYPOINT_SCENE 5
 
 class Triangulate
 {
@@ -17,7 +18,7 @@ public:
     static void BuildInhomogeneousEqnSystemForTriangulation(
         const std::vector<cv::Point3f> &norm_point,
         const std::vector<cv::Mat> &ProjectionMatrix,
-        const std::vector<double> &w,
+        const std::vector<double> &weight,
         cv::Mat &A, cv::Mat &B);
     static void SolveLinearEqn(const cv::Mat &A, const cv::Mat &B, cv::Matx41f &X);
 

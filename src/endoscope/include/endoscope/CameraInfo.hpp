@@ -139,14 +139,19 @@ class MatchedData
 {
 public:
     MatchedData();
-    MatchedData(cv::Point2f point, cv::Mat PrjMat, int Frame_Num)
+    MatchedData(const cv::Point2f &point, const cv::Mat &PrjMat,
+                const cv::Mat &Rot, const cv::Mat &Trans, const int &Frame_Num)
     {
         image_points = point;
         ProjectionMatrix = PrjMat.clone();
+        Rotation_world = Rot.clone();
+        Transform_world = Trans.clone();
         frame_num = Frame_Num;
     };
     cv::Point2f image_points;
     cv::Mat ProjectionMatrix;
+    cv::Mat Rotation_world;
+    cv::Mat Transform_world;
     int frame_num;
 };
 
