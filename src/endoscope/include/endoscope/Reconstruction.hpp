@@ -21,21 +21,28 @@
 #define U0 160
 #define V0 160
 
+// 現在のフレームと比較するKFを選択するためのパラメータ
 #define CHOOSE_KF_Z_MAX 0.01
 #define CHOOSE_KF_XY_MIN 0.005
 #define CHOOSE_KF_XY_MAX 0.03
 #define CHOOSE_KF_PHI_MIN 0.005
 #define CHOOSE_KF_PHI_MAX 0.05
 
-#define CHECK_KF_FRAMESPAN 1
-#define CHECK_KF_XY 0.01
-#define CHECK_KF_PHI 0.05
+// 新しくKF挿入するためのパラメータ
+// いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
+#define SET_KF_Z_MAX 0.05
+#define SET_KF_XY_MAX 0.06
+#define SET_KF_PHI_MAX 0.1
 
-#define SET_KF_Z_MAX 0.02
-#define SET_KF_XY_MAX 0.03
-#define SET_KF_PHI_MAX 0.05
-
+// マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 5
+
+// 誤対応除去用パラメータ
+#define THRESH_SMIROFF_GRUBBS 0.2
+#define THRESH_VARIANCE 1000
+
+// KFとFrameの特徴点マッチングの総数がこの数を下回ればそのマッチングは棄却
+#define MATCH_NUM_MIN 25
 
 class Reconstruction
 {
@@ -63,7 +70,7 @@ private:
     void BF_matching();
     void knn_outlier_remover();
     void BF_outlier_remover();
-
+    void BF_outlier_remover2();
     void triangulation();
     void triangulation_multiscene();
     void bundler();
