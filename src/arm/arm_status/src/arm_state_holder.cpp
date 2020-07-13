@@ -6,6 +6,7 @@
 #include <utility>
 #include <chrono>
 #include <fstream>
+#include <unistd.h>
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time_source.hpp>
@@ -66,6 +67,9 @@ int main(int argc, char *argv[])
     double qx[end_timing], qy[end_timing], qz[end_timing], qw[end_timing];
     bool PUB_START = false;
     int timing = 0;
+    
+    // lanuchファイルで立ち上げる時にまだ準備できていないときがあるので、少し待つ
+    sleep(1);
 
     while (rclcpp::ok())
     {
