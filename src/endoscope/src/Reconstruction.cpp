@@ -9,7 +9,7 @@ Transform transform;
 Converter converter;
 
 Reconstruction::Reconstruction()
-    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(true), flag_estimate_move(false),
+    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(false), flag_estimate_move(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0)
 {
     if (flag_showImage)
@@ -31,6 +31,8 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
     this->input_data(msg_image, msg_arm);
     // メインの処理
     this->process();
+    // 図示
+    this->showImage();
     // Publish
     this->publish(pub_pointcloud);
 }
@@ -54,17 +56,22 @@ void Reconstruction::process()
         return;
 
     // 特徴点マッチング
+    // this->knn_matching();
     this->BF_matching();
 
     // 誤対応除去
-    this->BF_outlier_remover2();
+    // this->knn_outlier_remover();
+    this->BF_outlier_remover();
 
-    // マッチング量が5未満は眼球移動量推定できないのでパス
-    if (match_num < MATCH_NUM_MIN)
-        return;
+    if (flag_estimate_move)
+    {
+        // マッチング量が5未満は眼球移動量推定できないのでパス
+        if (match_num < 5)
+            return;
 
-    // もし眼球移動を検知すれば
-    // this->estimate_move();
+        // もし眼球移動を検知すれば
+        this->estimate_move();
+    }
 
     // 三角測量
     // this->triangulation();
@@ -73,9 +80,6 @@ void Reconstruction::process()
 
     // バンドル調整
     // this->bundler();
-
-    // 図示
-    this->showImage();
 }
 
 void Reconstruction::initialize()
@@ -289,14 +293,8 @@ void Reconstruction::BF_matching()
 
 void Reconstruction::knn_outlier_remover()
 {
-    // 誤対応除去①：knnマッチングでなるべく差が大きいものだけを選択
+    // 誤対応除去①：knnマッチングでなるべく差が大きいものだけを選択(Brute-Forceではこれは不必要)
     // 距離が小さいほうがよりマッチング度合いが高い
-    if (knn_matches.size() == 0)
-    {
-        printf("knn_matches.size() == 0\n");
-        return;
-    }
-
     std::vector<cv::Point2f> match_point1, match_point2;
     for (size_t i = 0; i < knn_matches.size(); i++)
     {
@@ -309,76 +307,104 @@ void Reconstruction::knn_outlier_remover()
     }
 
     // 誤対応除去②：ホモグラフィ変換を行うときのRANSACを用いる
-    cv::Mat homography, inliner_mask;
-    // std::vector<cv::KeyPoint> inliners1_keypoints, inliners2_keypoints;
-    std::vector<int> inliners_idx;
-    homography = cv::findHomography(match_point1, match_point2, cv::RANSAC, threshold_ransac, inliner_mask);
-    inliners_idx.clear();
-    for (int i = 0; i < inliner_mask.rows; i++)
-    {
-        if (inliner_mask.at<uchar>(i))
-        {
-            // inliners1_keypoints.push_back(matched1_keypoints[i]);
-            // inliners2_keypoints.push_back(matched2_keypoints[i]);
-            inliners_matches.push_back(dmatch[i]);
-            inliners_idx.push_back(i); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
-            matched_point1.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
-            matched_point2.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
-        }
-    }
-    match_num = inliners_matches.size();
-}
-
-void Reconstruction::BF_outlier_remover()
-{
     if (dmatch.size() < 5)
     {
         printf("dmatch.size() == %zu\n", dmatch.size());
         return;
     }
-
-    std::vector<cv::Point2f> match_point1, match_point2;
-    for (size_t i = 0; i < dmatch.size(); ++i)
-    {
-        match_point1.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
-        match_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
-    }
-
-    // 誤対応除去：ホモグラフィ変換を行うときのRANSACを用いる
-    std::vector<int> inliners_idx;
     cv::Mat homography, inliner_mask;
-    std::vector<cv::KeyPoint> inliners1_keypoints, inliners2_keypoints;
-    inliners_idx.clear();
-    homography = cv::findHomography(match_point1, match_point2, inliner_mask, cv::RANSAC, 5.);
+    // std::vector<cv::KeyPoint> inliners1_keypoints, inliners2_keypoints;
+    std::vector<int> inliners_idx;
+    homography = cv::findHomography(match_point1, match_point2, cv::RANSAC, threshold_ransac, inliner_mask);
 
+    std::vector<cv::Point2f> distance;
     for (int i = 0; i < inliner_mask.rows; i++)
     {
         if (inliner_mask.at<uchar>(i))
         {
-            inliners_matches.push_back(dmatch[i]);
             inliners_idx.push_back(i); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
-            matched_point1.push_back(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt);
-            matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt);
 
-            // まだ特徴点辞書にindexの登録がなければkeyframeのぶんもここでいれとく
-            if (keyframe_data.keyponit_map.count(dmatch[i].queryIdx) == 0)
-            {
-                MatchedData matchData_key(keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt,
-                                          keyframe_data.camerainfo.ProjectionMatrix.clone(),
-                                          keyframe_data.camerainfo.Rotation_world.clone(),
-                                          keyframe_data.camerainfo.Transform_world.clone(),
-                                          keyframe_data.camerainfo.frame_num);
-                keyframe_data.keyponit_map.insert(std::make_pair(dmatch[i].queryIdx, matchData_key));
-            }
-
-            // keyframe_dataにマッチングした点のindexをkeyとして辞書(multimap)として登録
-            MatchedData matchData(frame_data.extractor.keypoints[dmatch[i].trainIdx].pt,
-                                  frame_data.camerainfo.ProjectionMatrix.clone(),
-                                  frame_data.camerainfo.Rotation_world.clone(),
-                                  frame_data.camerainfo.Transform_world.clone(),
-                                  frame_data.camerainfo.frame_num);
-            keyframe_data.keyponit_map.insert(std::make_pair(dmatch[i].queryIdx, matchData));
+            // 重ね合わせたときの距離を計算
+            cv::Point2f keyframe_pt = keyframe_data.extractor.keypoints[dmatch[i].queryIdx].pt;
+            cv::Point2f frame_pt = frame_data.extractor.keypoints[dmatch[i].trainIdx].pt;
+            cv::Point2f vec;
+            vec.x = frame_pt.x - keyframe_pt.x;
+            vec.y = frame_pt.y - keyframe_pt.y;
+            distance.push_back(vec);
         }
+    }
+
+    // 誤対応除去③：分散とスミルノフ･グラブス検定
+    // 画像を重ね合わせたときの対応する点の座標間の距離を計算し、その距離の平均と分散を用いて範囲外の対応を削除
+    // 平均
+    cv::Point2f distance_average;
+    for (auto itr = distance.begin(); itr != distance.end(); itr++)
+    {
+        distance_average.x += itr->x;
+        distance_average.y += itr->y;
+    }
+    distance_average.x /= distance.size();
+    distance_average.y /= distance.size();
+    // 分散
+    cv::Point2f distance_variance;
+    for (auto itr = distance.begin(); itr != distance.end(); itr++)
+    {
+        distance_variance.x += (itr->x - distance_average.x) * (itr->x - distance_average.x);
+        distance_variance.y += (itr->y - distance_average.y) * (itr->y - distance_average.y);
+    }
+    distance_variance.x /= distance.size();
+    distance_variance.y /= distance.size();
+    // printf("mean:[%f %f], var:[%f %f]\n", distance_average.x, distance_average.y, distance_variance.x, distance_variance.y);
+
+    //分散がでかすぎたらアウト
+    if (distance_variance.x > THRESH_VARIANCE || distance_variance.y > THRESH_VARIANCE)
+    {
+        return;
+    }
+
+    // スミルノフ･グラブス検定（外れ値 － 平均値） / σ
+    std::vector<int> dmatch_num; // 検定で合格したもののindexが入ってるコンテナ
+    for (size_t i = 0; i < distance.size(); i++)
+    {
+        cv::Point2f smi_grub;
+        smi_grub.x = std::fabs(distance[i].x - distance_average.x) / distance_variance.x;
+        smi_grub.y = std::fabs(distance[i].y - distance_average.y) / distance_variance.y;
+        if (smi_grub.x < THRESH_SMIROFF_GRUBBS && smi_grub.y < THRESH_SMIROFF_GRUBBS)
+        {
+            dmatch_num.push_back(inliners_idx[i]);
+            // printf("distance[%zu] = [%f %f], 検定 = [%f, %f]\n", i, distance[i].x, distance[i].y, smi_grub.x, smi_grub.y);
+        }
+    }
+
+    // 誤対応除去したものを保存
+    std::vector<int> inliners_idx2;
+    // printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size());
+    for (size_t i = 0; i < dmatch_num.size(); i++)
+    {
+        int num = dmatch_num[i];
+        inliners_matches.push_back(dmatch[num]);
+        inliners_idx2.push_back(num); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
+        matched_point1.push_back(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt);
+        matched_point2.push_back(keyframe_data.extractor.keypoints[dmatch[num].queryIdx].pt);
+
+        // まだ特徴点辞書にindexの登録がなければkeyframeのぶんもここでいれとく
+        if (keyframe_data.keyponit_map.count(dmatch[num].queryIdx) == 0)
+        {
+            MatchedData matchData_key(keyframe_data.extractor.keypoints[dmatch[num].queryIdx].pt,
+                                      keyframe_data.camerainfo.ProjectionMatrix.clone(),
+                                      keyframe_data.camerainfo.Rotation_world.clone(),
+                                      keyframe_data.camerainfo.Transform_world.clone(),
+                                      keyframe_data.camerainfo.frame_num);
+            keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData_key));
+        }
+
+        // keyframe_dataにマッチングした点のindexをkeyとして辞書(multimap)として登録
+        MatchedData matchData(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt,
+                              frame_data.camerainfo.ProjectionMatrix.clone(),
+                              frame_data.camerainfo.Rotation_world.clone(),
+                              frame_data.camerainfo.Transform_world.clone(),
+                              frame_data.camerainfo.frame_num);
+        keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData));
     }
     match_num = inliners_matches.size();
 
@@ -389,7 +415,7 @@ void Reconstruction::BF_outlier_remover()
     keyframe_database.insert(keyframe_itr, newKeyFrameData);
 }
 
-void Reconstruction::BF_outlier_remover2()
+void Reconstruction::BF_outlier_remover()
 {
     if (dmatch.size() < 5)
     {
@@ -440,6 +466,7 @@ void Reconstruction::BF_outlier_remover2()
     }
     distance_average.x /= distance.size();
     distance_average.y /= distance.size();
+
     // 分散
     cv::Point2f distance_variance;
     for (auto itr = distance.begin(); itr != distance.end(); itr++)
@@ -449,11 +476,12 @@ void Reconstruction::BF_outlier_remover2()
     }
     distance_variance.x /= distance.size();
     distance_variance.y /= distance.size();
-    printf("mean:[%f %f], var:[%f %f]\n", distance_average.x, distance_average.y, distance_variance.x, distance_variance.y);
-    if(distance_variance.x > THRESH_VARIANCE || distance_variance.y > THRESH_VARIANCE)
+    // printf("mean:[%f %f], var:[%f %f]\n", distance_average.x, distance_average.y, distance_variance.x, distance_variance.y);
+    if (distance_variance.x > THRESH_VARIANCE || distance_variance.y > THRESH_VARIANCE)
     {
         return;
     }
+
     // スミルノフ･グラブス検定
     //（外れ値 － 平均値） / σ
     std::vector<int> dmatch_num; // 検定で合格したもののindexが入ってるコンテナ
@@ -466,12 +494,12 @@ void Reconstruction::BF_outlier_remover2()
         {
             dmatch_num.push_back(inliners_idx[i]);
         }
-        printf("distance[%zu] = [%f %f], 検定 = [%f, %f]\n", i, distance[i].x, distance[i].y, smi_grub.x, smi_grub.y);
+        // printf("distance[%zu] = [%f %f], 検定 = [%f, %f]\n", i, distance[i].x, distance[i].y, smi_grub.x, smi_grub.y);
     }
 
     // 誤対応除去したものを保存
     std::vector<int> inliners_idx2;
-    printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size());
+    // printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size());
     for (size_t i = 0; i < dmatch_num.size(); i++)
     {
         int num = dmatch_num[i];
@@ -536,7 +564,7 @@ void Reconstruction::triangulation()
 
 void Reconstruction::triangulation_multiscene()
 {
-    cv::Mat p3, p3_BA;
+    cv::Mat p3, p3_BA, p3_filter;
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
     for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
     {
@@ -561,20 +589,26 @@ void Reconstruction::triangulation_multiscene()
             cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
 
             // バンドル調整
-            cv::Mat point3D_bundler = this->bundler_multiscene(matchdata, point3D_result);
+            // cv::Mat point3D_bundler = this->bundler_multiscene(matchdata, point3D_result);
 
             // 点の登録
             p3.push_back(point3D_result.reshape(3, 1));
             point3D_hold.push_back(point3D_result.reshape(3, 1));
-            p3_BA.push_back(point3D_bundler.reshape(3, 1));
-            point3D_BA_hold.push_back(point3D_bundler.reshape(3, 1));
+            // p3_BA.push_back(point3D_bundler.reshape(3, 1));
+            // point3D_BA_hold.push_back(point3D_bundler.reshape(3, 1));
 
             // 終わったら辞書に登録してたフレーム情報を削除
-            keyframe_data.keyponit_map.erase(i);
+            if (keyframe_data.keyponit_map.count(i) > KEYPOINT_SCENE_DELETE)
+                keyframe_data.keyponit_map.erase(i);
         }
     }
+    // 点群の統計フィルタ
+    this->pointcloud_statics_filter(p3, &p3_filter);
+
     point3D = p3.clone();
     point3D_BA = p3_BA.clone();
+    point3D_filtered = p3_filter.clone();
+    point3D_filtered_hold.push_back(point3D_filtered);
 }
 
 void Reconstruction::bundler()
@@ -707,7 +741,7 @@ void Reconstruction::bundler()
 }
 
 cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &matchdata,
-                                           const cv::Mat &point3D)
+                                           const cv::Mat &Point3D)
 {
     //最適化問題解くためのオブジェクト作成
     ceres::Problem problem;
@@ -721,9 +755,9 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     }
     double mutable_point_for_observations[3];
 
-    mutable_point_for_observations[0] = (double)point3D.at<float>(0);
-    mutable_point_for_observations[1] = (double)point3D.at<float>(1);
-    mutable_point_for_observations[2] = (double)point3D.at<float>(2);
+    mutable_point_for_observations[0] = (double)Point3D.at<float>(0);
+    mutable_point_for_observations[1] = (double)Point3D.at<float>(1);
+    mutable_point_for_observations[2] = (double)Point3D.at<float>(2);
 
     std::vector<cv::Mat> rvec;
     for (size_t i = 0; i < size; i++)
@@ -815,6 +849,49 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     return p3_BA;
 }
 
+void Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
+{
+    printf("rows = %d, cols = %d, channels = %d\n", Point3D.rows, Point3D.cols, Point3D.channels());
+    int point_num = Point3D.rows;
+    if (point_num == 0)
+    {
+        return;
+    }
+
+    // 平均
+    cv::Point3f point_average;
+    for (int i = 0; i < point_num; i++)
+    {
+        point_average.x += Point3D.at<cv::Vec3f>(i, 0)[0];
+        point_average.y += Point3D.at<cv::Vec3f>(i, 0)[1];
+        point_average.z += Point3D.at<cv::Vec3f>(i, 0)[2];
+    }
+    point_average.x /= point_num;
+    point_average.y /= point_num;
+    point_average.z /= point_num;
+    // 分散
+    cv::Point3f point_variance;
+    for (int i = 0; i < point_num; i++)
+    {
+        point_variance.x += (Point3D.at<cv::Vec3f>(i, 0)[0] - point_average.x) * (Point3D.at<cv::Vec3f>(i, 0)[0] - point_average.x);
+        point_variance.y += (Point3D.at<cv::Vec3f>(i, 0)[1] - point_average.y) * (Point3D.at<cv::Vec3f>(i, 0)[1] - point_average.y);
+        point_variance.z += (Point3D.at<cv::Vec3f>(i, 0)[2] - point_average.z) * (Point3D.at<cv::Vec3f>(i, 0)[2] - point_average.z);
+    }
+    point_average.x /= point_num;
+    point_average.y /= point_num;
+    point_average.z /= point_num;
+    printf("mean:[%f %f %f], var:[%f %f %f]\n", point_average.x, point_average.y, point_average.z, point_variance.x, point_variance.y, point_variance.z);
+
+    //分散がでかすぎたらアウト
+    if (point_variance.x > THRESH_VARIANCE_POINT ||
+        point_variance.y > THRESH_VARIANCE_POINT ||
+        point_variance.z > THRESH_VARIANCE_POINT)
+    {
+        return;
+    }
+    *output_point3D = point3D.clone();
+}
+
 void Reconstruction::estimate_move()
 {
     // 眼球の移動を検知したらフラグを管理する
@@ -885,11 +962,11 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     // converter.cvMat_to_msgPointCloud2(pointCloud, *msg_cloud_pub, 0);
     // pub_pointcloud->publish(std::move(msg_cloud_pub));
 
-    cv::Mat pointCloud_hold(point3D_hold.rows, 1, CV_32FC3);
-    point3D_hold.convertTo(pointCloud_hold, CV_32FC3);
-    auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_hold, *msg_cloud_pub, 0);
-    pub_pointcloud->publish(std::move(msg_cloud_pub));
+    // cv::Mat pointCloud_hold(point3D_hold.rows, 1, CV_32FC3);
+    // point3D_hold.convertTo(pointCloud_hold, CV_32FC3);
+    // auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    // converter.cvMat_to_msgPointCloud2(pointCloud_hold, *msg_cloud_pub, 0);
+    // pub_pointcloud->publish(std::move(msg_cloud_pub));
 
     // cv::Mat pointCloud_BA(point3D_BA.rows, 1, CV_32FC3);
     // point3D_BA.convertTo(pointCloud_BA, CV_32FC3);
@@ -902,4 +979,16 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     // auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     // converter.cvMat_to_msgPointCloud2(pointCloud_BA_hold, *msg_cloud_pub, 0);
     // pub_pointcloud->publish(std::move(msg_cloud_pub));
+
+    // cv::Mat pointCloud_filtered(point3D_filtered.rows, 1, CV_32FC3);
+    // point3D_filtered.convertTo(pointCloud_filtered, CV_32FC3);
+    // auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    // converter.cvMat_to_msgPointCloud2(pointCloud_filtered, *msg_cloud_pub, 0);
+    // pub_pointcloud->publish(std::move(msg_cloud_pub));
+
+    cv::Mat pointCloud_filtered_hold(point3D_filtered_hold.rows, 1, CV_32FC3);
+    point3D_filtered_hold.convertTo(pointCloud_filtered_hold, CV_32FC3);
+    auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_filtered_hold, *msg_cloud_pub, 0);
+    pub_pointcloud->publish(std::move(msg_cloud_pub));
 }

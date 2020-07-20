@@ -30,19 +30,20 @@
 
 // 新しくKF挿入するためのパラメータ
 // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
-#define SET_KF_Z_MAX 0.05
-#define SET_KF_XY_MAX 0.06
-#define SET_KF_PHI_MAX 0.1
+#define SET_KF_Z_MAX 0.02
+#define SET_KF_XY_MAX 0.03
+#define SET_KF_PHI_MAX 0.05
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
-#define KEYPOINT_SCENE 5
+#define KEYPOINT_SCENE 4
+#define KEYPOINT_SCENE_DELETE 10
 
-// 誤対応除去用パラメータ
-#define THRESH_SMIROFF_GRUBBS 0.2
-#define THRESH_VARIANCE 1000
+// マッチング誤対応除去用パラメータ
+#define THRESH_VARIANCE 100       // 分散のしきい値
+#define THRESH_SMIROFF_GRUBBS 0.3 // スミルノフ･グラブス検定
 
-// KFとFrameの特徴点マッチングの総数がこの数を下回ればそのマッチングは棄却
-#define MATCH_NUM_MIN 25
+// 3次元点の統計学的フィルタ用パラメータ
+#define THRESH_VARIANCE_POINT 0.001       // 分散のしきい値
 
 class Reconstruction
 {
@@ -57,7 +58,7 @@ public:
     FrameDatabase frame_data;
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
-    cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold;
+    cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold, point3D_filtered, point3D_filtered_hold;
     cv::Mat matching_image;
 
 private:
@@ -70,12 +71,12 @@ private:
     void BF_matching();
     void knn_outlier_remover();
     void BF_outlier_remover();
-    void BF_outlier_remover2();
     void triangulation();
     void triangulation_multiscene();
     void bundler();
     cv::Mat bundler_multiscene(const std::vector<MatchedData> &matchdata,
-                               const cv::Mat &point3D);
+                               const cv::Mat &Point3D);
+    void pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
     void setFirstFrame();
     void setKeyFrame();
     void chooseKeyFrame();
