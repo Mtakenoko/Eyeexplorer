@@ -76,7 +76,7 @@ private:
     void bundler();
     cv::Mat bundler_multiscene(const std::vector<MatchedData> &matchdata,
                                const cv::Mat &Point3D);
-    void pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
+    bool pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
     void setFirstFrame();
     void setKeyFrame();
     void chooseKeyFrame();

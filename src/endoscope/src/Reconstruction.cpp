@@ -564,7 +564,7 @@ void Reconstruction::triangulation()
 
 void Reconstruction::triangulation_multiscene()
 {
-    cv::Mat p3, p3_BA, p3_filter;
+    cv::Mat p3, p3_BA;
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
     for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
     {
@@ -602,13 +602,16 @@ void Reconstruction::triangulation_multiscene()
                 keyframe_data.keyponit_map.erase(i);
         }
     }
-    // 点群の統計フィルタ
-    this->pointcloud_statics_filter(p3, &p3_filter);
-
     point3D = p3.clone();
     point3D_BA = p3_BA.clone();
-    point3D_filtered = p3_filter.clone();
-    point3D_filtered_hold.push_back(point3D_filtered);
+
+    // 点群の統計フィルタ
+    cv::Mat p3_filter;
+    if (this->pointcloud_statics_filter(p3, &p3_filter))
+    {
+        point3D_filtered = p3_filter.clone();
+        point3D_filtered_hold.push_back(point3D_filtered);
+    }
 }
 
 void Reconstruction::bundler()
@@ -849,13 +852,13 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     return p3_BA;
 }
 
-void Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
+bool Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
 {
     printf("rows = %d, cols = %d, channels = %d\n", Point3D.rows, Point3D.cols, Point3D.channels());
     int point_num = Point3D.rows;
     if (point_num == 0)
     {
-        return;
+        return false;
     }
 
     // 平均
@@ -883,13 +886,11 @@ void Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *
     printf("mean:[%f %f %f], var:[%f %f %f]\n", point_average.x, point_average.y, point_average.z, point_variance.x, point_variance.y, point_variance.z);
 
     //分散がでかすぎたらアウト
-    if (point_variance.x > THRESH_VARIANCE_POINT ||
-        point_variance.y > THRESH_VARIANCE_POINT ||
-        point_variance.z > THRESH_VARIANCE_POINT)
-    {
-        return;
-    }
-    *output_point3D = point3D.clone();
+    if (point_variance.x > THRESH_VARIANCE_POINT || point_variance.y > THRESH_VARIANCE_POINT || point_variance.z > THRESH_VARIANCE_POINT)
+        return false;
+
+    *output_point3D = Point3D.clone();
+    return true;
 }
 
 void Reconstruction::estimate_move()

@@ -3,29 +3,22 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 
-#include <ceres/ceres.h>
-#include <ceres/rotation.h>
-
-#include "../include/endoscope/Reconstruction.hpp"
-
+#include "../include/map/pullout_endoscope.hpp"
 
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
 
-    // Ceres Solver Logging用　Initializer
-    google::InitGoogleLogging(argv[0]);
-
     // Topic Name
-    std::string topic_sub_track("endoscope_image");
+    std::string topic_sub_pointcloud("pointcloud");
     std::string topic_sub_arm("endoscope_transform");
-    std::string topic_pub("pointcloud");
-    auto reconstructor = Reconstruction();
+    std::string topic_pub("pointcloud2");
+    auto pullout = PullOut();
 
     // node
-    auto node = rclcpp::Node::make_shared("reconstructor"); //Set QoS to Publish
-
-    // Set quality of service profile based on command line options.
+    auto node = rclcpp::Node::make_shared("pullout_endoscope"); 
+    
+    //Set QoS to Publish
     // コマンドラインでのQoSの設定（よくわからん）
     size_t depth = rmw_qos_profile_default.depth;
     rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
@@ -34,12 +27,11 @@ int main(int argc, char *argv[])
     qos.reliability(reliability_policy);
 
     // Pub/Subの設定
-    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub.c_str());
     auto publisher_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub, qos);
-    message_filters::Subscriber<sensor_msgs::msg::Image> sub_track_(node.get(), topic_sub_track);
+    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> sub_pointcloud_(node.get(), topic_sub_pointcloud);
     message_filters::Subscriber<geometry_msgs::msg::Transform> sub_arm_(node.get(), topic_sub_arm);
-    message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync_(sub_track_, sub_arm_, 1000);
-    sync_.registerCallback(std::bind(&Reconstruction::topic_callback_, reconstructor, std::placeholders::_1, std::placeholders::_2, publisher_));
+    message_filters::TimeSynchronizer<sensor_msgs::msg::PointCloud2, geometry_msgs::msg::Transform> sync_(sub_pointcloud_, sub_arm_, 10000);
+    sync_.registerCallback(std::bind(&PullOut::topic_callback_, pullout, std::placeholders::_1, std::placeholders::_2, publisher_));
 
     rclcpp::spin(node);
     rclcpp::shutdown();

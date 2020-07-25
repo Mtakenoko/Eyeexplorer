@@ -23,68 +23,78 @@ add_compile_options(-Wall -Wextra -Wpedantic -lktl -lts01 -lktlrt -lpthread)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
+find_package(rclcpp_components REQUIRED)
+find_package(rcutils REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(message_filters)
-find_package(OpenCV REQUIRED)
-find_package(pcl_conversions REQUIRED)
-find_package(VTK 6.3 REQUIRED)
-find_package(PCL 1.8 REQUIRED)
-find_package(PCL COMPONENTS common REQUIRED)
-find_package(eigen3_cmake_module REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(Boost COMPONENTS system REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
-find_package(rcl_interfaces REQUIRED)
-find_package(rcutils REQUIRED)
+find_package(message_filters REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(Boost REQUIRED system)
 find_package(Ceres REQUIRED)
 
-# pointcloud_storage node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(pointcloud_storage
-  src/pointcloud_storage.cpp
+# PCL
+include_directories(
+  include
+  ${PCL_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(pointcloud_storage
-  "rclcpp"
-  "sensor_msgs"
-  "std_msgs"
-  "OpenCV"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-  "rcl_interfaces"
-  "rcutils"
-  "pcl_conversions"
+link_directories(
+  ${PCL_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
 )
-# 実行ファイルをインストール
-install(TARGETS pointcloud_storage
-  DESTINATION lib/${PROJECT_NAME}
-)
+add_definitions(${PCL_DEFINITIONS})
 
-# eyeball_estimator node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(eyeball_estimator
-  src/eyeball_estimator.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(eyeball_estimator
-  ceres
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(eyeball_estimator
-  "rclcpp"
-  "sensor_msgs"
-  "visualization_msgs"
-  "OpenCV"
-  "ceres"
-)
-# 実行ファイルをインストール
-install(TARGETS
-  eyeball_estimator
-  DESTINATION lib/${PROJECT_NAME}
-)
+# # pointcloud_storage node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(pointcloud_storage
+#   src/pointcloud_storage.cpp
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(pointcloud_storage
+#   "rclcpp"
+#   "sensor_msgs"
+#   "std_msgs"
+#   "OpenCV"
+#   "tf2_msgs"
+#   "tf2_geometry_msgs"
+#   "rcl_interfaces"
+#   "rcutils"
+#   "pcl_conversions"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS pointcloud_storage
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# # eyeball_estimator node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(eyeball_estimator
+#   src/eyeball_estimator.cpp
+# )
+# # 実行ファイルをリンクする
+# target_link_libraries(eyeball_estimator
+#   ceres
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(eyeball_estimator
+#   "rclcpp"
+#   "sensor_msgs"
+#   "visualization_msgs"
+#   "OpenCV"
+#   "ceres"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS
+#   eyeball_estimator
+#   DESTINATION lib/${PROJECT_NAME}
+# )
 
 # pointcloud_filter node
 # スタンドアローンノードの実行ファイルをコンパイルする
@@ -101,14 +111,35 @@ ament_target_dependencies(pointcloud_filter
   "rclcpp"
   "sensor_msgs"
   "pcl_conversions"
-  "VTK 6.3"
-  "Eigen3"
-  "PCL 1.8"
-  "PCL COMPONENTS common"
 )
 # 実行ファイルをインストール
 install(TARGETS
   pointcloud_filter
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# pullout_endoscope node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(pullout_endoscope
+  src/puller.cpp
+  src/pullout_endoscope.cpp
+  ../HTL/src/transform.cpp
+)
+target_link_libraries(pullout_endoscope
+  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${PCL_LIBRARIES}
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(pullout_endoscope
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "message_filters"
+  "OpenCV"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  pullout_endoscope
   DESTINATION lib/${PROJECT_NAME}
 )
 

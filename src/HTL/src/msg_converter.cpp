@@ -40,8 +40,8 @@ void Converter::cvimage_to_msg(const cv::Mat &frame, size_t frame_id, sensor_msg
 
 void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::msg::PointCloud &msg_cloud_pub)
 {
-    msg_cloud_pub.header = std_msgs::msg::Header();
-    msg_cloud_pub.header.stamp = rclcpp::Clock().now();
+    // msg_cloud_pub.header = std_msgs::msg::Header();
+    // msg_cloud_pub.header.stamp = rclcpp::Clock().now();
     msg_cloud_pub.header.frame_id = "world";
 
     geometry_msgs::msg::Point32 point;
@@ -56,8 +56,8 @@ void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::ms
 
 void Converter::cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count)
 {
-    msg_cloud_pub.header = std_msgs::msg::Header();
-    msg_cloud_pub.header.stamp = rclcpp::Clock().now();
+    // msg_cloud_pub.header = std_msgs::msg::Header();
+    // msg_cloud_pub.header.stamp = rclcpp::Clock().now();
     msg_cloud_pub.header.frame_id = "world";
 
     msg_cloud_pub.is_bigendian = false;
