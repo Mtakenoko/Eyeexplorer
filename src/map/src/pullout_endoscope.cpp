@@ -40,17 +40,21 @@ void PullOut::process(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
         return;
 
     // 点群から平面を推定する
-    this->estimate_plane(point_cloud);
-    // this->estimate_sphere(point_cloud);
+    // float coefficients[4];
+    // this->estimate_plane(point_cloud, coefficients);
+    // this->estimate_plane_pcl(point_cloud, coefficients);
+    this->estimate_sphere(point_cloud);
 
-    // 内視鏡と平面の距離を計算する
-    float distance = this->calc_distance(endoscopePose);
+    // // 内視鏡と平面の距離を計算する
+    // float distance = this->calc_distance(coefficients, endoscopePose);
+    // printf("Trans = [%f %f %f]\n", endoscopePose.Transform[0], endoscopePose.Transform[1], endoscopePose.Transform[2]);
+    // printf("distance = %f\n", distance);
 
-    // 距離が閾値以内に入ったらpull
-    if (distance < SAFETY_DISTANCE)
-    {
-        flag_pull = true;
-    }
+    // // 距離が閾値以内に入ったらpull
+    // if (distance < SAFETY_DISTANCE)
+    // {
+    //     flag_pull = true;
+    // }
 }
 
 void PullOut::initialize()
@@ -107,7 +111,7 @@ bool PullOut::chace_empty(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud)
         return false;
 }
 
-void PullOut::estimate_plane(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud)
+void PullOut::estimate_plane(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients)
 {
     // 点群情報から3次元平面を推定する
     // ax+by+cz=dの4パラメータを最小二乗法にて推定(方法については研究ノートを参照のこと)
@@ -139,47 +143,134 @@ void PullOut::estimate_plane(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_clo
     {
         if (eigensolver.eigenvalues()[0] < eigensolver.eigenvalues()[2])
         {
-            minEigenVec = eigensolver.eigenvectors().row(0);
+            minEigenVec = eigensolver.eigenvectors().col(0);
         }
         else
         {
-            minEigenVec = eigensolver.eigenvectors().row(2);
+            minEigenVec = eigensolver.eigenvectors().col(2);
         }
     }
     else
     {
         if (eigensolver.eigenvalues()[1] < eigensolver.eigenvalues()[2])
         {
-            minEigenVec = eigensolver.eigenvectors().row(1);
+            minEigenVec = eigensolver.eigenvectors().col(1);
         }
         else
         {
-            minEigenVec = eigensolver.eigenvectors().row(2);
+            minEigenVec = eigensolver.eigenvectors().col(2);
         }
     }
     std::cout << "最小固有値の固有ベクトル：\n"
               << minEigenVec << std::endl;
 
     // 固有ベクトル上に点群の重心が通るように平面パラメータを定める。
-    double est_plane[4];
+    float est_plane[4];
     est_plane[0] = minEigenVec[0];
     est_plane[1] = minEigenVec[1];
     est_plane[2] = minEigenVec[2];
     est_plane[3] = -(est_plane[0] * xyz_centroid[0] + est_plane[1] * xyz_centroid[1] + est_plane[2] * xyz_centroid[2]);
 
     printf("平面の方程式 : %f x + %f y + %f z + %f = 0\n", est_plane[0], est_plane[1], est_plane[2], est_plane[3]);
+
+    for (int i = 0; i < 4; i++)
+    {
+        OutputCoefficients[i] = est_plane[i];
+    }
+}
+
+void PullOut::estimate_plane_pcl(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients)
+{
+    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+    pcl::PointIndices::Ptr inliners(new pcl::PointIndices);
+
+    // Create the Segmentation Object
+    pcl::SACSegmentation<pcl::PointXYZ> seg;
+    seg.setOptimizeCoefficients(true);
+    seg.setModelType(pcl::SACMODEL_PLANE);
+    seg.setMethodType(pcl::SAC_RANSAC);
+    seg.setDistanceThreshold(0.1);
+    seg.setInputCloud(point_cloud->makeShared());
+    seg.segment(*inliners, *coefficients);
+
+    if (inliners->indices.size() == 0)
+    {
+        PCL_ERROR("Could not estimate a planar model for the given dataset.");
+        return;
+    }
+
+    std::cerr << "Model coefficients: " << coefficients->values[0] << " "
+              << coefficients->values[1] << " "
+              << coefficients->values[2] << " "
+              << coefficients->values[3] << std::endl;
+
+    // std::cerr << "Model inliners: " << inliners->indices.size() << std::endl;
+    // for (size_t i = 0; i < inliners->indices.size(); ++i)
+    //     std::cerr << inliners->indices[i] << "    " << point_cloud->points[inliners->indices[i]].x << " "
+    //               << point_cloud->points[inliners->indices[i]].y << " "
+    //               << point_cloud->points[inliners->indices[i]].z << std::endl;
+    for (int i = 0; i < 4; i++)
+    {
+        OutputCoefficients[i] = coefficients->values[i];
+    }
 }
 
 void PullOut::estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud)
 {
     // 点群情報から3次元の球体を推定する
     // (x-a)^2+(y-b)^2+(z-c)^2=r^2を最小二乗法にて推定
-    printf("point.hesight = %d\n", point_cloud->height);
+    // AX = Bの形にする
+    Eigen::Matrix4f A;
+    for (size_t i = 0; i < point_cloud->points.size(); i++)
+    {
+        A(0, 0) += point_cloud->points[i].x * point_cloud->points[i].x;
+        A(0, 1) += point_cloud->points[i].x * point_cloud->points[i].y;
+        A(0, 2) += point_cloud->points[i].x * point_cloud->points[i].z;
+        A(0, 3) += point_cloud->points[i].x;
+        A(1, 0) += point_cloud->points[i].x * point_cloud->points[i].y;
+        A(1, 1) += point_cloud->points[i].y * point_cloud->points[i].y;
+        A(1, 2) += point_cloud->points[i].y * point_cloud->points[i].z;
+        A(1, 3) += point_cloud->points[i].y;
+        A(2, 0) += point_cloud->points[i].x * point_cloud->points[i].z;
+        A(2, 1) += point_cloud->points[i].y * point_cloud->points[i].z;
+        A(2, 2) += point_cloud->points[i].z * point_cloud->points[i].z;
+        A(2, 3) += point_cloud->points[i].z;
+        A(3, 0) += point_cloud->points[i].x;
+        A(3, 1) += point_cloud->points[i].y;
+        A(3, 2) += point_cloud->points[i].z;
+        A(3, 3) += 1.0;
+    }
+    Eigen::Vector4f B;
+    for (size_t i = 0; i < point_cloud->points.size(); i++)
+    {
+        B(0) -= point_cloud->points[i].x * point_cloud->points[i].x * point_cloud->points[i].x +
+                point_cloud->points[i].x * point_cloud->points[i].y * point_cloud->points[i].y +
+                point_cloud->points[i].x * point_cloud->points[i].z * point_cloud->points[i].z;
+        B(1) -= point_cloud->points[i].x * point_cloud->points[i].x * point_cloud->points[i].y +
+                point_cloud->points[i].y * point_cloud->points[i].y * point_cloud->points[i].y +
+                point_cloud->points[i].y * point_cloud->points[i].z * point_cloud->points[i].z;
+        B(2) -= point_cloud->points[i].x * point_cloud->points[i].x * point_cloud->points[i].z +
+                point_cloud->points[i].y * point_cloud->points[i].y * point_cloud->points[i].z +
+                point_cloud->points[i].z * point_cloud->points[i].z * point_cloud->points[i].z;
+        B(3) -= point_cloud->points[i].x * point_cloud->points[i].x +
+                point_cloud->points[i].y * point_cloud->points[i].y +
+                point_cloud->points[i].z * point_cloud->points[i].z;
+    }
+    Eigen::Vector4f x = A.fullPivHouseholderQr().solve(B);
+
+    float sphere_center[3];
+    for (int i = 0; i < 3; i++)
+    {
+        sphere_center[i] = x[i] / (-2);
+    }
+    float radius = std::sqrt((sphere_center[0] * sphere_center[0] + sphere_center[1] * sphere_center[1] + sphere_center[2] * sphere_center[2]) - x[3]);
+
+    printf("center : [%f %f %f], r = %f\n", sphere_center[0], sphere_center[1], sphere_center[2], radius);
 }
 
-float PullOut::calc_distance(const EndoscopePose endoscopePose)
+float PullOut::calc_distance(const float *coefficients, const EndoscopePose endoscopePose)
 {
     float distance;
-    distance = std::abs(endoscopePose.Transform(0));
+    distance = std::abs(coefficients[0] * endoscopePose.Transform[0] + coefficients[0] * endoscopePose.Transform[1] + coefficients[2] * endoscopePose.Transform[2] + coefficients[3]) / std::sqrt(coefficients[0] * coefficients[0] + coefficients[1] * coefficients[1] + coefficients[2] * coefficients[2]);
     return distance;
 }
