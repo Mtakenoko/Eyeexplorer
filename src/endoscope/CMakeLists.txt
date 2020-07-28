@@ -59,6 +59,7 @@ add_executable(reconstructor
   src/Reconstruction.cpp
   src/triangulate.cpp
   src/cost_function.cpp
+  option/options_reconstructor.cpp
   ../HTL/src/transform.cpp
   ../HTL/src/msg_converter.cpp
 )

@@ -43,12 +43,17 @@ public:
                          const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
                          rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud);
 
+    void setModel(size_t num);
+    void setThreshRANSAC(int thresh);
+    void setSafetyDistance(float distance);
+
     enum Model
     {
         PLANE = 0,
         PLANE_RANSAC = 1,
         SPHERE = 2
     };
+
 private:
     void
     initialize();
@@ -64,12 +69,14 @@ private:
     void estimate_plane(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);
     void estimate_plane_pcl(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);
     void estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);
-    float calc_distance_plane(const float *coefficients, const EndoscopePose endoscopePose); // 平面のパラメータと内視鏡の位置から、内視鏡と平面の距離を測定する
+    float calc_distance_plane(const float *coefficients, const EndoscopePose endoscopePose);  // 平面のパラメータと内視鏡の位置から、内視鏡と平面の距離を測定する
     float calc_distance_sphere(const float *coefficients, const EndoscopePose endoscopePose); // 平面のパラメータと内視鏡の位置から、内視鏡と平面の距離を測定する
 
 private:
     bool flag_pull;
     int use_model;
+    float threshold_ransac;
+    float safety_distance;
 };
 
 #endif

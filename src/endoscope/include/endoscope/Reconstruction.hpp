@@ -55,7 +55,7 @@
 #define THRESH_SMIROFF_GRUBBS 0.3 // スミルノフ･グラブス検定
 
 // 3次元点の統計学的フィルタ用パラメータ
-#define THRESH_VARIANCE_POINT 0.001       // 分散のしきい値
+#define THRESH_VARIANCE_POINT 0.001 // 分散のしきい値
 
 class Reconstruction
 {
@@ -64,6 +64,12 @@ public:
     void topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                          const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
+    void setThreshold_knn_ratio(float thresh);
+    void setThreshold_ransac(float thresh);
+    void setFlagShowImage(bool flag);
+    void setFlagEstimationMovement(bool flag);
+    void setCPUCoreforBundler(int num);
+    void setSceneNum(size_t num);
 
 public:
     // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
@@ -111,6 +117,8 @@ private:
 
     float threshold_knn_ratio;
     float threshold_ransac;
+    int num_CPU_core;
+    size_t num_Scene;
     std::vector<std::vector<cv::DMatch>> knn_matches;
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;

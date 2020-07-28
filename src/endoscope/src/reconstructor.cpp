@@ -7,7 +7,7 @@
 #include <ceres/rotation.h>
 
 #include "../include/endoscope/Reconstruction.hpp"
-
+#include "../include/option/options_reconstructor.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -16,20 +16,40 @@ int main(int argc, char *argv[])
     // Ceres Solver Logging用　Initializer
     google::InitGoogleLogging(argv[0]);
 
+    // Initialize default demo parameters
+    size_t depth = rmw_qos_profile_default.depth;
+    rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
+    rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
+    bool show_camera = false;
+    bool est_move = false;
+    float thresh_knn_ratio = 0.7f;
+    float thresh_ransac = 5.0;
+    int cpu_core = 8;
+    size_t num_scene = 4;
+    // Configure demo parameters with command line options.
+    if (!parse_command_options(argc, argv, &depth, &reliability_policy, &history_policy,
+                               &show_camera, &est_move, &thresh_knn_ratio, &thresh_ransac,
+                               &cpu_core, &num_scene))
+        return 0;
+
     // Topic Name
     std::string topic_sub_track("endoscope_image");
     std::string topic_sub_arm("endoscope_transform");
     std::string topic_pub("pointcloud");
     auto reconstructor = Reconstruction();
 
+    // Reconstructorの設定
+    reconstructor.setThreshold_knn_ratio(thresh_knn_ratio);
+    reconstructor.setThreshold_ransac(thresh_ransac);
+    reconstructor.setFlagEstimationMovement(est_move);
+    reconstructor.setFlagShowImage(show_camera);
+    reconstructor.setCPUCoreforBundler(cpu_core);
+    reconstructor.setSceneNum(num_scene);
+
     // node
     auto node = rclcpp::Node::make_shared("reconstructor"); //Set QoS to Publish
 
     // Set quality of service profile based on command line options.
-    // コマンドラインでのQoSの設定（よくわからん）
-    size_t depth = rmw_qos_profile_default.depth;
-    rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
-    rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 

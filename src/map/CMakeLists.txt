@@ -123,6 +123,7 @@ install(TARGETS
 add_executable(pullout_endoscope
   src/puller.cpp
   src/pullout_endoscope.cpp
+  option/options_pullout.cpp
   ../HTL/src/transform.cpp
 )
 target_link_libraries(pullout_endoscope

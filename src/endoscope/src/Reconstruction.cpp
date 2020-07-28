@@ -9,16 +9,9 @@ Transform transform;
 Converter converter;
 
 Reconstruction::Reconstruction()
-    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(true), flag_estimate_move(false),
-      threshold_knn_ratio(0.7f), threshold_ransac(5.0)
-{
-    if (flag_showImage)
-    {
-        //ウィンドウの用意
-        cv::namedWindow("matching_image", cv::WINDOW_AUTOSIZE);
-        cv::namedWindow("nomatching_image", cv::WINDOW_AUTOSIZE);
-    }
-}
+    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(false), flag_estimate_move(false),
+      threshold_knn_ratio(0.7f), threshold_ransac(5.0),
+      num_CPU_core(8), num_Scene(KEYPOINT_SCENE) {}
 
 void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                      const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
@@ -569,7 +562,7 @@ void Reconstruction::triangulation_multiscene()
     for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
     {
         // マッチング辞書の中でKEYPOINT_SCENE個以上マッチングframeを発見したものを探索
-        if (keyframe_data.keyponit_map.count(i) >= KEYPOINT_SCENE)
+        if (keyframe_data.keyponit_map.count(i) >= num_Scene)
         {
             // 3次元復元用データコンテナ
             std::vector<cv::Point2f> point2D;
@@ -812,7 +805,7 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
-    options.num_threads = 8;
+    options.num_threads = num_CPU_core;
 
     //Solve
     ceres::Solver::Summary summary;
@@ -992,4 +985,34 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     converter.cvMat_to_msgPointCloud2(pointCloud_filtered_hold, *msg_cloud_pub, 0);
     pub_pointcloud->publish(std::move(msg_cloud_pub));
+}
+
+void Reconstruction::setThreshold_knn_ratio(float thresh)
+{
+    this->threshold_knn_ratio = thresh;
+}
+
+void Reconstruction::setThreshold_ransac(float thresh)
+{
+    this->threshold_ransac = thresh;
+}
+
+void Reconstruction::setFlagShowImage(bool flag)
+{
+    this->flag_showImage = flag;
+}
+
+void Reconstruction::setFlagEstimationMovement(bool flag)
+{
+    this->flag_estimate_move = flag;
+}
+
+void Reconstruction::setCPUCoreforBundler(int num)
+{
+    this->num_CPU_core = num;
+}
+
+void Reconstruction::setSceneNum(size_t num)
+{
+    this->num_Scene = num;
 }

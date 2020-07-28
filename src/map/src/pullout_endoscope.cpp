@@ -7,11 +7,10 @@
 Transform transform;
 
 PullOut::PullOut()
-    : flag_pull(false)
+    : flag_pull(false), use_model(PLANE), threshold_ransac(RANSAC_DISTANCE_THRESHOLD),
+      safety_distance(SAFETY_DISTANCE)
 {
     printf("Start PullOut\n");
-    //　デフォルトのモデル
-    use_model = SPHERE;
 }
 
 void PullOut::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &msg_pointcloud,
@@ -78,7 +77,7 @@ void PullOut::process(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
     }
 
     // 距離が閾値以内に入ったらpull
-    if (distance < SAFETY_DISTANCE)
+    if (distance < safety_distance)
     {
         flag_pull = true;
     }
@@ -216,7 +215,7 @@ void PullOut::estimate_plane_pcl(const pcl::PointCloud<pcl::PointXYZ>::Ptr point
     seg.setOptimizeCoefficients(true);
     seg.setModelType(pcl::SACMODEL_PLANE);
     seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setDistanceThreshold(0.1);
+    seg.setDistanceThreshold(threshold_ransac);
     seg.setInputCloud(point_cloud->makeShared());
     seg.segment(*inliners, *coefficients);
 
@@ -310,4 +309,19 @@ float PullOut::calc_distance_sphere(const float *coefficients, const EndoscopePo
     // |(球の中心と内視鏡の距離) - (半径)|
     distance = std::abs(std::sqrt((endoscopePose.Transform[0] - coefficients[0]) * (endoscopePose.Transform[0] - coefficients[0]) + (endoscopePose.Transform[1] - coefficients[1]) * (endoscopePose.Transform[1] - coefficients[1]) + (endoscopePose.Transform[2] - coefficients[2]) * (endoscopePose.Transform[2] - coefficients[2])) - coefficients[3]);
     return distance;
+}
+
+void PullOut::setModel(size_t num)
+{
+    this->use_model = num;
+}
+
+void PullOut::setThreshRANSAC(int thresh)
+{
+    this->threshold_ransac = thresh;
+}
+
+void PullOut::setSafetyDistance(float distance)
+{
+    this->safety_distance = distance;
 }
