@@ -10,6 +10,8 @@ PullOut::PullOut()
     : flag_pull(false)
 {
     printf("Start PullOut\n");
+    //　デフォルトのモデル
+    use_model = SPHERE;
 }
 
 void PullOut::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &msg_pointcloud,
@@ -39,22 +41,47 @@ void PullOut::process(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
     if (this->chace_empty(point_cloud))
         return;
 
-    // 点群から平面を推定する
-    // float coefficients[4];
-    // this->estimate_plane(point_cloud, coefficients);
-    // this->estimate_plane_pcl(point_cloud, coefficients);
-    this->estimate_sphere(point_cloud);
+    // 点群からモデルのパラメータを推定する
+    float coefficients[4];
+    float distance;
+    switch (use_model)
+    {
+    case PLANE:
+        // 点群から平面の方程式を推定(主成分分析による実装)
+        this->estimate_plane(point_cloud, coefficients);
 
-    // // 内視鏡と平面の距離を計算する
-    // float distance = this->calc_distance(coefficients, endoscopePose);
-    // printf("Trans = [%f %f %f]\n", endoscopePose.Transform[0], endoscopePose.Transform[1], endoscopePose.Transform[2]);
-    // printf("distance = %f\n", distance);
+        // 内視鏡と平面の距離を計算する
+        distance = this->calc_distance_plane(coefficients, endoscopePose);
+        printf("Trans = [%f %f %f]\n", endoscopePose.Transform[0], endoscopePose.Transform[1], endoscopePose.Transform[2]);
+        printf("distance = %f\n", distance);
+        break;
 
-    // // 距離が閾値以内に入ったらpull
-    // if (distance < SAFETY_DISTANCE)
-    // {
-    //     flag_pull = true;
-    // }
+    case PLANE_RANSAC:
+        // 点群から平面の方程式を推定(PCLの関数を使う)
+        this->estimate_plane_pcl(point_cloud, coefficients);
+
+        // 内視鏡と平面の距離を計算する
+        distance = this->calc_distance_plane(coefficients, endoscopePose);
+        printf("Trans = [%f %f %f]\n", endoscopePose.Transform[0], endoscopePose.Transform[1], endoscopePose.Transform[2]);
+        printf("distance = %f\n", distance);
+        break;
+
+    case SPHERE:
+        // 点群から球面の方程式を推定
+        this->estimate_sphere(point_cloud, coefficients);
+
+        // 内視鏡と曲面の距離を計算する
+        distance = this->calc_distance_sphere(coefficients, endoscopePose);
+        printf("Trans = [%f %f %f]\n", endoscopePose.Transform[0], endoscopePose.Transform[1], endoscopePose.Transform[2]);
+        printf("distance = %f\n", distance);
+        break;
+    }
+
+    // 距離が閾値以内に入ったらpull
+    if (distance < SAFETY_DISTANCE)
+    {
+        flag_pull = true;
+    }
 }
 
 void PullOut::initialize()
@@ -215,7 +242,7 @@ void PullOut::estimate_plane_pcl(const pcl::PointCloud<pcl::PointXYZ>::Ptr point
     }
 }
 
-void PullOut::estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud)
+void PullOut::estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients)
 {
     // 点群情報から3次元の球体を推定する
     // (x-a)^2+(y-b)^2+(z-c)^2=r^2を最小二乗法にて推定
@@ -262,15 +289,25 @@ void PullOut::estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cl
     for (int i = 0; i < 3; i++)
     {
         sphere_center[i] = x[i] / (-2);
+        OutputCoefficients[i] = sphere_center[i];
     }
     float radius = std::sqrt((sphere_center[0] * sphere_center[0] + sphere_center[1] * sphere_center[1] + sphere_center[2] * sphere_center[2]) - x[3]);
+    OutputCoefficients[3] = radius;
 
     printf("center : [%f %f %f], r = %f\n", sphere_center[0], sphere_center[1], sphere_center[2], radius);
 }
 
-float PullOut::calc_distance(const float *coefficients, const EndoscopePose endoscopePose)
+float PullOut::calc_distance_plane(const float *coefficients, const EndoscopePose endoscopePose)
 {
     float distance;
     distance = std::abs(coefficients[0] * endoscopePose.Transform[0] + coefficients[0] * endoscopePose.Transform[1] + coefficients[2] * endoscopePose.Transform[2] + coefficients[3]) / std::sqrt(coefficients[0] * coefficients[0] + coefficients[1] * coefficients[1] + coefficients[2] * coefficients[2]);
+    return distance;
+}
+
+float PullOut::calc_distance_sphere(const float *coefficients, const EndoscopePose endoscopePose)
+{
+    float distance;
+    // |(球の中心と内視鏡の距離) - (半径)|
+    distance = std::abs(std::sqrt((endoscopePose.Transform[0] - coefficients[0]) * (endoscopePose.Transform[0] - coefficients[0]) + (endoscopePose.Transform[1] - coefficients[1]) * (endoscopePose.Transform[1] - coefficients[1]) + (endoscopePose.Transform[2] - coefficients[2]) * (endoscopePose.Transform[2] - coefficients[2])) - coefficients[3]);
     return distance;
 }

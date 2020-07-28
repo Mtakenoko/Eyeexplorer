@@ -21,18 +21,30 @@
 #define U0 160
 #define V0 160
 
-// 現在のフレームと比較するKFを選択するためのパラメータ
-#define CHOOSE_KF_Z_MAX 0.01
-#define CHOOSE_KF_XY_MIN 0.005
-#define CHOOSE_KF_XY_MAX 0.03
-#define CHOOSE_KF_PHI_MIN 0.005
-#define CHOOSE_KF_PHI_MAX 0.05
+// 現在のフレームと比較するKFを選択するためのパラメータ(一般用)
+// #define CHOOSE_KF_Z_MAX 0.01
+// #define CHOOSE_KF_XY_MIN 0.005
+// #define CHOOSE_KF_XY_MAX 0.03
+// #define CHOOSE_KF_PHI_MIN 0.005
+// #define CHOOSE_KF_PHI_MAX 0.05
 
-// 新しくKF挿入するためのパラメータ
-// いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
-#define SET_KF_Z_MAX 0.02
+// 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
+#define CHOOSE_KF_Z_MAX 0.01
+#define CHOOSE_KF_XY_MIN 0.001
+#define CHOOSE_KF_XY_MAX 0.01
+#define CHOOSE_KF_PHI_MIN 0.001
+#define CHOOSE_KF_PHI_MAX 0.01
+
+// // 新しくKF挿入するためのパラメータ(一般用)
+// // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
+// #define SET_KF_Z_MAX 0.02
+// #define SET_KF_XY_MAX 0.03
+// #define SET_KF_PHI_MAX 0.05
+
+// 新しくKF挿入するためのパラメータ(眼球用)
+#define SET_KF_Z_MAX 0.01
 #define SET_KF_XY_MAX 0.03
-#define SET_KF_PHI_MAX 0.05
+#define SET_KF_PHI_MAX 0.03
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 4

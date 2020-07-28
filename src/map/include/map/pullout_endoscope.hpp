@@ -21,6 +21,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <geometry_msgs/msg/transform.hpp>
+#include <geometry_msgs/msg/polygon.hpp>
 
 #include "../../../endoscope/include/endoscope/CameraInfo.hpp"
 
@@ -42,8 +43,15 @@ public:
                          const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
                          rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud);
 
+    enum Model
+    {
+        PLANE = 0,
+        PLANE_RANSAC = 1,
+        SPHERE = 2
+    };
 private:
-    void initialize();
+    void
+    initialize();
     bool input_data(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &msg_pointcloud,
                     const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
                     pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_,
@@ -55,11 +63,13 @@ private:
     bool chace_empty(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
     void estimate_plane(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);
     void estimate_plane_pcl(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);
-    void estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-    float calc_distance(const float *coefficients, const EndoscopePose endoscopePose); // 平面のパラメータと内視鏡の位置から、内視鏡と平面の距離を測定する
+    void estimate_sphere(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);
+    float calc_distance_plane(const float *coefficients, const EndoscopePose endoscopePose); // 平面のパラメータと内視鏡の位置から、内視鏡と平面の距離を測定する
+    float calc_distance_sphere(const float *coefficients, const EndoscopePose endoscopePose); // 平面のパラメータと内視鏡の位置から、内視鏡と平面の距離を測定する
 
 private:
     bool flag_pull;
+    int use_model;
 };
 
 #endif

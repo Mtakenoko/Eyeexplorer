@@ -9,7 +9,7 @@ Transform transform;
 Converter converter;
 
 Reconstruction::Reconstruction()
-    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(false), flag_estimate_move(false),
+    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(true), flag_estimate_move(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0)
 {
     if (flag_showImage)
