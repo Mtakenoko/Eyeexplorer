@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RECONSTRUCTION_ONLINE_tf2__OPTIONS_HPP_
-#define RECONSTRUCTION_ONLINE_tf2__OPTIONS_HPP_
+#ifndef RECONSTRUCTOR__OPTIONS_HPP_
+#define RECONSTRUCTOR__OPTIONS_HPP_
 
 #include <string>
 #include <vector>
@@ -57,6 +57,6 @@ bool parse_command_options(
     rmw_qos_history_policy_t *history_policy,
     bool *show_camera = nullptr,
     bool *est_move = nullptr, float *thresh_knn_ratio = nullptr, float *thresh_ransac = nullptr,
-    int *cpu_core = nullptr, size_t *scene = nullptr);
+    int *cpu_core = nullptr, size_t *scene = nullptr, size_t *matching = nullptr);
 
 #endif // RECONSTRUCTION__OPTIONS_HPP_

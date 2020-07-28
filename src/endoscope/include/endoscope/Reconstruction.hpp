@@ -71,13 +71,11 @@ public:
     void setCPUCoreforBundler(int num);
     void setSceneNum(size_t num);
 
-public:
-    // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
-    FrameDatabase frame_data;
-    FrameDatabase keyframe_data;
-    std::vector<FrameDatabase> keyframe_database;
-    cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold, point3D_filtered, point3D_filtered_hold;
-    cv::Mat matching_image;
+    enum Matching
+    {
+        KNN = 0,
+        BruteForce = 1
+    };
 
 private:
     void initialize();
@@ -92,8 +90,7 @@ private:
     void triangulation();
     void triangulation_multiscene();
     void bundler();
-    cv::Mat bundler_multiscene(const std::vector<MatchedData> &matchdata,
-                               const cv::Mat &Point3D);
+    cv::Mat bundler_multiscene(const std::vector<MatchedData> &matchdata, const cv::Mat &Point3D);
     bool pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
     void setFirstFrame();
     void setKeyFrame();
@@ -105,6 +102,13 @@ private:
     void publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
 
 private:
+    // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
+    FrameDatabase frame_data;
+    FrameDatabase keyframe_data;
+    std::vector<FrameDatabase> keyframe_database;
+    cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold, point3D_filtered, point3D_filtered_hold;
+    cv::Mat matching_image;
+
     const cv::Mat Rotation_eye = cv::Mat::eye(3, 3, CV_32F);
     const cv::Mat Transform_zeros = cv::Mat::zeros(3, 1, CV_32F);
     bool flag_reconstruction;
@@ -119,6 +123,7 @@ private:
     float threshold_ransac;
     int num_CPU_core;
     size_t num_Scene;
+    size_t matching;
     std::vector<std::vector<cv::DMatch>> knn_matches;
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;

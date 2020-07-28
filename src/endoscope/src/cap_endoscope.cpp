@@ -29,15 +29,14 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "std_msgs/msg/bool.hpp"
 
-#include "../include/option/option_cap_endoscope.hpp"
+#include "../option/option_cap_endoscope.hpp"
 
 /// Convert an OpenCV matrix encoding type to a string format recognized by sensor_msgs::Image.
 /**
  * \param[in] mat_type The OpenCV encoding type.
  * \return A string representing the encoding type.
  */
-std::string
-mat_type2encoding(int mat_type)
+std::string mat_type2encoding(int mat_type)
 {
   switch (mat_type)
   {
@@ -60,8 +59,7 @@ mat_type2encoding(int mat_type)
  * \param[in] frame_id ID for the ROS message.
  * \param[out] Allocated shared pointer for the ROS Image message.
  */
-void convert_frame_to_message(
-    const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg)
+void convert_frame_to_message(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg)
 {
   // copy cv information into ros message
   msg.height = frame.rows;

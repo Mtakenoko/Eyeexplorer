@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "../include/option/options_reconstructor.hpp"
+#include "options_reconstructor.hpp"
 
 bool find_command_option(const std::vector<std::string> &args, const std::string &option)
 {
@@ -52,7 +52,7 @@ bool parse_command_options(
     rmw_qos_history_policy_t *history_policy,
     bool *show_camera,
     bool *est_move, float *thresh_knn_ratio, float *thresh_ransac,
-    int *cpu_core, size_t *scene)
+    int *cpu_core, size_t *scene, size_t *matching)
 {
   std::vector<std::string> args(argv, argv + argc);
 
@@ -77,35 +77,41 @@ bool parse_command_options(
     }
     if (est_move != nullptr)
     {
-      ss << " -e: Estimation Movement.  " << std::endl;
+      ss << " -est_move: Estimation Movement.  " << std::endl;
       ss << "   0 - OFF" << std::endl;
       ss << "   1 - ON" << std::endl;
     }
     if (thresh_knn_ratio != nullptr)
     {
-      ss << " -k: Set Threshhold of knn matching ratio  " << std::endl;
+      ss << " -knn-ratio: Set Threshhold of knn matching ratio  " << std::endl;
       ss << "   (default) : 0.7f" << std::endl;
     }
     if (thresh_ransac != nullptr)
     {
-      ss << " -r: Set Threshhold of RANSAC  " << std::endl;
+      ss << " -thresh-ransac: Set Threshhold of RANSAC  " << std::endl;
       ss << "   (default) : 5.0" << std::endl;
     }
     if (cpu_core != nullptr)
     {
-      ss << " -c: Set Used CPU core for Bundler" << std::endl;
+      ss << " -core: Set Used CPU core for Bundler" << std::endl;
       ss << "   (default) : 8" << std::endl;
     }
     if (scene != nullptr)
     {
-      ss << " -n: Set Used Scenes" << std::endl;
+      ss << " -scene: Set Used Scenes" << std::endl;
       ss << "   (default) : 4" << std::endl;
+    }
+    if (matching != nullptr)
+    {
+      ss << " -match: Set Matching method" << std::endl;
+      ss << "   KNN          : 0" << std::endl;
+      ss << "   BruteForce   : 1  (default)" << std::endl;
     }
     std::cout << ss.str();
     return false;
   }
 
-  auto show_camera_str = get_command_option(args, "-s");
+  auto show_camera_str = get_command_option(args, "-show");
   if (!show_camera_str.empty())
   {
     *show_camera = std::stoul(show_camera_str.c_str()) != 0 ? true : false;
@@ -132,34 +138,40 @@ bool parse_command_options(
     *history_policy = r ? RMW_QOS_POLICY_HISTORY_KEEP_ALL : RMW_QOS_POLICY_HISTORY_KEEP_LAST;
   }
 
-  auto est_move_str = get_command_option(args, "-e");
+  auto est_move_str = get_command_option(args, "-est_move");
   if (!est_move_str.empty())
   {
     *est_move = std::stoul(est_move_str.c_str());
   }
 
-  auto thresh_knn_ratio_str = get_command_option(args, "-k");
+  auto thresh_knn_ratio_str = get_command_option(args, "-knn-ratio");
   if (!thresh_knn_ratio_str.empty())
   {
     *thresh_knn_ratio = std::stoul(thresh_knn_ratio_str.c_str());
   }
 
-  auto thresh_ransac_str = get_command_option(args, "-r");
+  auto thresh_ransac_str = get_command_option(args, "-thresh-ransac");
   if (!thresh_ransac_str.empty())
   {
     *thresh_ransac = std::stoul(thresh_ransac_str.c_str());
   }
 
-  auto cpu_core_str = get_command_option(args, "-c");
+  auto cpu_core_str = get_command_option(args, "-core");
   if (!cpu_core_str.empty())
   {
     *cpu_core = std::stoul(cpu_core_str.c_str());
   }
 
-  auto scene_str = get_command_option(args, "-n");
+  auto scene_str = get_command_option(args, "-scene");
   if (!scene_str.empty())
   {
     *scene = std::stoul(scene_str.c_str());
+  }
+
+  auto matching_str = get_command_option(args, "-match");
+  if (!matching_str.empty())
+  {
+    *matching = std::stoul(matching_str.c_str());
   }
 
   return true;

@@ -11,7 +11,8 @@ Converter converter;
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(false), flag_estimate_move(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0),
-      num_CPU_core(8), num_Scene(KEYPOINT_SCENE) {}
+      num_CPU_core(8), num_Scene(KEYPOINT_SCENE),
+      matching(BruteForce) {}
 
 void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                      const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
@@ -48,13 +49,19 @@ void Reconstruction::process()
     if (!flag_reconstruction)
         return;
 
-    // 特徴点マッチング
-    // this->knn_matching();
-    this->BF_matching();
+    // 特徴点マッチングと誤対応除去
+    switch (matching)
+    {
+    case KNN:
+        this->knn_matching();
+        this->knn_outlier_remover();
+        break;
 
-    // 誤対応除去
-    // this->knn_outlier_remover();
-    this->BF_outlier_remover();
+    case BruteForce:
+        this->BF_matching();
+        this->BF_outlier_remover();
+        break;
+    }
 
     if (flag_estimate_move)
     {
@@ -66,13 +73,21 @@ void Reconstruction::process()
         this->estimate_move();
     }
 
-    // 三角測量
-    // this->triangulation();
-    this->triangulation_multiscene(); //バンドル調整機能付き
-    // this->triangulation_test();
+    switch (num_Scene)
+    {
+    case 2:
+        // 三角測量
+        this->triangulation();
+        // this->triangulation_test();
+        // バンドル調整
+        this->bundler();
+        break;
 
-    // バンドル調整
-    // this->bundler();
+    default:
+        // 三角測量とバンドル調整
+        this->triangulation_multiscene(); //バンドル調整機能付き
+        break;
+    }
 }
 
 void Reconstruction::initialize()
@@ -582,13 +597,13 @@ void Reconstruction::triangulation_multiscene()
             cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
 
             // バンドル調整
-            // cv::Mat point3D_bundler = this->bundler_multiscene(matchdata, point3D_result);
+            cv::Mat point3D_bundler = this->bundler_multiscene(matchdata, point3D_result);
 
             // 点の登録
             p3.push_back(point3D_result.reshape(3, 1));
             point3D_hold.push_back(point3D_result.reshape(3, 1));
-            // p3_BA.push_back(point3D_bundler.reshape(3, 1));
-            // point3D_BA_hold.push_back(point3D_bundler.reshape(3, 1));
+            p3_BA.push_back(point3D_bundler.reshape(3, 1));
+            point3D_BA_hold.push_back(point3D_bundler.reshape(3, 1));
 
             // 終わったら辞書に登録してたフレーム情報を削除
             if (keyframe_data.keyponit_map.count(i) > KEYPOINT_SCENE_DELETE)
@@ -734,6 +749,14 @@ void Reconstruction::bundler()
         delete[] mutable_point_for_observations[i];
     }
     delete[] mutable_point_for_observations;
+
+    // 点群の統計フィルタ
+    cv::Mat p3_filter;
+    if (this->pointcloud_statics_filter(p3_BA, &p3_filter))
+    {
+        point3D_filtered = p3_filter.clone();
+        point3D_filtered_hold.push_back(point3D_filtered);
+    }
 }
 
 cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &matchdata,

@@ -7,7 +7,7 @@
 #include <ceres/rotation.h>
 
 #include "../include/endoscope/Reconstruction.hpp"
-#include "../include/option/options_reconstructor.hpp"
+#include "../option/options_reconstructor.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -26,10 +26,11 @@ int main(int argc, char *argv[])
     float thresh_ransac = 5.0;
     int cpu_core = 8;
     size_t num_scene = 4;
+    size_t matching = Reconstruction::Matching::BruteForce;
     // Configure demo parameters with command line options.
     if (!parse_command_options(argc, argv, &depth, &reliability_policy, &history_policy,
                                &show_camera, &est_move, &thresh_knn_ratio, &thresh_ransac,
-                               &cpu_core, &num_scene))
+                               &cpu_core, &num_scene, &matching))
         return 0;
 
     // Topic Name
