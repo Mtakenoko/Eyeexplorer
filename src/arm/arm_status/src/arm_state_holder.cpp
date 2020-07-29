@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
         catch (tf2::TransformException &ex)
         {
             RCLCPP_ERROR(node_logger, "tf2 error: %s", ex.what());
-            return 0;
+            // return 0;
         }
         // Do some work in rclcpp and wait for more to come in.
         rclcpp::spin_some(node);
