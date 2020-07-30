@@ -55,8 +55,11 @@ bool parse_command_options(
     size_t *depth,
     rmw_qos_reliability_policy_t *reliability_policy,
     rmw_qos_history_policy_t *history_policy,
-    bool *show_camera = nullptr,
-    bool *est_move = nullptr, float *thresh_knn_ratio = nullptr, float *thresh_ransac = nullptr,
-    int *cpu_core = nullptr, size_t *scene = nullptr, size_t *matching = nullptr);
+    bool *show_camera = nullptr, size_t *mode = nullptr,
+    bool *est_move = nullptr,
+    float *thresh_knn_ratio = nullptr, float *thresh_ransac = nullptr,
+    int *cpu_core = nullptr, size_t *scene = nullptr,
+    size_t *matching = nullptr, int *extractor = nullptr,
+    size_t *publish = nullptr);
 
 #endif // RECONSTRUCTION__OPTIONS_HPP_

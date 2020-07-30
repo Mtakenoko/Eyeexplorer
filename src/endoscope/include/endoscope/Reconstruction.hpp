@@ -21,30 +21,33 @@
 #define U0 160
 #define V0 160
 
+// keyframe_databaseの初期登録数
+#define KEYFRAME_DATABASE_NUM 3
+
 // 現在のフレームと比較するKFを選択するためのパラメータ(一般用)
-// #define CHOOSE_KF_Z_MAX 0.01
-// #define CHOOSE_KF_XY_MIN 0.005
-// #define CHOOSE_KF_XY_MAX 0.03
-// #define CHOOSE_KF_PHI_MIN 0.005
-// #define CHOOSE_KF_PHI_MAX 0.05
+#define CHOOSE_KF_Z_MAX_N 0.01
+#define CHOOSE_KF_XY_MIN_N 0.008
+#define CHOOSE_KF_XY_MAX_N 0.03
+#define CHOOSE_KF_PHI_MIN_N 0.005
+#define CHOOSE_KF_PHI_MAX_N 0.05
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
-#define CHOOSE_KF_Z_MAX 0.01
-#define CHOOSE_KF_XY_MIN 0.001
-#define CHOOSE_KF_XY_MAX 0.01
-#define CHOOSE_KF_PHI_MIN 0.001
-#define CHOOSE_KF_PHI_MAX 0.01
+#define CHOOSE_KF_Z_MAX_E 0.01
+#define CHOOSE_KF_XY_MIN_E 0.001
+#define CHOOSE_KF_XY_MAX_E 0.01
+#define CHOOSE_KF_PHI_MIN_E 0.001
+#define CHOOSE_KF_PHI_MAX_E 0.01
 
 // // 新しくKF挿入するためのパラメータ(一般用)
 // // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
-// #define SET_KF_Z_MAX 0.02
-// #define SET_KF_XY_MAX 0.03
-// #define SET_KF_PHI_MAX 0.05
+#define SET_KF_Z_MAX_N 0.02
+#define SET_KF_XY_MAX_N 0.03
+#define SET_KF_PHI_MAX_N 0.05
 
 // 新しくKF挿入するためのパラメータ(眼球用)
-#define SET_KF_Z_MAX 0.01
-#define SET_KF_XY_MAX 0.03
-#define SET_KF_PHI_MAX 0.03
+#define SET_KF_Z_MAX_E 0.01
+#define SET_KF_XY_MAX_E 0.03
+#define SET_KF_PHI_MAX_E 0.03
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 4
@@ -70,11 +73,29 @@ public:
     void setFlagEstimationMovement(bool flag);
     void setCPUCoreforBundler(int num);
     void setSceneNum(size_t num);
+    void setPublishType(size_t num);
+    void setUseMode(size_t num);
 
     enum Matching
     {
         KNN = 0,
         BruteForce = 1
+    };
+
+    enum Publish
+    {
+        NORMAL = 0,
+        NORMAL_HOLD = 1,
+        BUNDLE = 2,
+        BUNDLE_HOLD = 3,
+        FILTER = 4,
+        FILTER_HOLD = 5
+    };
+
+    enum UseMode
+    {
+        NORMAL_SCENE = 0,
+        EYE = 1
     };
 
 private:
@@ -94,6 +115,7 @@ private:
     bool pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
     void setFirstFrame();
     void setKeyFrame();
+    void setCameraInfo();
     void chooseKeyFrame();
     void keyframe_detector();
     void estimate_move();
@@ -124,6 +146,9 @@ private:
     int num_CPU_core;
     size_t num_Scene;
     size_t matching;
+    int extract_type;
+    size_t publish_type;
+    size_t use_mode;
     std::vector<std::vector<cv::DMatch>> knn_matches;
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;
@@ -132,7 +157,7 @@ private:
     cv::Ptr<cv::FeatureDetector> detector;
     cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
     cv::Ptr<cv::DescriptorMatcher> matcher;
-    cv::Mat R_est, t_est;
+    cv::Mat R_estimation, t_estimation;
     std::vector<FrameDatabase>::iterator keyframe_itr;
 };
 #endif
