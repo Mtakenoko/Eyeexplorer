@@ -132,7 +132,7 @@ void Reconstruction::chooseKeyFrame()
         XY_MIN = CHOOSE_KF_XY_MIN_N;
         XY_MAX = CHOOSE_KF_XY_MAX_N;
         PHI_MIN = CHOOSE_KF_PHI_MIN_N;
-        PHI_MAX = CHOOSE_KF_PHI_MAX_N;        
+        PHI_MAX = CHOOSE_KF_PHI_MAX_N;
         break;
 
     case UseMode::EYE:
@@ -140,7 +140,7 @@ void Reconstruction::chooseKeyFrame()
         XY_MIN = CHOOSE_KF_XY_MIN_E;
         XY_MAX = CHOOSE_KF_XY_MAX_E;
         PHI_MIN = CHOOSE_KF_PHI_MIN_E;
-        PHI_MAX = CHOOSE_KF_PHI_MAX_E;        
+        PHI_MAX = CHOOSE_KF_PHI_MAX_E;
         break;
     }
 
@@ -193,13 +193,13 @@ void Reconstruction::setKeyFrame()
     case UseMode::NORMAL_SCENE:
         Z_MAX = SET_KF_Z_MAX_N;
         XY_MAX = SET_KF_XY_MAX_N;
-        PHI_MAX = SET_KF_PHI_MAX_N;        
+        PHI_MAX = SET_KF_PHI_MAX_N;
         break;
 
     case UseMode::EYE:
         Z_MAX = SET_KF_Z_MAX_E;
         XY_MAX = SET_KF_XY_MAX_E;
-        PHI_MAX = SET_KF_PHI_MAX_E;        
+        PHI_MAX = SET_KF_PHI_MAX_E;
         break;
     }
 
@@ -1030,37 +1030,43 @@ void Reconstruction::showImage()
     if (!flag_showImage)
         return;
 
-    if (inliners_matches.empty())
-        return;
+    if (!inliners_matches.empty())
+    {
+        // マッチングの様子を図示
+        cv::Scalar match_line_color = cv::Scalar(255, 0, 0);
+        cv::Scalar match_point_color = cv::Scalar(255, 255, 0);
+        cv::drawMatches(keyframe_data.extractor.image, keyframe_data.extractor.keypoints,
+                        frame_data.extractor.image, frame_data.extractor.keypoints,
+                        inliners_matches, matching_image, match_line_color, match_point_color);
 
-    // マッチングの様子を図示
-    cv::Scalar match_line_color = cv::Scalar(255, 0, 0);
-    cv::Scalar match_point_color = cv::Scalar(255, 255, 0);
-    cv::drawMatches(keyframe_data.extractor.image, keyframe_data.extractor.keypoints,
-                    frame_data.extractor.image, frame_data.extractor.keypoints,
-                    inliners_matches, matching_image, match_line_color, match_point_color);
+        // カメラのuv方向への移動量を矢印で追加で図示
+        cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
+        cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
+        cv::Scalar color_arrow = cv::Scalar(0, 255, 0);
+        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 20 + image_center.x,
+                                               frame_data.camerainfo.Transform.at<float>(1) * 20 + image_center.y);
+        cv::Point2f center_t_arm_z = cv::Point2f(image_center2.x,
+                                                 frame_data.camerainfo.Transform.at<float>(2) * 20 + image_center.y);
+        cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
+        cv::arrowedLine(matching_image, image_center2, center_t_arm_z, color_arrow, 2, 8, 0, 0.5);
 
-    // カメラのuv方向への移動量を矢印で追加で図示
-    cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
-    cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-    cv::Scalar color_arrow = cv::Scalar(0, 255, 0);
-    cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 20 + image_center.x,
-                                           frame_data.camerainfo.Transform.at<float>(1) * 20 + image_center.y);
-    cv::Point2f center_t_arm_z = cv::Point2f(image_center2.x,
-                                             frame_data.camerainfo.Transform.at<float>(2) * 20 + image_center.y);
-    cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
-    cv::arrowedLine(matching_image, image_center2, center_t_arm_z, color_arrow, 2, 8, 0, 0.5);
-
-    // マッチングの様子なしの比較画像を図示
-    cv::Mat left_image = keyframe_data.extractor.image;
-    cv::Mat right_image = frame_data.extractor.image;
-    cv::Mat nomatching_image;
-    cv::hconcat(left_image, right_image, nomatching_image);
+        // マッチングの様子なしの比較画像を図示
+        cv::Mat left_image = keyframe_data.extractor.image;
+        cv::Mat right_image = frame_data.extractor.image;
+        cv::hconcat(left_image, right_image, nomatching_image);
+    }
 
     // 表示
-    cv::imshow("matching_image", matching_image);
-    cv::imshow("nomatching_image", nomatching_image);
-    cv::waitKey(10);
+    if (!matching_image.empty())
+    {
+        cv::imshow("matching_image", matching_image);
+        cv::waitKey(1);
+    }
+    if (!nomatching_image.empty())
+    {
+        cv::imshow("nomatching_image", nomatching_image);
+        cv::waitKey(1);
+    }
 }
 
 void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)

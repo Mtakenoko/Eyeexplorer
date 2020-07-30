@@ -129,7 +129,7 @@ private:
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
     cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold, point3D_filtered, point3D_filtered_hold;
-    cv::Mat matching_image;
+    cv::Mat matching_image, nomatching_image;
 
     const cv::Mat Rotation_eye = cv::Mat::eye(3, 3, CV_32F);
     const cv::Mat Transform_zeros = cv::Mat::zeros(3, 1, CV_32F);
