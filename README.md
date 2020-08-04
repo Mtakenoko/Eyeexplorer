@@ -123,3 +123,14 @@ ros2 run endoscope reconstructor
    ESTIMATE      : 6 
    ESTIMATE_HOLD : 7 
    ```
+
+   ## いろいろなrosbagデータ
+   読み込むときはこんな感じ
+   ```
+   ros2 bag play workspace/ros2_eyeexplorer/rosbag2/calib_flower.bag
+   ```
+   逆に記録するときはこんな感じ。基本的に取るべきトピックは`/ts01_encoder`と`/endoscope_image`の2つでOK。
+   ```
+   ros2 bag record -o  workspace/ros2_eyeexplorer/rosbag2/hoge.bag /ts01_encoder /endoscope_image
+   ```
+
