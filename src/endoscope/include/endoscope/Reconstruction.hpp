@@ -33,9 +33,9 @@
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
 #define CHOOSE_KF_Z_MAX_E 0.01
-#define CHOOSE_KF_XY_MIN_E 0.001
+#define CHOOSE_KF_XY_MIN_E 0.005
 #define CHOOSE_KF_XY_MAX_E 0.01
-#define CHOOSE_KF_PHI_MIN_E 0.001
+#define CHOOSE_KF_PHI_MIN_E 0.005
 #define CHOOSE_KF_PHI_MAX_E 0.01
 
 // // 新しくKF挿入するためのパラメータ(一般用)
@@ -89,7 +89,9 @@ public:
         BUNDLE = 2,
         BUNDLE_HOLD = 3,
         FILTER = 4,
-        FILTER_HOLD = 5
+        FILTER_HOLD = 5,
+        ESTIMATE = 6,
+        ESTIMATE_HOLD = 7
     };
 
     enum UseMode
@@ -128,7 +130,10 @@ private:
     FrameDatabase frame_data;
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
-    cv::Mat point3D, point3D_BA, point3D_hold, point3D_BA_hold, point3D_filtered, point3D_filtered_hold;
+    cv::Mat point3D, point3D_hold,
+        point3D_BA, point3D_BA_hold,
+        point3D_filtered, point3D_filtered_hold,
+        point3D_est, point3D_est_hold;
     cv::Mat matching_image, nomatching_image;
 
     const cv::Mat Rotation_eye = cv::Mat::eye(3, 3, CV_32F);

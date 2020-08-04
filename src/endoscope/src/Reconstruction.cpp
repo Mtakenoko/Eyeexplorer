@@ -81,7 +81,7 @@ void Reconstruction::process()
         // 三角測量
         this->triangulation();
         // バンドル調整
-        this->bundler();
+        // this->bundler();
         break;
 
     default:
@@ -609,6 +609,22 @@ void Reconstruction::triangulation()
     }
     if (!p3.empty())
         point3D = p3.clone();
+
+    // 移動量推定をしているなら別途三次元復元をこちらでも行う
+    if (flag_estimate_move)
+    {
+        // 三角測量
+        cv::Mat p3_est;
+        for (size_t i = 0; i < match_num; i++)
+        {
+            cv::Mat point3D_result = Triangulate::triangulation(keyframe_data.extractor.inline_point[i], keyframe_data.camerainfo.ProjectionMatrix_est,
+                                                                frame_data.extractor.inline_point[i], frame_data.camerainfo.ProjectionMatrix_est);
+            p3_est.push_back(point3D_result.reshape(3, 1));
+            point3D_est_hold.push_back(point3D_result.reshape(3, 1));
+        }
+        if (!p3_est.empty())
+            point3D_est = p3_est.clone();
+    }
 }
 
 void Reconstruction::triangulation_multiscene()
@@ -871,7 +887,7 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     //Solverのオプション選択
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
+    options.minimizer_progress_to_stdout = false;
     options.num_threads = num_CPU_core;
 
     //Solve
@@ -914,12 +930,9 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
 
 bool Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
 {
-    printf("rows = %d, cols = %d, channels = %d\n", Point3D.rows, Point3D.cols, Point3D.channels());
     int point_num = Point3D.rows;
     if (point_num == 0)
-    {
         return false;
-    }
 
     // 平均
     cv::Point3f point_average;
@@ -943,7 +956,7 @@ bool Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *
     point_average.x /= point_num;
     point_average.y /= point_num;
     point_average.z /= point_num;
-    printf("mean:[%f %f %f], var:[%f %f %f]\n", point_average.x, point_average.y, point_average.z, point_variance.x, point_variance.y, point_variance.z);
+    // printf("mean:[%f %f %f], var:[%f %f %f]\n", point_average.x, point_average.y, point_average.z, point_variance.x, point_variance.y, point_variance.z);
 
     //分散がでかすぎたらアウト
     if (point_variance.x > THRESH_VARIANCE_POINT || point_variance.y > THRESH_VARIANCE_POINT || point_variance.z > THRESH_VARIANCE_POINT)
@@ -961,68 +974,74 @@ void Reconstruction::estimate_move()
 
     // 5点アルゴリズムやる以上、5点以上の点が必要
     if (matched_point1.size() < 5)
-    {
         return;
-    }
 
     std::cout << "Estimating Eye Moving" << std::endl;
 
+    // 画像座標から正規化カメラ座標系に変換
+    // focalについては無視（よくわからんけどこれで動くのでヨシ！）
+    std::vector<cv::Point2f> pt1, pt2;
+    for (size_t i = 0; i < matched_point1.size(); i++)
+    {
+        cv::Point2f point1, point2;
+        point1.x = matched_point1[i].x - U0;
+        point1.y = matched_point1[i].y - V0;
+        point2.x = matched_point2[i].x - U0;
+        point2.y = matched_point2[i].y - V0;
+        pt1.push_back(point1);
+        pt2.push_back(point2);
+    }
+
     // 5点アルゴリズム
     // １つめの画像を正規化座標としたときに2枚目の画像への回転・並進変換行列
-    cv::Mat R_est, R_est_doble, R_est2, R_est2_double, t_est, t_est_double;
-    cv::Mat essential_mask;
-    cv::Point2f principle_point(U0, V0);
-    cv::Mat EssentialMat = cv::findEssentialMat(matched_point1, matched_point2, 1.0, principle_point, cv::RANSAC, 0.9999, 0.003, essential_mask);
-    // cv::recoverPose(EssentialMat, matched_point1, matched_point2, R_est, t_est, 1.0, principle_point, essential_mask);
-    cv::decomposeEssentialMat(EssentialMat, R_est_doble, R_est2_double, t_est_double);
-    R_est_doble.convertTo(R_est, CV_32FC1);
-    R_est2_double.convertTo(R_est2, CV_32FC1);
-    t_est_double.convertTo(t_est, CV_32FC1);
+    cv::Mat R_est, R_est2, t_est, trans_est, mask;
+    cv::Point2d principle_point(U0, V0);
+    cv::Mat EssentialMat = cv::findEssentialMat(pt1, pt2, 1, cv::Point2f(0, 0), cv::RANSAC, 0.99, 1, mask);
+    cv::recoverPose(EssentialMat, pt1, pt2, R_est, t_est, 1, cv::Point2f(0, 0), mask);
 
     float abs = (float)cv::norm(frame_data.camerainfo.Transform, cv::NORM_L2);
     cv::Mat trans(3, 1, CV_32FC1);
     trans = frame_data.camerainfo.Transform / abs;
-    // R_estimationの決定
-    if (R_est.at<float>(0, 0) > 0 && R_est.at<float>(1, 1) > 0 && R_est.at<float>(2, 2) > 0)
-    {
-        R_estimation = R_est.clone();
-    }
-    else
-    {
-        R_estimation = R_est2.clone();
-    }
+    trans_est = t_est * abs;
 
-    // t_estimationの設定
-    t_est = R_estimation.t() * (-t_est);
-    double dis1 = cv::norm(t_est, frame_data.camerainfo.Transform, cv::NORM_L2);
-    double dis2 = cv::norm(-t_est, frame_data.camerainfo.Transform, cv::NORM_L2);
-    if (dis1 < dis2)
-    {
-        t_estimation = t_est.clone();
-    }
-    else
-    {
-        t_estimation = -t_est;
-    }
+    // frame_dataに推定結果を格納
+    cv::Mat Rot_est(3, 3, CV_32FC1), Trans_est(3, 1, CV_32FC1);
+    R_est.convertTo(Rot_est, CV_32FC1);
+    trans_est.convertTo(Trans_est, CV_32FC1);
+    frame_data.camerainfo.Rotation_est = Rot_est.clone();
+    frame_data.camerainfo.Transform_est = Trans_est.clone();
+    frame_data.camerainfo.Rotation_world_est = keyframe_data.camerainfo.Rotation_world * Rot_est;
+    frame_data.camerainfo.Transform_world_est = keyframe_data.camerainfo.Rotation_world * Trans_est + keyframe_data.camerainfo.Transform_world;
+    frame_data.camerainfo.setData_est();
 
-    for (size_t i = 0; i < matched_point1.size(); i++)
+    // RANSACの結果ハズレ値となったものを除外
+    std::vector<cv::Point2f> inline_pt1, inline_pt2;
+    for (int i = 0; i < mask.rows; i++)
     {
-        std::cout << "p1 : " << matched_point1[i] << "  p2 : " << matched_point2[i] << std::endl;
+        if (mask.at<bool>(i))
+        {
+            keyframe_data.extractor.inline_point.push_back(pt1[i]);
+            frame_data.extractor.inline_point.push_back(pt2[i]);
+        }
     }
-    std::cout << "5点アルゴリズムR_est : " << std::endl
+    
+    for (size_t i = 0; i < pt1.size(); i++)
+    {
+        std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << std::endl;
+    }
+    std::cout << "5点アルゴリズム R_est : " << std::endl
               << R_est << std::endl
-              << "5点アルゴリズムR_est2 : " << std::endl
-              << R_est2 << std::endl
-              << "5点アルゴリズムR_estimation : " << std::endl
-              << R_estimation << std::endl
-              << "5点アルゴリズムt : " << std::endl
-              << t_estimation << std::endl
-              << "運動学R : " << std::endl
+              << "5点アルゴリズム t_est(abs) : " << std::endl
+              << t_est << std::endl
+              << "5点アルゴリズム t_est : " << std::endl
+              << trans_est << std::endl
+              << "運動学 R : " << std::endl
               << frame_data.camerainfo.Rotation << std::endl
-              << "運動学t :" << std::endl
-              << frame_data.camerainfo.Transform << std::endl
-              << "運動学t(abs) :" << std::endl
-              << trans << std::endl;
+              << "運動学 t(abs) :" << std::endl
+              << trans << std::endl
+              << "運動学 t :" << std::endl
+              << frame_data.camerainfo.Transform << std::endl;
+
 }
 
 void Reconstruction::showImage()
@@ -1096,6 +1115,12 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
         break;
     case Publish::FILTER_HOLD:
         point3D_filtered_hold.convertTo(pointCloud, CV_32FC3);
+        break;
+    case Publish::ESTIMATE:
+        point3D_est.convertTo(pointCloud, CV_32FC3);
+        break;
+    case Publish::ESTIMATE_HOLD:
+        point3D_est_hold.convertTo(pointCloud, CV_32FC3);
         break;
     }
 

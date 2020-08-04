@@ -97,6 +97,7 @@ public:
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descirptors;
     std::vector<cv::Point2f> point;
+    std::vector<cv::Point2f> inline_point;
 
 private:
     cv::Ptr<cv::Feature2D> detector_;
@@ -109,6 +110,9 @@ public:
         : CameraMatrix(3, 3, CV_32FC1), CameraPose(3, 4, CV_32FC1), ProjectionMatrix(3, 4, CV_32FC1),
           Rotation(3, 3, CV_32FC1), Rotation_world(3, 3, CV_32FC1),
           Transform(3, 1, CV_32FC1), Transform_world(3, 1, CV_32FC1),
+          CameraPose_est(3, 4, CV_32FC1), ProjectionMatrix_est(3, 4, CV_32FC1),
+          Rotation_est(3, 3, CV_32FC1), Rotation_world_est(3, 3, CV_32FC1),
+          Transform_est(3, 1, CV_32FC1), Transform_world_est(3, 1, CV_32FC1),
           frame_num(0){};
     void setData()
     {
@@ -123,15 +127,39 @@ public:
         ProjMat = CameraMatrix * CameraPose;
         this->ProjectionMatrix = ProjMat.clone();
     }
+    void setData_est()
+    {
+        cv::Mat CamPose(3, 4, CV_32FC1);
+        // 並進についてはカメラ→ワールド座標原点のベクトル（ワールド座標系）
+        // 回転についてはカメラ→ワールド座標系の回転行列
+        cv::hconcat(Rotation_world_est.t(), -Rotation_world_est.t() * Transform_world_est, CamPose);
+        this->CameraPose_est = CamPose.clone();
+
+        // 射影行列
+        cv::Mat ProjMat(3, 4, CV_32FC1);
+        ProjMat = CameraMatrix * this->CameraPose_est;
+        this->ProjectionMatrix_est = ProjMat.clone();
+    }
 
 public:
     cv::Mat CameraMatrix;
+
+    // 運動学で計算したもの
     cv::Mat CameraPose;
     cv::Mat ProjectionMatrix;
     cv::Mat Rotation;
     cv::Mat Rotation_world;
     cv::Mat Transform;
     cv::Mat Transform_world;
+
+    // カメラの位置推定アルゴリズムを用いたもの
+    cv::Mat CameraPose_est;
+    cv::Mat ProjectionMatrix_est;
+    cv::Mat Rotation_est;
+    cv::Mat Rotation_world_est;
+    cv::Mat Transform_est;
+    cv::Mat Transform_world_est;
+    
     int frame_num;
 };
 
