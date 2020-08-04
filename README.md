@@ -122,15 +122,42 @@ ros2 run endoscope reconstructor
    FILTER_HOLD   : 5 (default)
    ESTIMATE      : 6 
    ESTIMATE_HOLD : 7 
-   ```
+```
+## map
+点群から平面や球面など指定したモデルを推定し、そこまでの距離を計測する。そして近ければ内視鏡抜去する信号をpublishする。
+```
+ros2 run map pullout_endoscope
+```
+### option
+基本的には`-h`オプションをして確認してください。
+```
+ -h: This message.
+ -r: Reliability QoS setting:
+    0 - best effort
+    1 - reliable (default)
+ -d: Depth of the queue: only honored if used together with 'keep last'. 10 (default)
+ -k: History QoS setting:
+    0 - only store up to N samples, configurable via the queue depth (default)
+    1 - keep all the samples
+ --thresh_ransac: Set Threshhold of RANSAC  
+   (default) : 5.0
+ --core: Set Used CPU core for Bundler
+   (default) : 8
+ --model: Set Model
+   PLANE        : 0 
+   PLANE_RANSAC : 1 (defalut)
+   SPHERE       : 2 
+ --distance: Set distance of safety zone to avoide enfoscope from eye-ball
+   (default) : 0.005
+```
 
-   ## いろいろなrosbagデータ
-   読み込むときはこんな感じ
-   ```
-   ros2 bag play workspace/ros2_eyeexplorer/rosbag2/calib_flower.bag
-   ```
-   逆に記録するときはこんな感じ。基本的に取るべきトピックは`/ts01_encoder`と`/endoscope_image`の2つでOK。
-   ```
-   ros2 bag record -o  workspace/ros2_eyeexplorer/rosbag2/hoge.bag /ts01_encoder /endoscope_image
-   ```
+## いろいろなrosbagデータ
+読み込むときはこんな感じ
+```
+ros2 bag play workspace/ros2_eyeexplorer/rosbag2/calib_flower.bag
+```
+逆に記録するときはこんな感じ。基本的に取るべきトピックは`/ts01_encoder`と`/endoscope_image`の2つでOK。
+```
+ros2 bag record -o  workspace/ros2_eyeexplorer/rosbag2/hoge.bag /ts01_encoder /endoscope_image
+```
 
