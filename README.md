@@ -151,6 +151,12 @@ ros2 run map pullout_endoscope
    (default) : 0.005
 ```
 
+## Rviz2
+```
+rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz 
+```
+
+
 ## いろいろなrosbagデータ
 読み込むときはこんな感じ
 ```
