@@ -1157,6 +1157,8 @@ void Reconstruction::setFlagShowImage(bool flag)
         //ウィンドウの用意
         cv::namedWindow("matching_image", cv::WINDOW_AUTOSIZE);
         cv::namedWindow("nomatching_image", cv::WINDOW_AUTOSIZE);
+        cv::moveWindow("matching_image", 0, 0);
+        cv::moveWindow("nomatching_image", 750, 0);
     }
 }
 
