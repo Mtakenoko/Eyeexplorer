@@ -1014,6 +1014,12 @@ void Reconstruction::estimate_move()
     frame_data.camerainfo.Transform_world_est = keyframe_data.camerainfo.Rotation_world * Trans_est + keyframe_data.camerainfo.Transform_world;
     frame_data.camerainfo.setData_est();
 
+    // 眼球移動量を推定する
+    // 式変形の詳細は研究ノートへ
+    cv::Mat R_move(3, 3, CV_32FC1), t_move(3, 1, CV_32FC1);
+    R_move = frame_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world_est;
+    t_move = frame_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world_est - frame_data.camerainfo.Transform_world);
+
     // RANSACの結果ハズレ値となったものを除外
     std::vector<cv::Point2f> inline_pt1, inline_pt2;
     for (int i = 0; i < mask.rows; i++)
@@ -1024,7 +1030,7 @@ void Reconstruction::estimate_move()
             frame_data.extractor.inline_point.push_back(pt2[i]);
         }
     }
-    
+
     for (size_t i = 0; i < pt1.size(); i++)
     {
         std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << std::endl;
@@ -1042,6 +1048,10 @@ void Reconstruction::estimate_move()
               << "運動学 t :" << std::endl
               << frame_data.camerainfo.Transform << std::endl;
 
+    std::cout << "眼球移動量推定 R_move" << std::endl
+              << R_move << std::endl
+              << "眼球移動量推定 t_move" << std::endl
+              << t_move << std::endl;
 }
 
 void Reconstruction::showImage()
