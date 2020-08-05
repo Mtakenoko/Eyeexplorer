@@ -216,12 +216,12 @@ void PullOut::estimate_plane_pcl(const pcl::PointCloud<pcl::PointXYZ>::Ptr point
     seg.setModelType(pcl::SACMODEL_PLANE);
     seg.setMethodType(pcl::SAC_RANSAC);
     seg.setDistanceThreshold(threshold_ransac);
-    seg.setInputCloud(point_cloud->makeShared());
+    seg.setInputCloud(point_cloud);
     seg.segment(*inliners, *coefficients);
 
     if (inliners->indices.size() == 0)
     {
-        PCL_ERROR("Could not estimate a planar model for the given dataset.");
+        PCL_ERROR("Could not estimate a planar model for the given dataset.\n");
         return;
     }
 

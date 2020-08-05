@@ -1,5 +1,6 @@
 log/
 install/
 build/
+rosbag2/
 src/calibration/Output/offset.txt
 src/calibration_delay/Output/delay.txt

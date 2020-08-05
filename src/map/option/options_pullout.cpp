@@ -70,24 +70,24 @@ bool parse_command_options(
     ss << "    1 - keep all the samples" << std::endl;
     if (thresh_ransac != nullptr)
     {
-      ss << " -r: Set Threshhold of RANSAC  " << std::endl;
+      ss << " --thresh_ransac: Set Threshhold of RANSAC  " << std::endl;
       ss << "   (default) : 5.0" << std::endl;
     }
     if (cpu_core != nullptr)
     {
-      ss << " -c: Set Used CPU core for Bundler" << std::endl;
+      ss << " --core: Set Used CPU core for Bundler" << std::endl;
       ss << "   (default) : 8" << std::endl;
     }
     if (model != nullptr)
     {
-      ss << " -m: Set Model" << std::endl;
+      ss << " --model: Set Model" << std::endl;
       ss << "   PLANE        : 0 " << std::endl;
       ss << "   PLANE_RANSAC : 1 (defalut)" << std::endl;
       ss << "   SPHERE       : 2 " << std::endl;
     }
     if (safety_distance != nullptr)
     {
-      ss << " -l: Set Safety zone sistance for avoiding enfoscope from eye-ball" << std::endl;
+      ss << " --distance: Set distance of safety zone to avoide enfoscope from eye-ball" << std::endl;
       ss << "   (default) : 0.005" << std::endl;
     }
     std::cout << ss.str();
@@ -115,25 +115,25 @@ bool parse_command_options(
     *history_policy = r ? RMW_QOS_POLICY_HISTORY_KEEP_ALL : RMW_QOS_POLICY_HISTORY_KEEP_LAST;
   }
 
-  auto thresh_ransac_str = get_command_option(args, "-r");
+  auto thresh_ransac_str = get_command_option(args, "--thresh_ransac");
   if (!thresh_ransac_str.empty())
   {
     *thresh_ransac = std::stoul(thresh_ransac_str.c_str());
   }
 
-  auto cpu_core_str = get_command_option(args, "-c");
+  auto cpu_core_str = get_command_option(args, "--core");
   if (!cpu_core_str.empty())
   {
     *cpu_core = std::stoul(cpu_core_str.c_str());
   }
 
-  auto model_str = get_command_option(args, "-m");
+  auto model_str = get_command_option(args, "--model");
   if (!model_str.empty())
   {
     *model = std::stoul(model_str.c_str());
   }
 
-  auto safety_distance_str = get_command_option(args, "-l");
+  auto safety_distance_str = get_command_option(args, "--distance");
   if (!safety_distance_str.empty())
   {
     *safety_distance = std::stoul(safety_distance_str.c_str());
