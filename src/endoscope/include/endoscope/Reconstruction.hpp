@@ -135,6 +135,7 @@ private:
         point3D_filtered, point3D_filtered_hold,
         point3D_est, point3D_est_hold;
     cv::Mat matching_image, nomatching_image;
+    cv::Mat R_move, t_move;
 
     const cv::Mat Rotation_eye = cv::Mat::eye(3, 3, CV_32F);
     const cv::Mat Transform_zeros = cv::Mat::zeros(3, 1, CV_32F);
@@ -162,7 +163,6 @@ private:
     cv::Ptr<cv::FeatureDetector> detector;
     cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
     cv::Ptr<cv::DescriptorMatcher> matcher;
-    cv::Mat R_estimation, t_estimation;
     std::vector<FrameDatabase>::iterator keyframe_itr;
 };
 #endif

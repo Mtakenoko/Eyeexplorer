@@ -428,18 +428,16 @@ void Reconstruction::knn_outlier_remover()
         if (smi_grub.x < THRESH_SMIROFF_GRUBBS && smi_grub.y < THRESH_SMIROFF_GRUBBS)
         {
             dmatch_num.push_back(inliners_idx[i]);
-            // printf("distance[%zu] = [%f %f], 検定 = [%f, %f]\n", i, distance[i].x, distance[i].y, smi_grub.x, smi_grub.y);
         }
+        // printf("distance[%zu] = [%f %f], 検定 = [%f, %f]\n", i, distance[i].x, distance[i].y, smi_grub.x, smi_grub.y);
     }
 
     // 誤対応除去したものを保存
-    std::vector<int> inliners_idx2;
     // printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size());
     for (size_t i = 0; i < dmatch_num.size(); i++)
     {
         int num = dmatch_num[i];
         inliners_matches.push_back(dmatch[num]);
-        inliners_idx2.push_back(num); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
         matched_point1.push_back(keyframe_data.extractor.keypoints[dmatch[num].queryIdx].pt);
         matched_point2.push_back(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt);
 
@@ -554,13 +552,11 @@ void Reconstruction::BF_outlier_remover()
     }
 
     // 誤対応除去したものを保存
-    std::vector<int> inliners_idx2;
     // printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size());
     for (size_t i = 0; i < dmatch_num.size(); i++)
     {
         int num = dmatch_num[i];
         inliners_matches.push_back(dmatch[num]);
-        inliners_idx2.push_back(num); // インデックスを整理した後にもオリジナルのインデックスを参照できるように保存
         matched_point1.push_back(keyframe_data.extractor.keypoints[dmatch[num].queryIdx].pt);
         matched_point2.push_back(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt);
 
@@ -613,6 +609,9 @@ void Reconstruction::triangulation()
     // 移動量推定をしているなら別途三次元復元をこちらでも行う
     if (flag_estimate_move)
     {
+        if(frame_data.camerainfo.ProjectionMatrix_est.empty())
+            return; 
+            
         // 三角測量
         cv::Mat p3_est;
         for (size_t i = 0; i < match_num; i++)
@@ -994,29 +993,33 @@ void Reconstruction::estimate_move()
 
     // 5点アルゴリズム
     // １つめの画像を正規化座標としたときに2枚目の画像への回転・並進変換行列
-    cv::Mat R_est, R_est2, t_est, trans_est, mask;
+    cv::Mat R_est_output, t_est_output, mask;
     cv::Point2d principle_point(U0, V0);
     cv::Mat EssentialMat = cv::findEssentialMat(pt1, pt2, 1, cv::Point2f(0, 0), cv::RANSAC, 0.99, 1, mask);
-    cv::recoverPose(EssentialMat, pt1, pt2, R_est, t_est, 1, cv::Point2f(0, 0), mask);
+    cv::recoverPose(EssentialMat, pt1, pt2, R_est_output, t_est_output, 1, cv::Point2f(0, 0), mask);
 
+    if (R_est_output.at<double>(0, 0) < 0.8 || R_est_output.at<double>(1, 1) < 0.8 || R_est_output.at<double>(2, 2) < 0.8)
+    {
+        std::cout << "Estimated, but output is incorrect estimation." << std::endl;
+        return;
+    }
+
+    cv::Mat R_est, t_est;
     float abs = (float)cv::norm(frame_data.camerainfo.Transform, cv::NORM_L2);
-    cv::Mat trans(3, 1, CV_32FC1);
-    trans = frame_data.camerainfo.Transform / abs;
-    trans_est = t_est * abs;
-
+    R_est = R_est_output.t();
+    t_est = -1 * R_est_output.t() * (t_est_output * abs);
+    
     // frame_dataに推定結果を格納
-    cv::Mat Rot_est(3, 3, CV_32FC1), Trans_est(3, 1, CV_32FC1);
+    cv::Mat Rot_est(3, 3, CV_32FC1), trans_est(3, 1, CV_32FC1);
     R_est.convertTo(Rot_est, CV_32FC1);
-    trans_est.convertTo(Trans_est, CV_32FC1);
+    t_est.convertTo(trans_est, CV_32FC1);
     frame_data.camerainfo.Rotation_est = Rot_est.clone();
-    frame_data.camerainfo.Transform_est = Trans_est.clone();
+    frame_data.camerainfo.Transform_est = trans_est.clone();
     frame_data.camerainfo.Rotation_world_est = keyframe_data.camerainfo.Rotation_world * Rot_est;
-    frame_data.camerainfo.Transform_world_est = keyframe_data.camerainfo.Rotation_world * Trans_est + keyframe_data.camerainfo.Transform_world;
+    frame_data.camerainfo.Transform_world_est = keyframe_data.camerainfo.Rotation_world * trans_est + keyframe_data.camerainfo.Transform_world;
     frame_data.camerainfo.setData_est();
 
     // 眼球移動量を推定する
-    // 式変形の詳細は研究ノートへ
-    cv::Mat R_move(3, 3, CV_32FC1), t_move(3, 1, CV_32FC1);
     R_move = frame_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world_est;
     t_move = frame_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world_est - frame_data.camerainfo.Transform_world);
 
@@ -1033,18 +1036,14 @@ void Reconstruction::estimate_move()
 
     for (size_t i = 0; i < pt1.size(); i++)
     {
-        std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << std::endl;
+        std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << " mask : " << mask.at<bool>(i) << std::endl;
     }
     std::cout << "5点アルゴリズム R_est : " << std::endl
-              << R_est << std::endl
-              << "5点アルゴリズム t_est(abs) : " << std::endl
-              << t_est << std::endl
+              << Rot_est << std::endl
               << "5点アルゴリズム t_est : " << std::endl
               << trans_est << std::endl
               << "運動学 R : " << std::endl
               << frame_data.camerainfo.Rotation << std::endl
-              << "運動学 t(abs) :" << std::endl
-              << trans << std::endl
               << "運動学 t :" << std::endl
               << frame_data.camerainfo.Transform << std::endl;
 
