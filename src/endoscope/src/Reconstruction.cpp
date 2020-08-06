@@ -590,6 +590,9 @@ void Reconstruction::BF_outlier_remover()
 
 void Reconstruction::triangulation()
 {
+    if (!flag_reconstruction)
+        return;
+
     // マッチング情報を挿入
     keyframe_data.extractor.match2point_query(inliners_matches);
     frame_data.extractor.match2point_train(inliners_matches);
@@ -628,6 +631,9 @@ void Reconstruction::triangulation()
 
 void Reconstruction::triangulation_multiscene()
 {
+    if (!flag_reconstruction)
+        return;
+
     cv::Mat p3, p3_BA;
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
     for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
@@ -1004,10 +1010,11 @@ void Reconstruction::estimate_move()
         return;
     }
 
+    // カメラ座標系での移動量推定
     cv::Mat R_est, t_est;
     float abs = (float)cv::norm(frame_data.camerainfo.Transform, cv::NORM_L2);
     R_est = R_est_output.t();
-    t_est = -1 * R_est_output.t() * (t_est_output * abs);
+    t_est = -1 * R_est_output.t() * (t_est_output * abs); // t_est_outputを運動学で求めたabsで割っているのが問題点
     
     // frame_dataに推定結果を格納
     cv::Mat Rot_est(3, 3, CV_32FC1), trans_est(3, 1, CV_32FC1);
@@ -1022,6 +1029,9 @@ void Reconstruction::estimate_move()
     // 眼球移動量を推定する
     R_move = frame_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world_est;
     t_move = frame_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world_est - frame_data.camerainfo.Transform_world);
+
+    // 運動学での移動方向ベクトルと5点アルゴリズムでの移動方向ベクトルの内積を求める
+    float dot_est = (frame_data.camerainfo.Transform / abs).dot(frame_data.camerainfo.Transform_est / abs);
 
     // RANSACの結果ハズレ値となったものを除外
     std::vector<cv::Point2f> inline_pt1, inline_pt2;
@@ -1051,6 +1061,14 @@ void Reconstruction::estimate_move()
               << R_move << std::endl
               << "眼球移動量推定 t_move" << std::endl
               << t_move << std::endl;
+
+    std::cout << "内積 : " << dot_est << std::endl;
+    
+    if(dot_est < THRESH_DOT)
+    {
+        flag_reconstruction = false;
+        return;
+    }
 }
 
 void Reconstruction::showImage()
