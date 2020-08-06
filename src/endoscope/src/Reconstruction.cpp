@@ -1032,6 +1032,10 @@ void Reconstruction::estimate_move()
 
     // 運動学での移動方向ベクトルと5点アルゴリズムでの移動方向ベクトルの内積を求める
     float dot_est = (frame_data.camerainfo.Transform / abs).dot(frame_data.camerainfo.Transform_est / abs);
+    if(dot_est < THRESH_DOT)
+    {
+        flag_reconstruction = false;
+    }
 
     // RANSACの結果ハズレ値となったものを除外
     std::vector<cv::Point2f> inline_pt1, inline_pt2;
@@ -1063,12 +1067,6 @@ void Reconstruction::estimate_move()
               << t_move << std::endl;
 
     std::cout << "内積 : " << dot_est << std::endl;
-    
-    if(dot_est < THRESH_DOT)
-    {
-        flag_reconstruction = false;
-        return;
-    }
 }
 
 void Reconstruction::showImage()
