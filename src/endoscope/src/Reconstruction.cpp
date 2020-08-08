@@ -81,7 +81,7 @@ void Reconstruction::process()
         // 三角測量
         this->triangulation();
         // バンドル調整
-        // this->bundler();
+        this->bundler();
         break;
 
     default:
@@ -89,6 +89,9 @@ void Reconstruction::process()
         this->triangulation_multiscene(); //バンドル調整機能付き
         break;
     }
+
+    // マップの管理を行う（グラフ構造を実装しようかな？）
+    // this->manageMap();
 }
 
 void Reconstruction::initialize()
@@ -103,6 +106,7 @@ void Reconstruction::initialize()
     matched_point1.clear();
     matched_point2.clear();
     frame_data.camerainfo.CameraMatrix = this->CameraMat.clone();
+    flag_reconstruction = false;
 }
 
 void Reconstruction::setFirstFrame()
@@ -145,37 +149,38 @@ void Reconstruction::chooseKeyFrame()
     }
 
     // 新しく登録したキーフレームから探索する
-    for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
-    // for (auto itr = keyframe_database.begin(); itr != keyframe_database.end(); ++itr)
+    // for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
+    for (auto itr = keyframe_database.begin(); itr != keyframe_database.end(); ++itr)
     {
         // 判定条件1: Z方向の変化が少ない
         // カメラ座標での移動量の計算
         cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-        if (std::abs(t_endo.at<float>(2)) < Z_MAX)
+        
+        // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
+        // xy方向の移動量
+        cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
+        bool moving_xy_max = cv::norm(t_move_xy) < XY_MAX;
+        bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN;
+        // 仰角
+        float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+        bool moving_phi_max = std::abs(phi) < PHI_MAX;
+        bool moving_phi_min = std::abs(phi) > PHI_MIN;
+
+        // printf("KF #%d: t_z = %f, xy = %f, phi = %f (%f)\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), cv::norm(t_move_xy), std::abs(phi), std::abs(phi) * 180 / M_PI);
+        if (std::abs(t_endo.at<float>(2)) < Z_MAX && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
         {
-            // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
-            // xy方向の移動量
-            cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-            bool moving_xy = cv::norm(t_move_xy) < XY_MAX && cv::norm(t_move_xy) > XY_MIN;
-            // 仰角
-            float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-            bool moving_phi = std::abs(phi) < PHI_MAX && std::abs(phi) > PHI_MIN;
-            if (moving_xy && moving_phi)
-            {
-                // 見つけた
-                std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used." << std::endl;
-                keyframe_itr = itr;
-                keyframe_data = *keyframe_itr;
-                flag_reconstruction = true;
-                return;
-            }
+            // 見つけた
+            std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used" << std::endl;
+            keyframe_itr = itr;
+            keyframe_data = *keyframe_itr;
+            flag_reconstruction = true;
+            return;
         }
-        // printf("t_endo_z = %f\n", abs(t_endo.at<float>(2)));
-        // printf("move_xy = %f, phi = %f\n", cv::norm(t_move_xy), abs(phi));
         // printf("戻るぞ\n");
     }
     // 何一つ当てはまるのがなければ三次元復元は行わない
     flag_reconstruction = false;
+    printf("なかったよ\n");
     return;
 }
 
@@ -1069,9 +1074,62 @@ void Reconstruction::estimate_move()
     std::cout << "内積 : " << dot_est << std::endl;
 }
 
+void Reconstruction::manageMap()
+{
+    // 三次元点についてマップ上に登録
+    this->registMap(point3D);
+    // マップ上の点が現在のフレームに存在するかチェックし、なければその点を削除する
+    this->checkMapPoint();
+}
+
+void Reconstruction::registMap(const cv::Mat &point3D_)
+{
+    if(point3D_.empty())
+        return;
+
+    for(size_t i = 0; i < match_num; i++)
+    {
+        Map map;
+        map.desciptors = frame_data.extractor.descirptors;
+        map.point_3D = point3D_.at<cv::Vec3f>(i);
+        map_point.push_back(map);
+    }
+}
+
+void Reconstruction::checkMapPoint()
+{
+    for(auto itr = map_point.begin(); itr < map_point.end(); itr++)
+    { 
+        // 三次元点を現frameに再投影を行う
+        cv::Mat cam_point(3, 1, CV_32FC1), world_point(4, 1, CV_32FC1);
+        world_point.at<float>(0) = itr->point_3D.x;
+        world_point.at<float>(1) = itr->point_3D.y;
+        world_point.at<float>(2) = itr->point_3D.z;
+        world_point.at<float>(3) = 1.0;
+        cam_point = frame_data.camerainfo.ProjectionMatrix * world_point;
+
+        cv::Point2f img_point;
+        img_point.x = cam_point.at<float>(0) / cam_point.at<float>(2);
+        img_point.y = cam_point.at<float>(1) / cam_point.at<float>(2);
+
+        // 再投影点が画像上にそもそもあるか判定
+        if(img_point.x < 0 || img_point.y < 0 || img_point.x > IMAGE_WIDTH || img_point.y > IMAGE_HIGHT)
+        {
+            return;
+        }
+        
+        // 再投影点付近に同等の特徴点があるか探索
+        // KeyFrame毎に特徴点を管理してあげるのも手
+        // 特徴点を繋ぎ合わせることができるならOK(knn_matchingとおなじ感じでいいんじゃないかな)
+    }
+}
+
 void Reconstruction::showImage()
 {
     if (!flag_showImage)
+        return;
+
+    if(keyframe_data.extractor.image.empty())
         return;
 
     if (!inliners_matches.empty())
@@ -1094,11 +1152,12 @@ void Reconstruction::showImage()
         cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
         cv::arrowedLine(matching_image, image_center2, center_t_arm_z, color_arrow, 2, 8, 0, 0.5);
 
-        // マッチングの様子なしの比較画像を図示
-        cv::Mat left_image = keyframe_data.extractor.image;
-        cv::Mat right_image = frame_data.extractor.image;
-        cv::hconcat(left_image, right_image, nomatching_image);
     }
+
+    // マッチングの様子なしの比較画像を図示
+    cv::Mat left_image = keyframe_data.extractor.image;
+    cv::Mat right_image = frame_data.extractor.image;
+    cv::hconcat(left_image, right_image, nomatching_image);
 
     // 表示
     if (!matching_image.empty())

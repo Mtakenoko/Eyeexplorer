@@ -21,6 +21,9 @@
 #define U0 160
 #define V0 160
 
+#define IMAGE_WIDTH 320
+#define IMAGE_HIGHT 320
+  
 // keyframe_databaseの初期登録数
 #define KEYFRAME_DATABASE_NUM 3
 
@@ -28,15 +31,15 @@
 #define CHOOSE_KF_Z_MAX_N 0.01
 #define CHOOSE_KF_XY_MIN_N 0.008
 #define CHOOSE_KF_XY_MAX_N 0.03
-#define CHOOSE_KF_PHI_MIN_N 0.005
-#define CHOOSE_KF_PHI_MAX_N 0.05
+#define CHOOSE_KF_PHI_MIN_N 0.001
+#define CHOOSE_KF_PHI_MAX_N 0.1
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
 #define CHOOSE_KF_Z_MAX_E 0.01
 #define CHOOSE_KF_XY_MIN_E 0.005
 #define CHOOSE_KF_XY_MAX_E 0.01
 #define CHOOSE_KF_PHI_MIN_E 0.005
-#define CHOOSE_KF_PHI_MAX_E 0.01
+#define CHOOSE_KF_PHI_MAX_E 0.05
 
 // // 新しくKF挿入するためのパラメータ(一般用)
 // // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
@@ -62,6 +65,14 @@
 
 // 移動量推定と運動学との差がおおきいときに三次元復元しないかどうか決定するパラメータ
 #define THRESH_DOT 0.93
+
+class Map
+{
+public:
+    cv::Point3f point_3D;
+    cv::Mat desciptors;
+    int keypoiknt_id;
+};
 
 class Reconstruction
 {
@@ -125,6 +136,9 @@ private:
     void keyframe_detector();
     void estimate_move();
     void process();
+    void manageMap();
+    void registMap(const cv::Mat &point3D_);
+    void checkMapPoint();
     void showImage();
     void publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
 
@@ -133,6 +147,7 @@ private:
     FrameDatabase frame_data;
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
+    std::vector<Map> map_point;
     cv::Mat point3D, point3D_hold,
         point3D_BA, point3D_BA_hold,
         point3D_filtered, point3D_filtered_hold,
