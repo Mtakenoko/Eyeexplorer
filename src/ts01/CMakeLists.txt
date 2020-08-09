@@ -41,6 +41,23 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+#ts01_manager node
+add_executable(ts01_manager
+  src/ts01_manager.cpp
+  src/manage.cpp
+  src/TS_01.cpp
+)
+target_link_libraries(ts01_manager -lts01 -lktl)
+ament_target_dependencies(ts01_manager
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+)
+install(TARGETS
+ts01_manager
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 #ts01_AI_listenernode
 add_executable(ts01_AI_listener
   src/ts01_AI_listener.cpp
