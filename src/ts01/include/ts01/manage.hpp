@@ -8,6 +8,7 @@
 
 #include "TS_01.hpp"
 
+#define LOOP_RATE 1000 // [Hz]
 
 class Manager : public rclcpp::Node
 {
