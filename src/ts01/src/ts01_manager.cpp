@@ -1,3 +1,5 @@
+#include <rclcpp/time_source.hpp>
+#include <rclcpp/clock.hpp>
 #include "../include/ts01/manage.hpp"
 
 int main(int argc, char *argv[])
