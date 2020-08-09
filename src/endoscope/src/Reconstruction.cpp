@@ -155,7 +155,8 @@ void Reconstruction::chooseKeyFrame()
         // 判定条件1: Z方向の変化が少ない
         // カメラ座標での移動量の計算
         cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-        
+        bool moving_z_max = std::abs(t_endo.at<float>(2)) < Z_MAX;
+
         // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
         // xy方向の移動量
         cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
@@ -167,7 +168,7 @@ void Reconstruction::chooseKeyFrame()
         bool moving_phi_min = std::abs(phi) > PHI_MIN;
 
         // printf("KF #%d: t_z = %f, xy = %f, phi = %f (%f)\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), cv::norm(t_move_xy), std::abs(phi), std::abs(phi) * 180 / M_PI);
-        if (std::abs(t_endo.at<float>(2)) < Z_MAX && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
+        if (moving_z_max && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
         {
             // 見つけた
             std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used" << std::endl;
@@ -1022,7 +1023,6 @@ void Reconstruction::estimate_move()
     t_est = -1 * R_est_output.t() * (t_est_output * abs); // t_est_outputを運動学で求めたabsで割っているのが問題点
     
     // frame_dataに推定結果を格納
-    cv::Mat Rot_est(3, 3, CV_32FC1), trans_est(3, 1, CV_32FC1);
     R_est.convertTo(Rot_est, CV_32FC1);
     t_est.convertTo(trans_est, CV_32FC1);
     frame_data.camerainfo.Rotation_est = Rot_est.clone();
@@ -1032,8 +1032,8 @@ void Reconstruction::estimate_move()
     frame_data.camerainfo.setData_est();
 
     // 眼球移動量を推定する
-    R_move = frame_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world_est;
-    t_move = frame_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world_est - frame_data.camerainfo.Transform_world);
+    R_eye_move = frame_data.camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world_est;
+    t_eye_move = frame_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world_est - frame_data.camerainfo.Transform_world);
 
     // 運動学での移動方向ベクトルと5点アルゴリズムでの移動方向ベクトルの内積を求める
     float dot_est = (frame_data.camerainfo.Transform / abs).dot(frame_data.camerainfo.Transform_est / abs);
@@ -1066,10 +1066,10 @@ void Reconstruction::estimate_move()
               << "運動学 t :" << std::endl
               << frame_data.camerainfo.Transform << std::endl;
 
-    std::cout << "眼球移動量推定 R_move" << std::endl
-              << R_move << std::endl
-              << "眼球移動量推定 t_move" << std::endl
-              << t_move << std::endl;
+    std::cout << "眼球移動量推定 R_eye_move" << std::endl
+              << R_eye_move << std::endl
+              << "眼球移動量推定 t_eye_move" << std::endl
+              << t_eye_move << std::endl;
 
     std::cout << "内積 : " << dot_est << std::endl;
 }
@@ -1143,15 +1143,17 @@ void Reconstruction::showImage()
 
         // カメラのuv方向への移動量を矢印で追加で図示
         cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
-        cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-        cv::Scalar color_arrow = cv::Scalar(0, 255, 0);
-        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 20 + image_center.x,
-                                               frame_data.camerainfo.Transform.at<float>(1) * 20 + image_center.y);
-        cv::Point2f center_t_arm_z = cv::Point2f(image_center2.x,
-                                                 frame_data.camerainfo.Transform.at<float>(2) * 20 + image_center.y);
+        cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
+        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 20000 + image_center.x,
+                                               frame_data.camerainfo.Transform.at<float>(1) * 20000 + image_center.y);
         cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
-        cv::arrowedLine(matching_image, image_center2, center_t_arm_z, color_arrow, 2, 8, 0, 0.5);
-
+        if(!t_eye_move.empty())
+        {
+            cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
+            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 20000 + image_center2.x,
+                                                        trans_est.at<float>(1) * 20000 + image_center2.y);
+            cv::arrowedLine(matching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
+        }
     }
 
     // マッチングの様子なしの比較画像を図示

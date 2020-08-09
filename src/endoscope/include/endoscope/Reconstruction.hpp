@@ -153,7 +153,8 @@ private:
         point3D_filtered, point3D_filtered_hold,
         point3D_est, point3D_est_hold;
     cv::Mat matching_image, nomatching_image;
-    cv::Mat R_move, t_move;
+    cv::Mat R_eye_move, t_eye_move;
+    cv::Mat Rot_est, trans_est;
 
     const cv::Mat Rotation_eye = cv::Mat::eye(3, 3, CV_32F);
     const cv::Mat Transform_zeros = cv::Mat::zeros(3, 1, CV_32F);
