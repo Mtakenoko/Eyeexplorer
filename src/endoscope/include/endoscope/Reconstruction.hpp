@@ -123,10 +123,8 @@ private:
     void knn_matching();
     void BF_matching();
     void outlier_remover();
-    void triangulation();
-    void triangulation_multiscene();
-    void bundler();
-    cv::Mat bundler_multiscene(const std::vector<MatchedData> &matchdata, const cv::Mat &Point3D);
+    void triangulate();
+    cv::Mat bundler(const std::vector<MatchedData> &matchdata, const cv::Mat &Point3D);
     bool pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
     void setFirstFrame();
     void setKeyFrame();

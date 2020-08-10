@@ -75,20 +75,8 @@ void Reconstruction::process()
     // もし眼球移動を検知すれば
     this->estimate_move();
 
-    switch (num_Scene)
-    {
-    case 2:
-        // 三角測量
-        this->triangulation();
-        // バンドル調整
-        this->bundler();
-        break;
-
-    default:
-        // 三角測量とバンドル調整
-        this->triangulation_multiscene(); //バンドル調整機能付き
-        break;
-    }
+    // 三角測量とバンドル調整
+    this->triangulate(); //バンドル調整機能付き   
 
     // マップの管理を行う（グラフ構造を実装しようかな？）
     // this->manageMap();
@@ -482,48 +470,7 @@ void Reconstruction::outlier_remover()
     keyframe_database.insert(keyframe_itr, newKeyFrameData);
 }
 
-void Reconstruction::triangulation()
-{
-    if (!flag_reconstruction)
-        return;
-
-    // マッチング情報を挿入
-    keyframe_data.extractor.match2point_query(inliners_matches);
-    frame_data.extractor.match2point_train(inliners_matches);
-
-    // 三角測量
-    cv::Mat p3;
-    for (size_t i = 0; i < match_num; i++)
-    {
-        cv::Mat point3D_result = Triangulate::triangulation(keyframe_data.extractor.point[i], keyframe_data.camerainfo.ProjectionMatrix,
-                                                            frame_data.extractor.point[i], frame_data.camerainfo.ProjectionMatrix);
-        p3.push_back(point3D_result.reshape(3, 1));
-        point3D_hold.push_back(point3D_result.reshape(3, 1));
-    }
-    if (!p3.empty())
-        point3D = p3.clone();
-
-    // 移動量推定をしているなら別途三次元復元をこちらでも行う
-    if (flag_estimate_move)
-    {
-        if(frame_data.camerainfo.ProjectionMatrix_est.empty())
-            return; 
-            
-        // 三角測量
-        cv::Mat p3_est;
-        for (size_t i = 0; i < match_num; i++)
-        {
-            cv::Mat point3D_result = Triangulate::triangulation(keyframe_data.extractor.inline_point[i], keyframe_data.camerainfo.ProjectionMatrix_est,
-                                                                frame_data.extractor.inline_point[i], frame_data.camerainfo.ProjectionMatrix_est);
-            p3_est.push_back(point3D_result.reshape(3, 1));
-            point3D_est_hold.push_back(point3D_result.reshape(3, 1));
-        }
-        if (!p3_est.empty())
-            point3D_est = p3_est.clone();
-    }
-}
-
-void Reconstruction::triangulation_multiscene()
+void Reconstruction::triangulate()
 {
     if (!flag_reconstruction)
         return;
@@ -553,7 +500,7 @@ void Reconstruction::triangulation_multiscene()
             cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
 
             // バンドル調整
-            cv::Mat point3D_bundler = this->bundler_multiscene(matchdata, point3D_result);
+            cv::Mat point3D_bundler = this->bundler(matchdata, point3D_result);
 
             // 点の登録
             p3.push_back(point3D_result.reshape(3, 1));
@@ -581,144 +528,7 @@ void Reconstruction::triangulation_multiscene()
     }
 }
 
-void Reconstruction::bundler()
-{
-    //最適化問題解くためのオブジェクト作成
-    ceres::Problem problem;
-    //バンドル調整用パラメータ
-    double mutable_camera_for_observations[2][6];
-    double **mutable_point_for_observations = new double *[2 * match_num];
-    for (size_t i = 0; i < 2 * match_num; i++)
-    {
-        mutable_point_for_observations[i] = new double[3];
-    }
-
-    cv::Mat rvec_keyframe, rvec_frame;
-    cv::Rodrigues(keyframe_data.camerainfo.Rotation_world, rvec_keyframe);
-    cv::Rodrigues(frame_data.camerainfo.Rotation_world, rvec_frame);
-
-    //KeyFrameの方の情報
-    mutable_camera_for_observations[0][0] = (double)rvec_keyframe.at<float>(0);
-    mutable_camera_for_observations[0][1] = (double)rvec_keyframe.at<float>(1);
-    mutable_camera_for_observations[0][2] = (double)rvec_keyframe.at<float>(2);
-    mutable_camera_for_observations[0][3] = (double)keyframe_data.camerainfo.Transform_world.at<float>(0);
-    mutable_camera_for_observations[0][4] = (double)keyframe_data.camerainfo.Transform_world.at<float>(1);
-    mutable_camera_for_observations[0][5] = (double)keyframe_data.camerainfo.Transform_world.at<float>(2);
-    //Frameの方の情報
-    mutable_camera_for_observations[1][0] = (double)rvec_frame.at<float>(0);
-    mutable_camera_for_observations[1][1] = (double)rvec_frame.at<float>(1);
-    mutable_camera_for_observations[1][2] = (double)rvec_frame.at<float>(2);
-    mutable_camera_for_observations[1][3] = (double)frame_data.camerainfo.Transform_world.at<float>(0);
-    mutable_camera_for_observations[1][4] = (double)frame_data.camerainfo.Transform_world.at<float>(1);
-    mutable_camera_for_observations[1][5] = (double)frame_data.camerainfo.Transform_world.at<float>(2);
-
-    for (size_t i = 0; i < match_num; i++)
-    {
-        mutable_point_for_observations[i][0] = (double)point3D.at<cv::Vec3f>(i, 0)[0];
-        mutable_point_for_observations[i][1] = (double)point3D.at<cv::Vec3f>(i, 0)[1];
-        mutable_point_for_observations[i][2] = (double)point3D.at<cv::Vec3f>(i, 0)[2];
-        mutable_point_for_observations[i + match_num][0] = (double)point3D.at<cv::Vec3f>(i, 0)[0];
-        mutable_point_for_observations[i + match_num][1] = (double)point3D.at<cv::Vec3f>(i, 0)[1];
-        mutable_point_for_observations[i + match_num][2] = (double)point3D.at<cv::Vec3f>(i, 0)[2];
-
-        //コスト関数
-        ceres::CostFunction *cost_function_query = ProjectionErrorCostFuctor::Create((double)keyframe_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.x,
-                                                                                     (double)keyframe_data.extractor.keypoints[inliners_matches[i].queryIdx].pt.y);
-        ceres::CostFunction *cost_function_train = ProjectionErrorCostFuctor::Create((double)frame_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.x,
-                                                                                     (double)frame_data.extractor.keypoints[inliners_matches[i].trainIdx].pt.y);
-        problem.AddResidualBlock(cost_function_query, NULL,
-                                 &mutable_camera_for_observations[0][0], &mutable_camera_for_observations[0][1], &mutable_camera_for_observations[0][2],
-                                 &mutable_camera_for_observations[0][3], &mutable_camera_for_observations[0][4], &mutable_camera_for_observations[0][5],
-                                 &mutable_point_for_observations[i][0], &mutable_point_for_observations[i][1], &mutable_point_for_observations[i][2]);
-        problem.AddResidualBlock(cost_function_train, NULL,
-                                 &mutable_camera_for_observations[1][0], &mutable_camera_for_observations[1][1], &mutable_camera_for_observations[1][2],
-                                 &mutable_camera_for_observations[1][3], &mutable_camera_for_observations[1][4], &mutable_camera_for_observations[1][5],
-                                 &mutable_point_for_observations[i + match_num][0], &mutable_point_for_observations[i + match_num][1], &mutable_point_for_observations[i + match_num][2]);
-    }
-
-    // 上限下限の設定
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[0][0], 0, (double)rvec_keyframe.at<float>(0) - 0.05);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[0][1], 0, (double)rvec_keyframe.at<float>(1) - 0.05);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[0][2], 0, (double)rvec_keyframe.at<float>(2) - 0.05);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[0][3], 0, (double)keyframe_data.camerainfo.Transform_world.at<float>(0) - 0.01);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[0][4], 0, (double)keyframe_data.camerainfo.Transform_world.at<float>(1) - 0.01);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[0][5], 0, (double)keyframe_data.camerainfo.Transform_world.at<float>(2) - 0.01);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[1][0], 0, (double)rvec_frame.at<float>(0) - 0.05);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[1][1], 0, (double)rvec_frame.at<float>(1) - 0.05);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[1][2], 0, (double)rvec_frame.at<float>(2) - 0.05);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[1][3], 0, (double)frame_data.camerainfo.Transform_world.at<float>(0) - 0.01);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[1][4], 0, (double)frame_data.camerainfo.Transform_world.at<float>(1) - 0.01);
-    problem.SetParameterLowerBound(&mutable_camera_for_observations[1][5], 0, (double)frame_data.camerainfo.Transform_world.at<float>(2) - 0.01);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[0][0], 0, (double)rvec_keyframe.at<float>(0) + 0.05);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[0][1], 0, (double)rvec_keyframe.at<float>(1) + 0.05);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[0][2], 0, (double)rvec_keyframe.at<float>(2) + 0.05);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[0][3], 0, (double)keyframe_data.camerainfo.Transform_world.at<float>(0) + 0.01);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[0][4], 0, (double)keyframe_data.camerainfo.Transform_world.at<float>(1) + 0.01);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[0][5], 0, (double)keyframe_data.camerainfo.Transform_world.at<float>(2) + 0.01);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[1][0], 0, (double)rvec_frame.at<float>(0) + 0.05);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[1][1], 0, (double)rvec_frame.at<float>(1) + 0.05);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[1][2], 0, (double)rvec_frame.at<float>(2) + 0.05);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[1][3], 0, (double)frame_data.camerainfo.Transform_world.at<float>(0) + 0.01);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[1][4], 0, (double)frame_data.camerainfo.Transform_world.at<float>(1) + 0.01);
-    problem.SetParameterUpperBound(&mutable_camera_for_observations[1][5], 0, (double)frame_data.camerainfo.Transform_world.at<float>(2) + 0.01);
-
-    //Solverのオプション選択
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
-    options.num_threads = 8;
-
-    //Solve
-    ceres::Solver::Summary summary;
-    ceres::Solve(options, &problem, &summary);
-
-    //レポートなど出力
-    // std::cout << summary.FullReport() << "\n";
-    // std::cout << "Use for " << match_num << " points for bundler." << std::endl;
-    // std::cout << "rvec_x:" << rvec_frame.at<float>(0) << "->" << mutable_camera_for_observations[1][0] << std::endl;
-    // std::cout << "rvec_y:" << rvec_frame.at<float>(1) << "->" << mutable_camera_for_observations[1][1] << std::endl;
-    // std::cout << "rvec_z:" << rvec_frame.at<float>(2) << "->" << mutable_camera_for_observations[1][2] << std::endl;
-    // std::cout << "Trans_x: " << frame_data.camerainfo.Transform_world.at<float>(0) << "->" << mutable_camera_for_observations[1][3] << std::endl;
-    // std::cout << "Trans_y: " << frame_data.camerainfo.Transform_world.at<float>(1) << "->" << mutable_camera_for_observations[1][4] << std::endl;
-    // std::cout << "Trans_z: " << frame_data.camerainfo.Transform_world.at<float>(2) << "->" << mutable_camera_for_observations[1][5] << std::endl
-    //           << std::endl;
-    // for (size_t i = 0; i < match_num; i++)
-    // {
-    //     std::cout << "point_x: " << point3D.at<cv::Vec3f>(i, 0)[0] << " -> " << mutable_point_for_observations[i][0] << " & " << mutable_point_for_observations[i + match_num][0] << std::endl;
-    //     std::cout << "point_y: " << point3D.at<cv::Vec3f>(i, 0)[1] << " -> " << mutable_point_for_observations[i][1] << " & " << mutable_point_for_observations[i + match_num][1] << std::endl;
-    //     std::cout << "point_z: " << point3D.at<cv::Vec3f>(i, 0)[2] << " -> " << mutable_point_for_observations[i][2] << " & " << mutable_point_for_observations[i + match_num][2] << std::endl
-    //               << std::endl;
-    // }
-
-    // publish用データ
-    cv::Mat p3_BA;
-    for (size_t i = 0; i < 2 * match_num; ++i)
-    {
-        cv::Point3f p_xyz;
-        p_xyz.x = (float)mutable_point_for_observations[i][0];
-        p_xyz.y = (float)mutable_point_for_observations[i][1];
-        p_xyz.z = (float)mutable_point_for_observations[i][2];
-        p3_BA.push_back(p_xyz);
-    }
-    point3D_BA = p3_BA.clone();
-
-    // delete
-    for (size_t i = 0; i < 2 * match_num; i++)
-    {
-        delete[] mutable_point_for_observations[i];
-    }
-    delete[] mutable_point_for_observations;
-
-    // 点群の統計フィルタ
-    cv::Mat p3_filter;
-    if (this->pointcloud_statics_filter(p3_BA, &p3_filter))
-    {
-        point3D_filtered = p3_filter.clone();
-        point3D_filtered_hold.push_back(point3D_filtered);
-    }
-}
-
-cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &matchdata,
+cv::Mat Reconstruction::bundler(const std::vector<MatchedData> &matchdata,
                                            const cv::Mat &Point3D)
 {
     //最適化問題解くためのオブジェクト作成
@@ -786,30 +596,12 @@ cv::Mat Reconstruction::bundler_multiscene(const std::vector<MatchedData> &match
     //Solverのオプション選択
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = false;
+    options.minimizer_progress_to_stdout = true;
     options.num_threads = num_CPU_core;
 
     //Solve
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-
-    //レポートなど出力
-    // std::cout << summary.FullReport() << "\n";
-    // std::cout << "Use for " << match_num << " points for bundler." << std::endl;
-    // std::cout << "rvec_x:" << rvec_frame.at<float>(0) << "->" << mutable_camera_for_observations[1][0] << std::endl;
-    // std::cout << "rvec_y:" << rvec_frame.at<float>(1) << "->" << mutable_camera_for_observations[1][1] << std::endl;
-    // std::cout << "rvec_z:" << rvec_frame.at<float>(2) << "->" << mutable_camera_for_observations[1][2] << std::endl;
-    // std::cout << "Trans_x: " << frame_data.camerainfo.Transform_world.at<float>(0) << "->" << mutable_camera_for_observations[1][3] << std::endl;
-    // std::cout << "Trans_y: " << frame_data.camerainfo.Transform_world.at<float>(1) << "->" << mutable_camera_for_observations[1][4] << std::endl;
-    // std::cout << "Trans_z: " << frame_data.camerainfo.Transform_world.at<float>(2) << "->" << mutable_camera_for_observations[1][5] << std::endl
-    //           << std::endl;
-    // for (size_t i = 0; i < match_num; i++)
-    // {
-    //     std::cout << "point_x: " << point3D.at<cv::Vec3f>(i, 0)[0] << " -> " << mutable_point_for_observations[i][0] << " & " << mutable_point_for_observations[i + match_num][0] << std::endl;
-    //     std::cout << "point_y: " << point3D.at<cv::Vec3f>(i, 0)[1] << " -> " << mutable_point_for_observations[i][1] << " & " << mutable_point_for_observations[i + match_num][1] << std::endl;
-    //     std::cout << "point_z: " << point3D.at<cv::Vec3f>(i, 0)[2] << " -> " << mutable_point_for_observations[i][2] << " & " << mutable_point_for_observations[i + match_num][2] << std::endl
-    //               << std::endl;
-    // }
 
     // publish用データ
     cv::Mat p3_BA(3, 1, CV_32FC1);
