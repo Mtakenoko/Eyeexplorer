@@ -12,7 +12,7 @@ Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(false), flag_estimate_move(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0),
       num_CPU_core(8), num_Scene(KEYPOINT_SCENE),
-      matching(Matching::BruteForce), extract_type(Extractor::DetectorType::AKAZE),
+      matching_method(Matching::BruteForce), extract_type(Extractor::DetectorType::AKAZE),
       publish_type(Publish::FILTER_HOLD), use_mode(UseMode::NORMAL_SCENE) {}
 
 void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
@@ -54,23 +54,8 @@ void Reconstruction::process()
     this->setCameraInfo();
 
     // 特徴点マッチングと誤対応除去
-    switch (matching)
-    {
-    case KNN:
-        this->knn_matching();
-        this->outlier_remover();
-        break;
-
-    case BruteForce:
-        this->BF_matching();
-        this->outlier_remover();
-        break;
-
-    default:
-        std::cout << "-match is not correct" << std::endl;
-        return;
-        break;
-    }
+    this->matching();
+    this->outlier_remover();
 
     // もし眼球移動を検知すれば
     this->estimate_move();
@@ -84,15 +69,14 @@ void Reconstruction::process()
 
 void Reconstruction::initialize()
 {
-    knn_matches.clear();
     dmatch.clear();
     inliners_matches.clear();
+    matched_point1.clear();
+    matched_point2.clear();
     frame_data.extractor.point.clear();
     frame_data.extractor.keypoints.clear();
     keyframe_data.extractor.point.clear();
     keyframe_data.extractor.keypoints.clear();
-    matched_point1.clear();
-    matched_point2.clear();
     frame_data.camerainfo.CameraMatrix = this->CameraMat.clone();
     flag_reconstruction = false;
 }
@@ -309,6 +293,26 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
     // std::cout << "Trans_world : " << frame_data.camerainfo.Transform_world << std::endl;
 }
 
+void Reconstruction::matching()
+{
+    // 特徴点マッチングと誤対応除去
+    switch (matching_method)
+    {
+    case KNN:
+        this->knn_matching();
+        break;
+
+    case BruteForce:
+        this->BF_matching();
+        break;
+
+    default:
+        std::cout << "--match option is not correct" << std::endl;
+        return;
+        break;
+    }
+}
+
 void Reconstruction::knn_matching()
 {
     if (keyframe_database.empty())
@@ -321,7 +325,9 @@ void Reconstruction::knn_matching()
         frame_data.extractor.descirptors.convertTo(frame_data.extractor.descirptors, CV_32F);
     if (keyframe_data.extractor.descirptors.type() != CV_32F)
         keyframe_data.extractor.descirptors.convertTo(keyframe_data.extractor.descirptors, CV_32F);
-    matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+
+    cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+    std::vector<std::vector<cv::DMatch>> knn_matches;
     matcher->knnMatch(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, knn_matches, 2);
 
     // 誤対応除去：knnマッチングでなるべく差が大きいものだけを選択(Brute-Forceではこれは不必要)
@@ -347,7 +353,8 @@ void Reconstruction::BF_matching()
         frame_data.extractor.descirptors.convertTo(frame_data.extractor.descirptors, CV_32F);
     if (keyframe_data.extractor.descirptors.type() != CV_32F)
         keyframe_data.extractor.descirptors.convertTo(keyframe_data.extractor.descirptors, CV_32F);
-    matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
+
+    cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
     matcher->match(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, dmatch);
 }
 
@@ -688,6 +695,11 @@ void Reconstruction::estimate_move()
     cv::Mat R_est_output, t_est_output, mask;
     cv::Point2d principle_point(U0, V0);
     cv::Mat EssentialMat = cv::findEssentialMat(pt1, pt2, 1, cv::Point2f(0, 0), cv::RANSAC, 0.99, 1, mask);
+    if(!(EssentialMat.rows == 3 && EssentialMat.cols == 3))
+    {
+        printf("EssentialMat.rows = %d, EssentialMat.cols = %d\n", EssentialMat.rows, EssentialMat.cols);
+        return;
+    }
     cv::recoverPose(EssentialMat, pt1, pt2, R_est_output, t_est_output, 1, cv::Point2f(0, 0), mask);
 
     if (R_est_output.at<double>(0, 0) < 0.8 || R_est_output.at<double>(1, 1) < 0.8 || R_est_output.at<double>(2, 2) < 0.8)
@@ -733,25 +745,25 @@ void Reconstruction::estimate_move()
         }
     }
 
-    for (size_t i = 0; i < pt1.size(); i++)
-    {
-        std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << " mask : " << mask.at<bool>(i) << std::endl;
-    }
-    std::cout << "5点アルゴリズム R_est : " << std::endl
-              << Rot_est << std::endl
-              << "5点アルゴリズム t_est : " << std::endl
-              << trans_est << std::endl
-              << "運動学 R : " << std::endl
-              << frame_data.camerainfo.Rotation << std::endl
-              << "運動学 t :" << std::endl
-              << frame_data.camerainfo.Transform << std::endl;
+    // for (size_t i = 0; i < pt1.size(); i++)
+    // {
+    //     std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << " mask : " << mask.at<bool>(i) << std::endl;
+    // }
+    // std::cout << "5点アルゴリズム R_est : " << std::endl
+    //           << Rot_est << std::endl
+    //           << "5点アルゴリズム t_est : " << std::endl
+    //           << trans_est << std::endl
+    //           << "運動学 R : " << std::endl
+    //           << frame_data.camerainfo.Rotation << std::endl
+    //           << "運動学 t :" << std::endl
+    //           << frame_data.camerainfo.Transform << std::endl;
 
-    std::cout << "眼球移動量推定 R_eye_move" << std::endl
-              << R_eye_move << std::endl
-              << "眼球移動量推定 t_eye_move" << std::endl
-              << t_eye_move << std::endl;
+    // std::cout << "眼球移動量推定 R_eye_move" << std::endl
+    //           << R_eye_move << std::endl
+    //           << "眼球移動量推定 t_eye_move" << std::endl
+    //           << t_eye_move << std::endl;
 
-    std::cout << "内積 : " << dot_est << std::endl;
+    // std::cout << "内積 : " << dot_est << std::endl;
 }
 
 void Reconstruction::manageMap()
@@ -941,4 +953,14 @@ void Reconstruction::setPublishType(size_t num)
 void Reconstruction::setUseMode(size_t num)
 {
     this->use_mode = num;
+}
+
+void Reconstruction::setMatchingMethod(size_t num)
+{
+    this->matching_method = num;
+}
+
+void Reconstruction::setExtractor(size_t num)
+{
+    this->extract_type = num;
 }

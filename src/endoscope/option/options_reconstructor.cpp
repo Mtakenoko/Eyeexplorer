@@ -53,7 +53,7 @@ bool parse_command_options(
     bool *show_camera, size_t *mode,
     bool *est_move, float *thresh_knn_ratio, float *thresh_ransac,
     int *cpu_core, size_t *scene,
-    size_t *matching, int *extractor, size_t *publish)
+    size_t *matching, size_t *extractor, size_t *publish)
 {
   std::vector<std::string> args(argv, argv + argc);
 

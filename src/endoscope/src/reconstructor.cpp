@@ -27,13 +27,13 @@ int main(int argc, char *argv[])
     float thresh_ransac = 5.0;
     int cpu_core = 8;
     size_t num_scene = 4;
-    size_t matching = Reconstruction::Matching::BruteForce;
-    int extractor = Extractor::DetectorType::AKAZE;
+    size_t matching_method = Reconstruction::Matching::BruteForce;
+    size_t extractor = Extractor::DetectorType::AKAZE;
     size_t publish = Reconstruction::Publish::FILTER_HOLD;
     // Configure demo parameters with command line options.
     if (!parse_command_options(argc, argv, &depth, &reliability_policy, &history_policy,
                                &show_camera, &mode, &est_move, &thresh_knn_ratio, &thresh_ransac,
-                               &cpu_core, &num_scene, &matching, &extractor, &publish))
+                               &cpu_core, &num_scene, &matching_method, &extractor, &publish))
     {
         return 0;
     }
@@ -46,8 +46,10 @@ int main(int argc, char *argv[])
     reconstructor.setFlagShowImage(show_camera);
     reconstructor.setCPUCoreforBundler(cpu_core);
     reconstructor.setSceneNum(num_scene);
-    reconstructor.setPublishType(publish);
     reconstructor.setUseMode(mode);
+    reconstructor.setMatchingMethod(matching_method);
+    reconstructor.setExtractor(extractor);
+    reconstructor.setPublishType(publish);
 
     // node
     auto node = rclcpp::Node::make_shared("reconstructor"); //Set QoS to Publish

@@ -89,6 +89,8 @@ public:
     void setSceneNum(size_t num);
     void setPublishType(size_t num);
     void setUseMode(size_t num);
+    void setMatchingMethod(size_t num);
+    void setExtractor(size_t num);
 
     enum Matching
     {
@@ -120,6 +122,7 @@ private:
     std::vector<cv::Point2f> keypoint2Point(std::vector<cv::KeyPoint> kp);
     void input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                     const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm);
+    void matching();
     void knn_matching();
     void BF_matching();
     void outlier_remover();
@@ -167,18 +170,14 @@ private:
     float threshold_ransac;
     int num_CPU_core;
     size_t num_Scene;
-    size_t matching;
+    size_t matching_method;
     int extract_type;
     size_t publish_type;
     size_t use_mode;
-    std::vector<std::vector<cv::DMatch>> knn_matches;
+    
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;
     size_t match_num;
-    cv::Mat cameraMatrix;
-    cv::Ptr<cv::FeatureDetector> detector;
-    cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
-    cv::Ptr<cv::DescriptorMatcher> matcher;
     std::vector<FrameDatabase>::iterator keyframe_itr;
 };
 #endif
