@@ -23,14 +23,22 @@ Manager::Manager(const std::string &name_space,
     publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
 
     // Subscribe
-    subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-        "xyz_stage/move", qos, std::bind(&Manager::topic_callback, this, std::placeholders::_1)
+    subscription_stage_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+        "xyz_stage/move", qos, std::bind(&Manager::topic_callback_stage, this, std::placeholders::_1)
+        );
+    subscription_pullout_ = this->create_subscription<std_msgs::msg::Bool>(
+        "pull_out", qos, std::bind(&Manager::topic_callback_pullout, this, std::placeholders::_1)
         );
 }
 
-void Manager::topic_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+void Manager::topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
 {
     std::cout << "I get msg: " << msg->data[0] << std::endl;
+}
+
+void Manager::topic_callback_pullout(const std_msgs::msg::Bool::SharedPtr msg)
+{
+    std::cout << "I get msg: " << msg->data << std::endl;
 }
 
 void Manager::initialize()

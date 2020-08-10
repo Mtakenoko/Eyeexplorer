@@ -24,14 +24,16 @@ public:
 
 private:
     // Subscribe
-    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_;
-    void topic_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_stage_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr subscription_pullout_;
+    void topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
+    void topic_callback_pullout(const std_msgs::msg::Bool::SharedPtr msg_pullout_);
     // Publish
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr publisher_status_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_encoder_;
     rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr publisher_di_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ai_;
-    // msg
+    // publish用msg
     std_msgs::msg::Bool::SharedPtr msg_status_;
     sensor_msgs::msg::JointState::SharedPtr msg_encoder_;
     std_msgs::msg::Int32MultiArray::SharedPtr msg_di_;

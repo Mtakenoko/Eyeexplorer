@@ -17,6 +17,7 @@
 #include <pcl/ModelCoefficients.h>
 #include <pcl/segmentation/sac_segmentation.h>
 
+#include <std_msgs/msg/bool.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -41,7 +42,8 @@ public:
     PullOut();
     void topic_callback_(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &msg_pointcloud,
                          const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-                         rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud);
+                         rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud,
+                         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_pullout);
 
     void setModel(size_t num);
     void setThreshRANSAC(int thresh);
@@ -63,7 +65,8 @@ private:
                     EndoscopePose *endoscopePose);
     void process(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
                  const EndoscopePose endoscopePose);
-    void publish(const std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> &pub_pointcloud);
+    void publish(const std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> &pub_pointcloud,
+                 const std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> &pub_pullout);
 
     bool chace_empty(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
     void estimate_plane(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float *OutputCoefficients);

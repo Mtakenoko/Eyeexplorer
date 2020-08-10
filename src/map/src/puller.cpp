@@ -27,7 +27,8 @@ int main(int argc, char *argv[])
     // Topic Name
     std::string topic_sub_pointcloud("pointcloud");
     std::string topic_sub_arm("endoscope_transform");
-    std::string topic_pub("pointcloud2");
+    std::string topic_pub_pointcloud("pointcloud2");
+    std::string topic_pub_pullout("pull_out");
     auto pullout = PullOut();
 
     // PullOut の設定
@@ -43,11 +44,12 @@ int main(int argc, char *argv[])
     qos.reliability(reliability_policy);
 
     // Pub/Subの設定
-    auto publisher_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub, qos);
+    auto publisher_ponintcloud_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_pointcloud, qos);
+    auto publisher_pullout_ = node->create_publisher<std_msgs::msg::Bool>(topic_pub_pullout, qos);
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> sub_pointcloud_(node.get(), topic_sub_pointcloud);
     message_filters::Subscriber<geometry_msgs::msg::Transform> sub_arm_(node.get(), topic_sub_arm);
     message_filters::TimeSynchronizer<sensor_msgs::msg::PointCloud2, geometry_msgs::msg::Transform> sync_(sub_pointcloud_, sub_arm_, 10000);
-    sync_.registerCallback(std::bind(&PullOut::topic_callback_, pullout, std::placeholders::_1, std::placeholders::_2, publisher_));
+    sync_.registerCallback(std::bind(&PullOut::topic_callback_, pullout, std::placeholders::_1, std::placeholders::_2, publisher_ponintcloud_, publisher_pullout_));
 
     rclcpp::spin(node);
     rclcpp::shutdown();

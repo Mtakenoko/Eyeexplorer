@@ -10,12 +10,13 @@ PullOut::PullOut()
     : flag_pull(false), use_model(PLANE), threshold_ransac(RANSAC_DISTANCE_THRESHOLD),
       safety_distance(SAFETY_DISTANCE)
 {
-    printf("Start PullOut\n");
+    std::cout << "Start PullOut" << std::endl;
 }
 
 void PullOut::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &msg_pointcloud,
                               const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-                              rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud)
+                              rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud,
+                              rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_pullout)
 {
     // 初期化
     this->initialize();
@@ -30,7 +31,7 @@ void PullOut::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Poin
     this->process(cloud_, endoscopepose);
 
     // publish
-    this->publish(pub_pointcloud);
+    this->publish(pub_pointcloud, pub_pullout);
 }
 
 void PullOut::process(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
@@ -88,10 +89,17 @@ void PullOut::initialize()
     flag_pull = false;
 }
 
-void PullOut::publish(const std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> &pub_pointcloud)
+void PullOut::publish(const std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> &pub_pointcloud,
+                      const std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> &pub_pullout)
 {
+    // 点群用
     auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     pub_pointcloud->publish(std::move(msg_cloud_pub));
+
+    // 抜去用
+    auto msg_pullout_pub = std::make_unique<std_msgs::msg::Bool>();
+    msg_pullout_pub->data = flag_pull;
+    pub_pullout->publish(std::move(msg_pullout_pub));
 }
 
 bool PullOut::input_data(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &msg_pointcloud,
