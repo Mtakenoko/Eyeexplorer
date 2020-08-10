@@ -21,6 +21,7 @@ Manager::Manager(const std::string &name_space,
     publisher_encoder_ = this->create_publisher<sensor_msgs::msg::JointState>("ts01_encoder", qos);
     publisher_di_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_di", qos);
     publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
+    publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_counter", qos);
 
     // Subscribe
     subscription_stage_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
@@ -54,17 +55,24 @@ void Manager::initialize()
     }
 
     //DIに関するPublish用msg
-    msg_di_->data.resize(10);
-    for (size_t i = 0; i < 10; ++i)
+    msg_di_->data.resize(DIGITAL_INPUT);
+    for (size_t i = 0; i < msg_di_->data.size(); ++i)
     {
         msg_di_->data[i] = 0;
     }
 
     // AIに関するPublish用msg
-    msg_ai_->data.resize(16);
-    for (size_t i = 0; i < 16; ++i)
+    msg_ai_->data.resize(ANALOG_INPUT);
+    for (size_t i = 0; i < msg_ai_->data.size(); ++i)
     {
         msg_ai_->data[i] = 0.0;
+    }
+
+    // countに関するPublish用msg
+    msg_count_->data.resize(COUNT_INPUT);
+    for (size_t i = 0; i < msg_count_->data.size(); ++i)
+    {
+        msg_count_->data[i] = 0.0;
     }
 
     // 初期状態をとりあえずpublish
@@ -115,6 +123,13 @@ void Manager::setMessage()
       //RCLCPP_INFO(node_logger, "AI #%zd = %f", i, eyeexplorer.input.v[i]);
       msg_ai_->data[i] = eyeexplorer.input.v[i];
     }
+
+    // Count
+    for (size_t i = 0; i < msg_count_->data.size(); i++)
+    {
+      //RCLCPP_INFO(node_logger, "count #%zd = %f", i, eyeexplorer.input.count[i]);
+      msg_count_->data[i] = eyeexplorer.input.count[i];
+    }
 }
 
 void Manager::publish()
@@ -124,6 +139,7 @@ void Manager::publish()
     publisher_encoder_->publish(*msg_encoder_);
     publisher_di_->publish(*msg_di_);
     publisher_ai_->publish(*msg_ai_);
+    publisher_count_->publish(*msg_count_);
 }
 
 

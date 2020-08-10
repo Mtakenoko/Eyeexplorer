@@ -1,5 +1,3 @@
-#include <rclcpp/time_source.hpp>
-#include <rclcpp/clock.hpp>
 #include "../include/ts01/manage.hpp"
 
 int main(int argc, char *argv[])
@@ -7,14 +5,9 @@ int main(int argc, char *argv[])
     // ROS2システムの設定
     rclcpp::init(argc, argv);
     rclcpp::WallRate loop_rate(LOOP_RATE);
-    auto manager = std::make_shared<Manager>();
-
-    // 時間管理
-    rclcpp::TimeSource ts(manager);
-    rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-    ts.attachClock(clock);
 
     // TS-01との接続など
+    auto manager = std::make_shared<Manager>();
     manager->initialize();
 
     while (rclcpp::ok())
@@ -29,6 +22,7 @@ int main(int argc, char *argv[])
         rclcpp::spin_some(manager);
         loop_rate.sleep();
     }
+    
     // TS-01シャットダウン
     manager->detatch();
     sleep(1);
