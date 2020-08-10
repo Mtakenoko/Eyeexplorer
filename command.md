@@ -63,7 +63,7 @@ ros2 bag record -o rosbag2/topic_kyusyu_univ1.bag /ts01_encoder /ts01_ai /ts01_d
 ros2 bag record -o rosbag2/topic_kyusyu_univ1.bag /ts01_encoder /endoscope_image /arm_trans /joint_states
 ```
 
-# 現在
+# 
 ```
 ros2 run ts01 ts01_sensor
 ros2 run endoscope cap_endoscope -c 2 -s 1
@@ -102,3 +102,20 @@ ros2 run endoscope cap_endoscope -c 2 -s 1
 ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK2.launch.py
 ros2 run calibration arm_param_calibrator
 ```
+
+## 2020-8-11
+まずはts01_managerを正しく動作させること。とりあえずこれを動かしてblockingされてないか確認する。
+```
+ros2 run ts01 ts01_manager
+```
+ブロッキングされてないなら、今度は以下を実行しts01_managerにてsubscriberが正しく動作しているか確認。
+```
+ros2 run endoscope cap_endoscope -c 2 -s 1
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_dif_FK.launch.py
+ros2 run endoscope reconstructor --scene 4 --est-move 0 --match 1 --show 1 --mode 1
+ros2 run map pullout_endoscope
+```
+もし以上にて正しく動作することを確認できれば、下記について取り組みたい
+- 移動量推定を実際に行ってみてどんな感じか確認
+- ステージを管理するライブラリ作成
+- テクスチャマッピングについて調査・実装

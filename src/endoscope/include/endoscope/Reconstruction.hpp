@@ -123,7 +123,7 @@ private:
     void knn_matching();
     void BF_matching();
     void knn_outlier_remover();
-    void BF_outlier_remover();
+    void outlier_remover();
     void triangulation();
     void triangulation_multiscene();
     void bundler();
