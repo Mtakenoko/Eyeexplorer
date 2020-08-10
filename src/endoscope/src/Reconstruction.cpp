@@ -58,7 +58,6 @@ void Reconstruction::process()
     {
     case KNN:
         this->knn_matching();
-        this->knn_outlier_remover();
         this->outlier_remover();
         break;
 
@@ -336,6 +335,16 @@ void Reconstruction::knn_matching()
         keyframe_data.extractor.descirptors.convertTo(keyframe_data.extractor.descirptors, CV_32F);
     matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
     matcher->knnMatch(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, knn_matches, 2);
+
+    // 誤対応除去：knnマッチングでなるべく差が大きいものだけを選択(Brute-Forceではこれは不必要)
+    // 距離が小さいほうがよりマッチング度合いが高い
+    for (size_t i = 0; i < knn_matches.size(); i++)
+    {
+        if (knn_matches[i][0].distance < threshold_knn_ratio * knn_matches[i][1].distance)
+        {
+            dmatch.push_back(knn_matches[i][0]);
+        }
+    }
 }
 
 void Reconstruction::BF_matching()
@@ -352,19 +361,6 @@ void Reconstruction::BF_matching()
         keyframe_data.extractor.descirptors.convertTo(keyframe_data.extractor.descirptors, CV_32F);
     matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE);
     matcher->match(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, dmatch);
-}
-
-void Reconstruction::knn_outlier_remover()
-{
-    // 誤対応除去：knnマッチングでなるべく差が大きいものだけを選択(Brute-Forceではこれは不必要)
-    // 距離が小さいほうがよりマッチング度合いが高い
-    for (size_t i = 0; i < knn_matches.size(); i++)
-    {
-        if (knn_matches[i][0].distance < threshold_knn_ratio * knn_matches[i][1].distance)
-        {
-            dmatch.push_back(knn_matches[i][0]);
-        }
-    }
 }
 
 void Reconstruction::outlier_remover()

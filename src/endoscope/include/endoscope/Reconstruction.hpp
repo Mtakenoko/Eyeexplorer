@@ -122,7 +122,6 @@ private:
                     const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm);
     void knn_matching();
     void BF_matching();
-    void knn_outlier_remover();
     void outlier_remover();
     void triangulation();
     void triangulation_multiscene();
