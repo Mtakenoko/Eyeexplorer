@@ -58,10 +58,6 @@ void Reconstruction::process()
     {
     case KNN:
         this->knn_matching();
-<<<<<<< HEAD
-=======
-        this->knn_outlier_remover();
->>>>>>> 92e8182e425a54e9e0b27f8b2e1409e842025336
         this->outlier_remover();
         break;
 
@@ -367,22 +363,6 @@ void Reconstruction::BF_matching()
     matcher->match(keyframe_data.extractor.descirptors, frame_data.extractor.descirptors, dmatch);
 }
 
-<<<<<<< HEAD
-=======
-void Reconstruction::knn_outlier_remover()
-{
-    // 誤対応除去：knnマッチングでなるべく差が大きいものだけを選択(Brute-Forceではこれは不必要)
-    // 距離が小さいほうがよりマッチング度合いが高い
-    for (size_t i = 0; i < knn_matches.size(); i++)
-    {
-        if (knn_matches[i][0].distance < threshold_knn_ratio * knn_matches[i][1].distance)
-        {
-            dmatch.push_back(knn_matches[i][0]);
-        }
-    }
-}
-
->>>>>>> 92e8182e425a54e9e0b27f8b2e1409e842025336
 void Reconstruction::outlier_remover()
 {
     if (dmatch.size() < 5)
