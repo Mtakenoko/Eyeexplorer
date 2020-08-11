@@ -22,6 +22,13 @@ Manager::Manager(const std::string &name_space,
     publisher_di_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_di", qos);
     publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
     publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_counter", qos);
+    std::cout << "Publish below topic" <<std::endl;
+    std::cout << "  /ts01_status" <<std::endl;
+    std::cout << "  /ts01_encoder" <<std::endl;
+    std::cout << "  /ts01_di" <<std::endl;
+    std::cout << "  /ts01_ai" <<std::endl;
+    std::cout << "  /ts01_counter" <<std::endl;
+     
 
     // Subscribe
     subscription_stage_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
@@ -30,6 +37,9 @@ Manager::Manager(const std::string &name_space,
     subscription_pullout_ = this->create_subscription<std_msgs::msg::Bool>(
         "pull_out", qos, std::bind(&Manager::topic_callback_pullout, this, std::placeholders::_1)
         );
+    std::cout << "Subscribe below topic" <<std::endl;
+    std::cout << "  /xyz_stage/move" <<std::endl;
+    std::cout << "  /pull_out" <<std::endl;
 }
 
 void Manager::topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
@@ -45,38 +55,39 @@ void Manager::topic_callback_pullout(const std_msgs::msg::Bool::SharedPtr msg)
 void Manager::initialize()
 {
     //TS01の状態に関するPublish用msg
-    msg_status_->data = false;
+    msg_status.set__data(false);
     
+    std::cout << "initial" << std::endl;
     //エンコーダーに関するPublish用msg
-    msg_encoder_->position.resize(ADOF);
+    msg_encoder.position.resize(ADOF);
     for (size_t i = 0; i < ADOF; ++i)
     {
-        msg_encoder_->position.push_back(0.0);
+        msg_encoder.position.push_back(0.0);
     }
 
     //DIに関するPublish用msg
-    msg_di_->data.resize(DIGITAL_INPUT);
-    for (size_t i = 0; i < msg_di_->data.size(); ++i)
+    msg_di.data.resize(DIGITAL_INPUT);
+    for (size_t i = 0; i < msg_di.data.size(); ++i)
     {
-        msg_di_->data[i] = 0;
+        msg_di.data[i] = 0;
     }
 
     // AIに関するPublish用msg
-    msg_ai_->data.resize(ANALOG_INPUT);
-    for (size_t i = 0; i < msg_ai_->data.size(); ++i)
+    msg_ai.data.resize(ANALOG_INPUT);
+    for (size_t i = 0; i < msg_ai.data.size(); ++i)
     {
-        msg_ai_->data[i] = 0.0;
+        msg_ai.data[i] = 0.0;
     }
 
     // countに関するPublish用msg
-    msg_count_->data.resize(COUNT_INPUT);
-    for (size_t i = 0; i < msg_count_->data.size(); ++i)
+    msg_count.data.resize(COUNT_INPUT);
+    for (size_t i = 0; i < msg_count.data.size(); ++i)
     {
-        msg_count_->data[i] = 0.0;
+        msg_count.data[i] = 0.0;
     }
 
     // 初期状態をとりあえずpublish
-    publisher_status_->publish(*msg_status_);
+    this->publish();
 
     // TS-01へ接続
     RCLCPP_INFO(this->get_logger(), "Waiting for opening TS01");
@@ -86,7 +97,7 @@ void Manager::initialize()
     RCLCPP_INFO(this->get_logger(), "TS01 is opened");
     eyeexplorer.ts01.start_sampling(1000);
 
-    msg_status_->data = true;
+    msg_status.data = true;
 }
 
 void Manager::readData()
@@ -105,41 +116,41 @@ void Manager::setMessage()
     enc[4] = eyeexplorer.shift_range(eyeexplorer.input.ssi[4] >> 1, 0x00003ffff); //
     for (size_t i = 0; i < ADOF; ++i)
     {
-      msg_encoder_->position[i] = eyeexplorer.RQ[i] * enc[i];
+      msg_encoder.position[i] = eyeexplorer.RQ[i] * enc[i];
       // RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
     }
-    msg_encoder_->header.stamp = this->now();
+    msg_encoder.header.stamp = this->now();
 
     //DI
-    for (size_t i = 0; i < msg_di_->data.size(); i++)
+    for (size_t i = 0; i < msg_di.data.size(); i++)
     {
       //RCLCPP_INFO(node_logger, "DI #%zd = %d",i, eyeexplorer.input.din[i]);
-      msg_di_->data[i] = eyeexplorer.input.din[i];
+      msg_di.data[i] = eyeexplorer.input.din[i];
     }
 
     //AI
-    for (size_t i = 0; i < msg_ai_->data.size(); i++)
+    for (size_t i = 0; i < msg_ai.data.size(); i++)
     {
       //RCLCPP_INFO(node_logger, "AI #%zd = %f", i, eyeexplorer.input.v[i]);
-      msg_ai_->data[i] = eyeexplorer.input.v[i];
+      msg_ai.data[i] = eyeexplorer.input.v[i];
     }
 
     // Count
-    for (size_t i = 0; i < msg_count_->data.size(); i++)
+    for (size_t i = 0; i < msg_count.data.size(); i++)
     {
       //RCLCPP_INFO(node_logger, "count #%zd = %f", i, eyeexplorer.input.count[i]);
-      msg_count_->data[i] = eyeexplorer.input.count[i];
+      msg_count.data[i] = eyeexplorer.input.count[i];
     }
 }
 
 void Manager::publish()
 {
     //publish
-    publisher_status_->publish(*msg_status_);
-    publisher_encoder_->publish(*msg_encoder_);
-    publisher_di_->publish(*msg_di_);
-    publisher_ai_->publish(*msg_ai_);
-    publisher_count_->publish(*msg_count_);
+    publisher_status_->publish(msg_status);
+    publisher_encoder_->publish(msg_encoder);
+    publisher_di_->publish(msg_di);
+    publisher_ai_->publish(msg_ai);
+    publisher_count_->publish(msg_count);
 }
 
 

@@ -38,11 +38,11 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ai_;
     rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr publisher_count_;
     // publish用msg
-    std_msgs::msg::Bool::SharedPtr msg_status_;
-    sensor_msgs::msg::JointState::SharedPtr msg_encoder_;
-    std_msgs::msg::Int32MultiArray::SharedPtr msg_di_;
-    std_msgs::msg::Float32MultiArray::SharedPtr msg_ai_;
-    std_msgs::msg::Int32MultiArray::SharedPtr msg_count_;
+    std_msgs::msg::Bool msg_status;
+    sensor_msgs::msg::JointState msg_encoder;
+    std_msgs::msg::Int32MultiArray msg_di;
+    std_msgs::msg::Float32MultiArray msg_ai;
+    std_msgs::msg::Int32MultiArray msg_count;
     
     Manage_EyeExplorer eyeexplorer;
 };

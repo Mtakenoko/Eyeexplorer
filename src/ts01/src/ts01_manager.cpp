@@ -5,10 +5,13 @@ int main(int argc, char *argv[])
     // ROS2システムの設定
     rclcpp::init(argc, argv);
     rclcpp::WallRate loop_rate(LOOP_RATE);
+    std::cout << "Start connect TS-01" <<std::endl;
 
     // TS-01との接続など
     auto manager = std::make_shared<Manager>();
+    std::cout << "Initializing..." <<std::endl;
     manager->initialize();
+    std::cout << "Finisuhed Initializing" <<std::endl;
 
     while (rclcpp::ok())
     {
