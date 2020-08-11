@@ -482,48 +482,41 @@ void Reconstruction::triangulate()
     if (!flag_reconstruction)
         return;
 
-    cv::Mat p3, p3_BA;
+    cv::Mat p3;
+    
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
-    for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
+    for (auto dmatch_itr = inliners_matches.begin(); dmatch_itr < inliners_matches.end(); dmatch_itr++)
     {
         // マッチング辞書の中で十分マッチングframeを発見したものを探索
-        if (keyframe_data.keyponit_map.count(i) >= num_Scene)
+        if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) >= num_Scene)
         {
             // 3次元復元用データコンテナ
             std::vector<cv::Point2f> point2D;
             std::vector<cv::Mat> ProjectMat;
-            std::vector<MatchedData> matchdata;
 
             typedef std::multimap<unsigned int, MatchedData>::iterator iterator;
-            std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(i);
+            std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
             for (iterator itr = range.first; itr != range.second; itr++)
             {
                 point2D.push_back(itr->second.image_points);
                 ProjectMat.push_back(itr->second.ProjectionMatrix);
-                matchdata.push_back(itr->second);
             }
 
             // 三次元復元
             cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
 
-            // バンドル調整
-            cv::Mat point3D_bundler = this->bundler(matchdata, point3D_result);
-
             // 点の登録
             p3.push_back(point3D_result.reshape(3, 1));
             point3D_hold.push_back(point3D_result.reshape(3, 1));
-            p3_BA.push_back(point3D_bundler.reshape(3, 1));
-            point3D_BA_hold.push_back(point3D_bundler.reshape(3, 1));
 
             // 終わったら辞書に登録してたフレーム情報を削除
-            if (keyframe_data.keyponit_map.count(i) > KEYPOINT_SCENE_DELETE)
-                keyframe_data.keyponit_map.erase(i);
+            if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE_DELETE)
+                keyframe_data.keyponit_map.erase(dmatch_itr->queryIdx);
         }
     }
     if (!p3.empty())
     {
         point3D = p3.clone();
-        point3D_BA = p3_BA.clone();
 
         // 点群の統計フィルタ
         cv::Mat p3_filter;
