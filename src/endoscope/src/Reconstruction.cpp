@@ -658,6 +658,30 @@ void Reconstruction::bundler()
     //Solve
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
+
+    // publish用データ
+    cv::Mat p3;
+    for (size_t i = 0; i < pointData_map.size(); i++)
+    {
+        cv::Mat p3_BA(3, 1, CV_32FC1);
+        p3_BA.at<float>(0) = mutable_point_for_observations[i][0];
+        p3_BA.at<float>(1) = mutable_point_for_observations[i][1];
+        p3_BA.at<float>(2) = mutable_point_for_observations[i][2];
+        p3.push_back(p3_BA.reshape(3, 1));
+        point3D_BA_hold.push_back(p3_BA.reshape(3, 1));
+    }
+    point3D_BA = p3.clone();
+
+    // メモリ解放
+    for (size_t i = 0; i < camerainfo_map.size(); i++)
+    {
+        delete[] mutable_camera_for_observations[i];
+    }
+    for (size_t i = 0; i < pointData_map.size(); i++)
+    {
+        delete[] mutable_point_for_observations[i];
+        delete[] point2d[i];
+    }
 }
 
 
