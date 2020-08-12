@@ -50,7 +50,8 @@ bool parse_command_options(
     size_t *depth,
     rmw_qos_reliability_policy_t *reliability_policy,
     rmw_qos_history_policy_t *history_policy,
-    bool *show_camera, size_t *mode,
+    bool *show_camera, bool *ceres_stdout,
+    size_t *mode,
     bool *est_move, float *thresh_knn_ratio, float *thresh_ransac,
     int *cpu_core, size_t *scene,
     size_t *matching, size_t *extractor, size_t *publish)
@@ -75,6 +76,12 @@ bool parse_command_options(
       ss << " --show: Show Matching scene:" << std::endl;
       ss << "    0 - Do not show the camera stream (default)" << std::endl;
       ss << "    1 - Show the camera stream" << std::endl;
+    }
+    if (ceres_stdout != nullptr)
+    {
+      ss << " --ceres-stdout: Show Matching scene:" << std::endl;
+      ss << "    0 - Do not show (default)" << std::endl;
+      ss << "    1 - Show the ceres stdout" << std::endl;
     }
     if (mode != nullptr)
     {
@@ -166,6 +173,12 @@ bool parse_command_options(
   if (!show_camera_str.empty())
   {
     *show_camera = std::stoul(show_camera_str.c_str()) != 0 ? true : false;
+  }
+
+  auto ceres_stdout_str = get_command_option(args, "--ceres-stdout");
+  if (!ceres_stdout_str.empty())
+  {
+    *ceres_stdout = std::stoul(ceres_stdout_str.c_str()) != 0 ? true : false;
   }
 
   auto mode_str = get_command_option(args, "--mode");

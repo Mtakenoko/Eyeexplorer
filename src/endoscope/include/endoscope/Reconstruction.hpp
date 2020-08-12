@@ -91,6 +91,7 @@ public:
     void setThreshold_knn_ratio(float thresh);
     void setThreshold_ransac(float thresh);
     void setFlagShowImage(bool flag);
+    void setFlagCeresstdout(bool flag);
     void setFlagEstimationMovement(bool flag);
     void setCPUCoreforBundler(int num);
     void setSceneNum(size_t num);
@@ -168,6 +169,7 @@ private:
     bool flag_reconstruction;
     bool flag_setFirstFrame;
     bool flag_showImage;
+    bool flag_ceres_stdout;
     bool flag_estimate_move;
     const cv::Mat CameraMat = (cv::Mat_<float>(3, 3) << FOCAL_X, 0.0, U0,
                                0.0, FOCAL_Y, V0,

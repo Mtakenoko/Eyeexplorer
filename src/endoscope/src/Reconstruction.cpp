@@ -9,7 +9,8 @@ Transform transform;
 Converter converter;
 
 Reconstruction::Reconstruction()
-    : flag_reconstruction(false), flag_setFirstFrame(true), flag_showImage(false), flag_estimate_move(false),
+    : flag_reconstruction(false), flag_setFirstFrame(true),
+      flag_showImage(false), flag_ceres_stdout(false), flag_estimate_move(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0),
       num_CPU_core(8), num_Scene(KEYPOINT_SCENE),
       matching_method(Matching::BruteForce), extract_type(Extractor::DetectorType::AKAZE),
@@ -577,10 +578,6 @@ void Reconstruction::bundler()
     int i_cam = 0;
     for(auto itr = camerainfo_map.begin(); itr != camerainfo_map.end(); itr++)
     {
-        // std::cout << "camerainfo_map Rodrigues : " << itr->first << std::endl
-        //         << itr->second.RodriguesVec_world << std::endl;
-        // std::cout << "camerainfo_map trnsform : "  << itr->first << std::endl
-        //         << itr->second.Transform_world << std::endl;
         mutable_camera_for_observations[i_cam][0] = itr->second.RodriguesVec_world.at<float>(0);
         mutable_camera_for_observations[i_cam][1] = itr->second.RodriguesVec_world.at<float>(1);
         mutable_camera_for_observations[i_cam][2] = itr->second.RodriguesVec_world.at<float>(2);
@@ -604,8 +601,6 @@ void Reconstruction::bundler()
     int i_point = 0;
     for(auto itr = pointData_map.begin(); itr != pointData_map.end(); itr++)
     {
-        // std::cout << "pointData_map point3D : " << itr->first << std::endl
-        //           << itr->second.point3D << std::endl;
         mutable_point_for_observations[i_point][0] = itr->second.point3D.at<float>(0);
         mutable_point_for_observations[i_point][1] = itr->second.point3D.at<float>(1);
         mutable_point_for_observations[i_point][2] = itr->second.point3D.at<float>(2);
@@ -632,13 +627,32 @@ void Reconstruction::bundler()
                         &mutable_camera_for_observations[access_num_cam][3], &mutable_camera_for_observations[access_num_cam][4], &mutable_camera_for_observations[access_num_cam][5],
                         &mutable_point_for_observations[itr->second][0], &mutable_point_for_observations[itr->second][1], &mutable_point_for_observations[itr->second][2]);
         }
+    }
 
+    // パラメータの最適化における上限下限設定
+    for(auto frame_itr = framenum_cam_map.begin(); frame_itr != framenum_cam_map.end(); frame_itr++)
+    {
+        int access_num_cam = framenum_cam_map.at(frame_itr->first);
+        // 下限
+        problem.SetParameterLowerBound(&mutable_camera_for_observations[access_num_cam][0], 0, camerainfo_map.at(frame_itr->first).RodriguesVec_world.at<float>(0) - 0.05);
+        problem.SetParameterLowerBound(&mutable_camera_for_observations[access_num_cam][1], 0, camerainfo_map.at(frame_itr->first).RodriguesVec_world.at<float>(1) - 0.05);
+        problem.SetParameterLowerBound(&mutable_camera_for_observations[access_num_cam][2], 0, camerainfo_map.at(frame_itr->first).RodriguesVec_world.at<float>(2) - 0.05);
+        problem.SetParameterLowerBound(&mutable_camera_for_observations[access_num_cam][3], 0, camerainfo_map.at(frame_itr->first).Transform_world.at<float>(0) - 0.01);
+        problem.SetParameterLowerBound(&mutable_camera_for_observations[access_num_cam][4], 0, camerainfo_map.at(frame_itr->first).Transform_world.at<float>(1) - 0.01);
+        problem.SetParameterLowerBound(&mutable_camera_for_observations[access_num_cam][5], 0, camerainfo_map.at(frame_itr->first).Transform_world.at<float>(2) - 0.01);
+        // 上限
+        problem.SetParameterUpperBound(&mutable_camera_for_observations[access_num_cam][0], 0, camerainfo_map.at(frame_itr->first).RodriguesVec_world.at<float>(0) + 0.05);
+        problem.SetParameterUpperBound(&mutable_camera_for_observations[access_num_cam][1], 0, camerainfo_map.at(frame_itr->first).RodriguesVec_world.at<float>(1) + 0.05);
+        problem.SetParameterUpperBound(&mutable_camera_for_observations[access_num_cam][2], 0, camerainfo_map.at(frame_itr->first).RodriguesVec_world.at<float>(2) + 0.05);
+        problem.SetParameterUpperBound(&mutable_camera_for_observations[access_num_cam][3], 0, camerainfo_map.at(frame_itr->first).Transform_world.at<float>(0) + 0.01);
+        problem.SetParameterUpperBound(&mutable_camera_for_observations[access_num_cam][4], 0, camerainfo_map.at(frame_itr->first).Transform_world.at<float>(1) + 0.01);
+        problem.SetParameterUpperBound(&mutable_camera_for_observations[access_num_cam][5], 0, camerainfo_map.at(frame_itr->first).Transform_world.at<float>(2) + 0.01);
     }
 
     //Solverのオプション選択
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
+    options.minimizer_progress_to_stdout = flag_ceres_stdout;
     options.num_threads = num_CPU_core;
 
     //Solve
@@ -992,4 +1006,9 @@ void Reconstruction::setMatchingMethod(size_t num)
 void Reconstruction::setExtractor(size_t num)
 {
     this->extract_type = num;
+}
+
+void Reconstruction::setFlagCeresstdout(bool flag)
+{
+    this->flag_ceres_stdout = flag;
 }

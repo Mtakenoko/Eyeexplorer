@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
     bool show_camera = false;
+    bool ceres_stdout = false;
     size_t mode = 0;
     bool est_move = false;
     float thresh_knn_ratio = 0.7f;
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
     size_t publish = Reconstruction::Publish::FILTER_HOLD;
     // Configure demo parameters with command line options.
     if (!parse_command_options(argc, argv, &depth, &reliability_policy, &history_policy,
-                               &show_camera, &mode, &est_move, &thresh_knn_ratio, &thresh_ransac,
+                               &show_camera, &ceres_stdout, &mode, &est_move, &thresh_knn_ratio, &thresh_ransac,
                                &cpu_core, &num_scene, &matching_method, &extractor, &publish))
     {
         return 0;
@@ -44,6 +45,7 @@ int main(int argc, char *argv[])
     reconstructor.setThreshold_ransac(thresh_ransac);
     reconstructor.setFlagEstimationMovement(est_move);
     reconstructor.setFlagShowImage(show_camera);
+    reconstructor.setFlagCeresstdout(ceres_stdout);
     reconstructor.setCPUCoreforBundler(cpu_core);
     reconstructor.setSceneNum(num_scene);
     reconstructor.setUseMode(mode);
