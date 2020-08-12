@@ -74,6 +74,13 @@ public:
     int keypoiknt_id;
 };
 
+class PointData
+{
+public:
+    cv::Mat point3D;
+    cv::Point2f point2D;
+};
+
 class Reconstruction
 {
 public:
@@ -127,7 +134,7 @@ private:
     void BF_matching();
     void outlier_remover();
     void triangulate();
-    cv::Mat bundler(const std::vector<MatchedData> &matchdata, const cv::Mat &Point3D);
+    void bundler();
     bool pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
     void setFirstFrame();
     void setKeyFrame();
@@ -179,5 +186,11 @@ private:
     std::vector<cv::Point2f> matched_point1, matched_point2;
     size_t match_num;
     std::vector<FrameDatabase>::iterator keyframe_itr;
+
+    // バンドル調整用データコンテナ
+    std::map<int, CameraInfo> camerainfo_map;   // keyはフレーム番号
+    std::multimap<int, PointData> pointData_map; // keyはフレーム番号
+    std::map<int, int> framenum_cam_map;    // keyはフレーム番号
+    std::multimap<int, int> framenum_point_map;    // keyはフレーム番号
 };
 #endif

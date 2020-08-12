@@ -108,10 +108,10 @@ class CameraInfo
 public:
     CameraInfo()
         : CameraMatrix(3, 3, CV_32FC1), CameraPose(3, 4, CV_32FC1), ProjectionMatrix(3, 4, CV_32FC1),
-          Rotation(3, 3, CV_32FC1), Rotation_world(3, 3, CV_32FC1),
+          Rotation(3, 3, CV_32FC1), Rotation_world(3, 3, CV_32FC1), RodriguesVec_world(3, 1, CV_32FC1),
           Transform(3, 1, CV_32FC1), Transform_world(3, 1, CV_32FC1),
           CameraPose_est(3, 4, CV_32FC1), ProjectionMatrix_est(3, 4, CV_32FC1),
-          Rotation_est(3, 3, CV_32FC1), Rotation_world_est(3, 3, CV_32FC1),
+          Rotation_est(3, 3, CV_32FC1), Rotation_world_est(3, 3, CV_32FC1), RodriguesVec_world_est(3, 1, CV_32FC1),
           Transform_est(3, 1, CV_32FC1), Transform_world_est(3, 1, CV_32FC1),
           frame_num(0){};
     void setData()
@@ -126,6 +126,8 @@ public:
         cv::Mat ProjMat(3, 4, CV_32FC1);
         ProjMat = CameraMatrix * CameraPose;
         this->ProjectionMatrix = ProjMat.clone();
+
+        cv::Rodrigues(Rotation_world, RodriguesVec_world);
     }
     void setData_est()
     {
@@ -139,6 +141,8 @@ public:
         cv::Mat ProjMat(3, 4, CV_32FC1);
         ProjMat = CameraMatrix * this->CameraPose_est;
         this->ProjectionMatrix_est = ProjMat.clone();
+
+        cv::Rodrigues(Rotation_world_est, RodriguesVec_world_est);
     }
 
 public:
@@ -149,6 +153,7 @@ public:
     cv::Mat ProjectionMatrix;
     cv::Mat Rotation;
     cv::Mat Rotation_world;
+    cv::Mat RodriguesVec_world;
     cv::Mat Transform;
     cv::Mat Transform_world;
 
@@ -157,6 +162,7 @@ public:
     cv::Mat ProjectionMatrix_est;
     cv::Mat Rotation_est;
     cv::Mat Rotation_world_est;
+    cv::Mat RodriguesVec_world_est;
     cv::Mat Transform_est;
     cv::Mat Transform_world_est;
     
@@ -168,18 +174,22 @@ class MatchedData
 public:
     MatchedData();
     MatchedData(const cv::Point2f &point, const cv::Mat &PrjMat,
-                const cv::Mat &Rot, const cv::Mat &Trans, const int &Frame_Num)
+                const cv::Mat &Rot, const cv::Mat &Trans, const cv::Mat &Rodrigues,
+                const int &Frame_Num)
     {
         image_points = point;
         ProjectionMatrix = PrjMat.clone();
         Rotation_world = Rot.clone();
         Transform_world = Trans.clone();
+        RodriguesVec_world = Rodrigues.clone();
         frame_num = Frame_Num;
     };
     cv::Point2f image_points;
     cv::Mat ProjectionMatrix;
     cv::Mat Rotation_world;
+    cv::Mat RodriguesVec_world;
     cv::Mat Transform_world;
+    cv::Mat point3D;
     int frame_num;
 };
 
@@ -192,7 +202,7 @@ public:
     }
     Extractor extractor;
     CameraInfo camerainfo;
-    std::multimap<unsigned int, MatchedData> keyponit_map;
+    std::multimap<int, MatchedData> keyponit_map;
 };
 
 #endif

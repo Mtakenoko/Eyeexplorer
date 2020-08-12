@@ -60,8 +60,14 @@ void Reconstruction::process()
     // もし眼球移動を検知すれば
     this->estimate_move();
 
-    // 三角測量とバンドル調整
-    this->triangulate(); //バンドル調整機能付き   
+    if (!flag_reconstruction)
+        return;
+
+    // 多視点での三角測量
+    this->triangulate(); // 三角測量
+
+    // バンドル調整
+    this->bundler(); // バンドル調整  
 
     // マップの管理を行う（グラフ構造を実装しようかな？）
     // this->manageMap();
@@ -69,6 +75,7 @@ void Reconstruction::process()
 
 void Reconstruction::initialize()
 {
+    // std::vector のclear
     dmatch.clear();
     inliners_matches.clear();
     matched_point1.clear();
@@ -77,6 +84,13 @@ void Reconstruction::initialize()
     frame_data.extractor.keypoints.clear();
     keyframe_data.extractor.point.clear();
     keyframe_data.extractor.keypoints.clear();
+
+    // std::map のclear
+    camerainfo_map.clear();
+    pointData_map.clear();
+    framenum_cam_map.clear();
+    framenum_point_map.clear();
+
     frame_data.camerainfo.CameraMatrix = this->CameraMat.clone();
     flag_reconstruction = false;
 }
@@ -217,8 +231,6 @@ void Reconstruction::setCameraInfo()
     frame_data.camerainfo.Transform = keyframe_data.camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - keyframe_data.camerainfo.Transform_world);
     keyframe_data.camerainfo.Rotation = Rotation_eye.clone();
     keyframe_data.camerainfo.Transform = Transform_zeros.clone();
-    frame_data.camerainfo.setData();
-    keyframe_data.camerainfo.setData();
 }
 
 int Reconstruction::encoding2mat_type(const std::string &encoding)
@@ -456,6 +468,7 @@ void Reconstruction::outlier_remover()
                                       keyframe_data.camerainfo.ProjectionMatrix.clone(),
                                       keyframe_data.camerainfo.Rotation_world.clone(),
                                       keyframe_data.camerainfo.Transform_world.clone(),
+                                      keyframe_data.camerainfo.RodriguesVec_world.clone(),
                                       keyframe_data.camerainfo.frame_num);
             keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData_key));
         }
@@ -465,6 +478,7 @@ void Reconstruction::outlier_remover()
                               frame_data.camerainfo.ProjectionMatrix.clone(),
                               frame_data.camerainfo.Rotation_world.clone(),
                               frame_data.camerainfo.Transform_world.clone(),
+                              frame_data.camerainfo.RodriguesVec_world.clone(),
                               frame_data.camerainfo.frame_num);
         keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData));
     }
@@ -483,7 +497,6 @@ void Reconstruction::triangulate()
         return;
 
     cv::Mat p3;
-    
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
     for (auto dmatch_itr = inliners_matches.begin(); dmatch_itr < inliners_matches.end(); dmatch_itr++)
     {
@@ -494,7 +507,7 @@ void Reconstruction::triangulate()
             std::vector<cv::Point2f> point2D;
             std::vector<cv::Mat> ProjectMat;
 
-            typedef std::multimap<unsigned int, MatchedData>::iterator iterator;
+            typedef std::multimap<int, MatchedData>::iterator iterator;
             std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
             for (iterator itr = range.first; itr != range.second; itr++)
             {
@@ -508,6 +521,24 @@ void Reconstruction::triangulate()
             // 点の登録
             p3.push_back(point3D_result.reshape(3, 1));
             point3D_hold.push_back(point3D_result.reshape(3, 1));
+
+            // バンドル調整用データ
+            typedef std::multimap<int, MatchedData>::iterator iterator;
+            std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
+            for (iterator itr = range2.first; itr != range2.second; itr++)
+            {
+                CameraInfo temp_camerainfo;
+                temp_camerainfo.ProjectionMatrix = itr->second.ProjectionMatrix.clone();
+                temp_camerainfo.Rotation_world = itr->second.Rotation_world.clone();
+                temp_camerainfo.Transform_world = itr->second.Transform_world.clone();
+                temp_camerainfo.RodriguesVec_world = itr->second.RodriguesVec_world.clone();
+                camerainfo_map.insert(std::make_pair(itr->second.frame_num, temp_camerainfo));
+
+                PointData temp_pointData;
+                temp_pointData.point3D = point3D_result.clone();
+                temp_pointData.point2D = itr->second.image_points;
+                pointData_map.insert(std::make_pair(itr->second.frame_num, temp_pointData));
+            }
 
             // 終わったら辞書に登録してたフレーム情報を削除
             if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE_DELETE)
@@ -528,69 +559,80 @@ void Reconstruction::triangulate()
     }
 }
 
-cv::Mat Reconstruction::bundler(const std::vector<MatchedData> &matchdata,
-                                           const cv::Mat &Point3D)
+void Reconstruction::bundler()
 {
+    if(camerainfo_map.empty())
+        return;
+
     //最適化問題解くためのオブジェクト作成
     ceres::Problem problem;
 
-    //バンドル調整用パラメータ
-    size_t size = matchdata.size();
-    double **mutable_camera_for_observations = new double *[size];
-    for (size_t i = 0; i < size; i++)
+    // カメラ情報
+    double **mutable_camera_for_observations = new double *[camerainfo_map.size()];
+    for (size_t i = 0; i < camerainfo_map.size(); i++)
     {
         mutable_camera_for_observations[i] = new double[6];
     }
-    double mutable_point_for_observations[3];
 
-    mutable_point_for_observations[0] = (double)Point3D.at<float>(0);
-    mutable_point_for_observations[1] = (double)Point3D.at<float>(1);
-    mutable_point_for_observations[2] = (double)Point3D.at<float>(2);
-
-    std::vector<cv::Mat> rvec;
-    for (size_t i = 0; i < size; i++)
+    int i_cam = 0;
+    for(auto itr = camerainfo_map.begin(); itr != camerainfo_map.end(); itr++)
     {
-        cv::Mat RodVec;
-        cv::Rodrigues(matchdata[i].Rotation_world, RodVec);
-        rvec.push_back(RodVec);
+        // std::cout << "camerainfo_map Rodrigues : " << itr->first << std::endl
+        //         << itr->second.RodriguesVec_world << std::endl;
+        // std::cout << "camerainfo_map trnsform : "  << itr->first << std::endl
+        //         << itr->second.Transform_world << std::endl;
+        mutable_camera_for_observations[i_cam][0] = itr->second.RodriguesVec_world.at<float>(0);
+        mutable_camera_for_observations[i_cam][1] = itr->second.RodriguesVec_world.at<float>(1);
+        mutable_camera_for_observations[i_cam][2] = itr->second.RodriguesVec_world.at<float>(2);
+        mutable_camera_for_observations[i_cam][3] = itr->second.Transform_world.at<float>(0);
+        mutable_camera_for_observations[i_cam][4] = itr->second.Transform_world.at<float>(1);
+        mutable_camera_for_observations[i_cam][5] = itr->second.Transform_world.at<float>(2);
+
+        framenum_cam_map.insert(std::make_pair(itr->first, i_cam));
+        i_cam++;
     }
 
-    for (size_t i = 0; i < size; i++)
+    // 3次元点情報
+    double **mutable_point_for_observations = new double *[pointData_map.size()];
+    double **point2d = new double *[pointData_map.size()];
+    for (size_t i = 0; i < pointData_map.size(); i++)
     {
-        mutable_camera_for_observations[i][0] = (double)rvec[i].at<float>(0);
-        mutable_camera_for_observations[i][1] = (double)rvec[i].at<float>(1);
-        mutable_camera_for_observations[i][2] = (double)rvec[i].at<float>(2);
-        mutable_camera_for_observations[i][3] = (double)matchdata[i].Transform_world.at<float>(0);
-        mutable_camera_for_observations[i][4] = (double)matchdata[i].Transform_world.at<float>(1);
-        mutable_camera_for_observations[i][5] = (double)matchdata[i].Transform_world.at<float>(2);
+        mutable_point_for_observations[i] = new double[3];
+        point2d[i] = new double[2];
     }
 
-    //コスト関数
-    for (size_t i = 0; i < size; i++)
+    int i_point = 0;
+    for(auto itr = pointData_map.begin(); itr != pointData_map.end(); itr++)
     {
-        ceres::CostFunction *cost_function_query = ProjectionErrorCostFuctor::Create((double)matchdata[i].image_points.x,
-                                                                                     (double)matchdata[i].image_points.y);
-        problem.AddResidualBlock(cost_function_query, NULL,
-                                 &mutable_camera_for_observations[i][0], &mutable_camera_for_observations[i][1], &mutable_camera_for_observations[i][2],
-                                 &mutable_camera_for_observations[i][3], &mutable_camera_for_observations[i][4], &mutable_camera_for_observations[i][5],
-                                 &mutable_point_for_observations[0], &mutable_point_for_observations[1], &mutable_point_for_observations[2]);
+        // std::cout << "pointData_map point3D : " << itr->first << std::endl
+        //           << itr->second.point3D << std::endl;
+        mutable_point_for_observations[i_point][0] = itr->second.point3D.at<float>(0);
+        mutable_point_for_observations[i_point][1] = itr->second.point3D.at<float>(1);
+        mutable_point_for_observations[i_point][2] = itr->second.point3D.at<float>(2);
+        point2d[i_point][0] = itr->second.point2D.x;
+        point2d[i_point][1] = itr->second.point2D.y;
+
+        framenum_point_map.insert(std::make_pair(itr->first, i_point));
+        i_point++;
     }
 
-    // 上限下限の設定
-    for (size_t i = 0; i < size; i++)
+    // コスト関数に追加
+    for(auto frame_itr = framenum_cam_map.begin(); frame_itr != framenum_cam_map.end(); frame_itr++)
     {
-        problem.SetParameterLowerBound(&mutable_camera_for_observations[i][0], 0, (double)rvec[i].at<float>(0) - 0.05);
-        problem.SetParameterLowerBound(&mutable_camera_for_observations[i][1], 0, (double)rvec[i].at<float>(1) - 0.05);
-        problem.SetParameterLowerBound(&mutable_camera_for_observations[i][2], 0, (double)rvec[i].at<float>(2) - 0.05);
-        problem.SetParameterLowerBound(&mutable_camera_for_observations[i][3], 0, (double)matchdata[i].Transform_world.at<float>(0) - 0.01);
-        problem.SetParameterLowerBound(&mutable_camera_for_observations[i][4], 0, (double)matchdata[i].Transform_world.at<float>(1) - 0.01);
-        problem.SetParameterLowerBound(&mutable_camera_for_observations[i][5], 0, (double)matchdata[i].Transform_world.at<float>(2) - 0.01);
-        problem.SetParameterUpperBound(&mutable_camera_for_observations[i][0], 0, (double)rvec[i].at<float>(0) + 0.05);
-        problem.SetParameterUpperBound(&mutable_camera_for_observations[i][1], 0, (double)rvec[i].at<float>(1) + 0.05);
-        problem.SetParameterUpperBound(&mutable_camera_for_observations[i][2], 0, (double)rvec[i].at<float>(2) + 0.05);
-        problem.SetParameterUpperBound(&mutable_camera_for_observations[i][3], 0, (double)matchdata[i].Transform_world.at<float>(0) + 0.01);
-        problem.SetParameterUpperBound(&mutable_camera_for_observations[i][4], 0, (double)matchdata[i].Transform_world.at<float>(1) + 0.01);
-        problem.SetParameterUpperBound(&mutable_camera_for_observations[i][5], 0, (double)matchdata[i].Transform_world.at<float>(2) + 0.01);
+        int access_num_cam = framenum_cam_map.at(frame_itr->first);
+
+        typedef std::multimap<int, int>::iterator iterator;
+        std::pair<iterator, iterator> range = framenum_point_map.equal_range(frame_itr->first);
+        for (iterator itr = range.first; itr != range.second; itr++)
+        {
+            ceres::CostFunction *cost_function = ProjectionErrorCostFuctor::Create(point2d[itr->second][0],
+                                                                                   point2d[itr->second][1]);
+            problem.AddResidualBlock(cost_function, NULL,
+                        &mutable_camera_for_observations[access_num_cam][0], &mutable_camera_for_observations[access_num_cam][1], &mutable_camera_for_observations[access_num_cam][2],
+                        &mutable_camera_for_observations[access_num_cam][3], &mutable_camera_for_observations[access_num_cam][4], &mutable_camera_for_observations[access_num_cam][5],
+                        &mutable_point_for_observations[itr->second][0], &mutable_point_for_observations[itr->second][1], &mutable_point_for_observations[itr->second][2]);
+        }
+
     }
 
     //Solverのオプション選択
@@ -602,22 +644,8 @@ cv::Mat Reconstruction::bundler(const std::vector<MatchedData> &matchdata,
     //Solve
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-
-    // publish用データ
-    cv::Mat p3_BA(3, 1, CV_32FC1);
-    p3_BA.at<float>(0) = (float)mutable_point_for_observations[0];
-    p3_BA.at<float>(1) = (float)mutable_point_for_observations[1];
-    p3_BA.at<float>(2) = (float)mutable_point_for_observations[2];
-
-    // メモリ解放
-    for (size_t i = 0; i < size; i++)
-    {
-        delete[] mutable_camera_for_observations[i];
-    }
-    delete[] mutable_camera_for_observations;
-
-    return p3_BA;
 }
+
 
 bool Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
 {
@@ -829,22 +857,30 @@ void Reconstruction::showImage()
         // カメラのuv方向への移動量を矢印で追加で図示
         cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
         cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
-        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 20000 + image_center.x,
-                                               frame_data.camerainfo.Transform.at<float>(1) * 20000 + image_center.y);
+        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
+                                               frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
         cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
         if(!t_eye_move.empty())
         {
             cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 20000 + image_center2.x,
-                                                        trans_est.at<float>(1) * 20000 + image_center2.y);
+            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
+                                                        trans_est.at<float>(1) * 10000 + image_center2.y);
             cv::arrowedLine(matching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
         }
     }
 
     // マッチングの様子なしの比較画像を図示
-    cv::Mat left_image = keyframe_data.extractor.image;
-    cv::Mat right_image = frame_data.extractor.image;
+    cv::Mat left_image = keyframe_data.extractor.image.clone();
+    cv::Mat right_image = frame_data.extractor.image.clone();
     cv::hconcat(left_image, right_image, nomatching_image);
+
+
+    // カメラのuv方向への移動量を矢印で追加で図示
+    cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
+    cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
+    cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
+                                            frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
+    cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
 
     // 表示
     if (!matching_image.empty())
