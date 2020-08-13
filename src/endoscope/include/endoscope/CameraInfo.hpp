@@ -165,7 +165,7 @@ public:
     cv::Mat RodriguesVec_world_est;
     cv::Mat Transform_est;
     cv::Mat Transform_world_est;
-    
+
     int frame_num;
 };
 
@@ -196,10 +196,7 @@ public:
 class FrameDatabase
 {
 public:
-    FrameDatabase()
-        : extractor(), camerainfo()
-    {
-    }
+    FrameDatabase(){};
     Extractor extractor;
     CameraInfo camerainfo;
     std::multimap<int, MatchedData> keyponit_map;

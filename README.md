@@ -89,6 +89,9 @@ ros2 run endoscope reconstructor
  --show: Show Matching scene:
     0 - Do not show the camera stream (default)
     1 - Show the camera stream
+ --ceres-stdout: Show Matching scene:
+    0 - Do not show (default)
+    1 - Show the ceres stdout
  --mode: Select Mode:
     0 - Normal (default)
     1 - Eye

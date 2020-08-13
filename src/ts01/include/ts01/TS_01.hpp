@@ -31,7 +31,7 @@ private:
 };
 
 class Manage_EyeExplorer
-    : public Manage_TS01, 
+    : public Manage_TS01,
       public Manage_Encoder
 {
 public:

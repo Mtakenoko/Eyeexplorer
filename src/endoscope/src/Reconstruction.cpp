@@ -68,7 +68,7 @@ void Reconstruction::process()
     this->triangulate(); // 三角測量
 
     // バンドル調整
-    this->bundler(); // バンドル調整  
+    this->bundler(); // バンドル調整
 
     // マップの管理を行う（グラフ構造を実装しようかな？）
     // this->manageMap();
@@ -542,7 +542,7 @@ void Reconstruction::triangulate()
             }
 
             // 終わったら辞書に登録してたフレーム情報を削除
-            if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE_DELETE)
+            if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE + KEYPOINT_SCENE_DELETE)
                 keyframe_data.keyponit_map.erase(dmatch_itr->queryIdx);
         }
     }
@@ -562,7 +562,7 @@ void Reconstruction::triangulate()
 
 void Reconstruction::bundler()
 {
-    if(camerainfo_map.empty())
+    if (camerainfo_map.empty())
         return;
 
     //最適化問題解くためのオブジェクト作成
@@ -576,7 +576,7 @@ void Reconstruction::bundler()
     }
 
     int i_cam = 0;
-    for(auto itr = camerainfo_map.begin(); itr != camerainfo_map.end(); itr++)
+    for (auto itr = camerainfo_map.begin(); itr != camerainfo_map.end(); itr++)
     {
         mutable_camera_for_observations[i_cam][0] = itr->second.RodriguesVec_world.at<float>(0);
         mutable_camera_for_observations[i_cam][1] = itr->second.RodriguesVec_world.at<float>(1);
@@ -599,7 +599,7 @@ void Reconstruction::bundler()
     }
 
     int i_point = 0;
-    for(auto itr = pointData_map.begin(); itr != pointData_map.end(); itr++)
+    for (auto itr = pointData_map.begin(); itr != pointData_map.end(); itr++)
     {
         mutable_point_for_observations[i_point][0] = itr->second.point3D.at<float>(0);
         mutable_point_for_observations[i_point][1] = itr->second.point3D.at<float>(1);
@@ -612,7 +612,7 @@ void Reconstruction::bundler()
     }
 
     // コスト関数に追加
-    for(auto frame_itr = framenum_cam_map.begin(); frame_itr != framenum_cam_map.end(); frame_itr++)
+    for (auto frame_itr = framenum_cam_map.begin(); frame_itr != framenum_cam_map.end(); frame_itr++)
     {
         int access_num_cam = framenum_cam_map.at(frame_itr->first);
 
@@ -623,14 +623,14 @@ void Reconstruction::bundler()
             ceres::CostFunction *cost_function = ProjectionErrorCostFuctor::Create(point2d[itr->second][0],
                                                                                    point2d[itr->second][1]);
             problem.AddResidualBlock(cost_function, NULL,
-                        &mutable_camera_for_observations[access_num_cam][0], &mutable_camera_for_observations[access_num_cam][1], &mutable_camera_for_observations[access_num_cam][2],
-                        &mutable_camera_for_observations[access_num_cam][3], &mutable_camera_for_observations[access_num_cam][4], &mutable_camera_for_observations[access_num_cam][5],
-                        &mutable_point_for_observations[itr->second][0], &mutable_point_for_observations[itr->second][1], &mutable_point_for_observations[itr->second][2]);
+                                     &mutable_camera_for_observations[access_num_cam][0], &mutable_camera_for_observations[access_num_cam][1], &mutable_camera_for_observations[access_num_cam][2],
+                                     &mutable_camera_for_observations[access_num_cam][3], &mutable_camera_for_observations[access_num_cam][4], &mutable_camera_for_observations[access_num_cam][5],
+                                     &mutable_point_for_observations[itr->second][0], &mutable_point_for_observations[itr->second][1], &mutable_point_for_observations[itr->second][2]);
         }
     }
 
     // パラメータの最適化における上限下限設定
-    for(auto frame_itr = framenum_cam_map.begin(); frame_itr != framenum_cam_map.end(); frame_itr++)
+    for (auto frame_itr = framenum_cam_map.begin(); frame_itr != framenum_cam_map.end(); frame_itr++)
     {
         int access_num_cam = framenum_cam_map.at(frame_itr->first);
         // 下限
@@ -683,7 +683,6 @@ void Reconstruction::bundler()
         delete[] point2d[i];
     }
 }
-
 
 bool Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
 {
@@ -754,7 +753,7 @@ void Reconstruction::estimate_move()
     cv::Mat R_est_output, t_est_output, mask;
     cv::Point2d principle_point(U0, V0);
     cv::Mat EssentialMat = cv::findEssentialMat(pt1, pt2, 1, cv::Point2f(0, 0), cv::RANSAC, 0.99, 1, mask);
-    if(!(EssentialMat.rows == 3 && EssentialMat.cols == 3))
+    if (!(EssentialMat.rows == 3 && EssentialMat.cols == 3))
     {
         printf("EssentialMat.rows = %d, EssentialMat.cols = %d\n", EssentialMat.rows, EssentialMat.cols);
         return;
@@ -772,7 +771,7 @@ void Reconstruction::estimate_move()
     float abs = (float)cv::norm(frame_data.camerainfo.Transform, cv::NORM_L2);
     R_est = R_est_output.t();
     t_est = -1 * R_est_output.t() * (t_est_output * abs); // t_est_outputを運動学で求めたabsで割っているのが問題点
-    
+
     // frame_dataに推定結果を格納
     R_est.convertTo(Rot_est, CV_32FC1);
     t_est.convertTo(trans_est, CV_32FC1);
@@ -788,7 +787,7 @@ void Reconstruction::estimate_move()
 
     // 運動学での移動方向ベクトルと5点アルゴリズムでの移動方向ベクトルの内積を求める
     float dot_est = (frame_data.camerainfo.Transform / abs).dot(frame_data.camerainfo.Transform_est / abs);
-    if(dot_est < THRESH_DOT)
+    if (dot_est < THRESH_DOT)
     {
         flag_reconstruction = false;
     }
@@ -835,10 +834,10 @@ void Reconstruction::manageMap()
 
 void Reconstruction::registMap(const cv::Mat &point3D_)
 {
-    if(point3D_.empty())
+    if (point3D_.empty())
         return;
 
-    for(size_t i = 0; i < match_num; i++)
+    for (size_t i = 0; i < match_num; i++)
     {
         Map map;
         map.desciptors = frame_data.extractor.descirptors;
@@ -849,8 +848,8 @@ void Reconstruction::registMap(const cv::Mat &point3D_)
 
 void Reconstruction::checkMapPoint()
 {
-    for(auto itr = map_point.begin(); itr < map_point.end(); itr++)
-    { 
+    for (auto itr = map_point.begin(); itr < map_point.end(); itr++)
+    {
         // 三次元点を現frameに再投影を行う
         cv::Mat cam_point(3, 1, CV_32FC1), world_point(4, 1, CV_32FC1);
         world_point.at<float>(0) = itr->point_3D.x;
@@ -864,11 +863,11 @@ void Reconstruction::checkMapPoint()
         img_point.y = cam_point.at<float>(1) / cam_point.at<float>(2);
 
         // 再投影点が画像上にそもそもあるか判定
-        if(img_point.x < 0 || img_point.y < 0 || img_point.x > IMAGE_WIDTH || img_point.y > IMAGE_HIGHT)
+        if (img_point.x < 0 || img_point.y < 0 || img_point.x > IMAGE_WIDTH || img_point.y > IMAGE_HIGHT)
         {
             return;
         }
-        
+
         // 再投影点付近に同等の特徴点があるか探索
         // KeyFrame毎に特徴点を管理してあげるのも手
         // 特徴点を繋ぎ合わせることができるならOK(knn_matchingとおなじ感じでいいんじゃないかな)
@@ -880,7 +879,7 @@ void Reconstruction::showImage()
     if (!flag_showImage)
         return;
 
-    if(keyframe_data.extractor.image.empty())
+    if (keyframe_data.extractor.image.empty())
         return;
 
     if (!inliners_matches.empty())
@@ -898,11 +897,11 @@ void Reconstruction::showImage()
         cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
                                                frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
         cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
-        if(!t_eye_move.empty())
+        if (!t_eye_move.empty())
         {
             cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
             cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
-                                                        trans_est.at<float>(1) * 10000 + image_center2.y);
+                                                       trans_est.at<float>(1) * 10000 + image_center2.y);
             cv::arrowedLine(matching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
         }
     }
@@ -912,12 +911,11 @@ void Reconstruction::showImage()
     cv::Mat right_image = frame_data.extractor.image.clone();
     cv::hconcat(left_image, right_image, nomatching_image);
 
-
     // カメラのuv方向への移動量を矢印で追加で図示
     cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
     cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
     cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
-                                            frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
+                                           frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
     cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
 
     // 表示

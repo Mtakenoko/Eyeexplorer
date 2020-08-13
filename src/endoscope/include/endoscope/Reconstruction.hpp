@@ -23,7 +23,7 @@
 
 #define IMAGE_WIDTH 320
 #define IMAGE_HIGHT 320
-  
+
 // keyframe_databaseの初期登録数
 #define KEYFRAME_DATABASE_NUM 3
 
@@ -183,16 +183,16 @@ private:
     int extract_type;
     size_t publish_type;
     size_t use_mode;
-    
+
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;
     size_t match_num;
     std::vector<FrameDatabase>::iterator keyframe_itr;
 
     // バンドル調整用データコンテナ
-    std::map<int, CameraInfo> camerainfo_map;   // keyはフレーム番号
+    std::map<int, CameraInfo> camerainfo_map;    // keyはフレーム番号
     std::multimap<int, PointData> pointData_map; // keyはフレーム番号
-    std::map<int, int> framenum_cam_map;    // keyはフレーム番号
-    std::multimap<int, int> framenum_point_map;    // keyはフレーム番号
+    std::map<int, int> framenum_cam_map;         // keyはフレーム番号
+    std::multimap<int, int> framenum_point_map;  // keyはフレーム番号
 };
 #endif

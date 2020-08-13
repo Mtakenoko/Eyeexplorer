@@ -2,20 +2,19 @@
 
 Manage_Encoder::Manage_Encoder()
 {
-    //アブソエンコーダのビット数の設定
-    ARM_BIT[0] = 20;
-    ARM_BIT[1] = 19;
-    ARM_BIT[2] = 19;
-    ARM_BIT[3] = 18;
-    ARM_BIT[4] = 18;
+  //アブソエンコーダのビット数の設定
+  ARM_BIT[0] = 20;
+  ARM_BIT[1] = 19;
+  ARM_BIT[2] = 19;
+  ARM_BIT[3] = 18;
+  ARM_BIT[4] = 18;
 
-    // カウント方向込
-    RQ[0] = -2 * PI / res(ARM_BIT[0]);
-    RQ[1] = -2 * PI / res(ARM_BIT[1]);
-    RQ[2] = 2 * PI / res(ARM_BIT[2]);
-    RQ[3] = 2 * PI / res(ARM_BIT[3]);
-    RQ[4] = 2 * PI / res(ARM_BIT[4]);
-
+  // カウント方向込
+  RQ[0] = -2 * PI / res(ARM_BIT[0]);
+  RQ[1] = -2 * PI / res(ARM_BIT[1]);
+  RQ[2] = 2 * PI / res(ARM_BIT[2]);
+  RQ[3] = 2 * PI / res(ARM_BIT[3]);
+  RQ[4] = 2 * PI / res(ARM_BIT[4]);
 }
 
 //分解能（パルス数）

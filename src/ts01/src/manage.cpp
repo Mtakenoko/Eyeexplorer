@@ -3,7 +3,7 @@
 Manager::Manager(const rclcpp::NodeOptions &options)
     : Manager("", options) {}
 
-Manager::Manager(const std::string &name_space, 
+Manager::Manager(const std::string &name_space,
                  const rclcpp::NodeOptions &options)
     : Node("ts_01_manager", name_space, options)
 {
@@ -22,24 +22,21 @@ Manager::Manager(const std::string &name_space,
     publisher_di_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_di", qos);
     publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
     publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_counter", qos);
-    std::cout << "Publish below topic" <<std::endl;
-    std::cout << "  /ts01_status" <<std::endl;
-    std::cout << "  /ts01_encoder" <<std::endl;
-    std::cout << "  /ts01_di" <<std::endl;
-    std::cout << "  /ts01_ai" <<std::endl;
-    std::cout << "  /ts01_counter" <<std::endl;
-     
+    std::cout << "Publish below topic" << std::endl;
+    std::cout << "  /ts01_status" << std::endl;
+    std::cout << "  /ts01_encoder" << std::endl;
+    std::cout << "  /ts01_di" << std::endl;
+    std::cout << "  /ts01_ai" << std::endl;
+    std::cout << "  /ts01_counter" << std::endl;
 
     // Subscribe
     subscription_stage_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-        "xyz_stage/move", qos, std::bind(&Manager::topic_callback_stage, this, std::placeholders::_1)
-        );
+        "xyz_stage/move", qos, std::bind(&Manager::topic_callback_stage, this, std::placeholders::_1));
     subscription_pullout_ = this->create_subscription<std_msgs::msg::Bool>(
-        "pull_out", qos, std::bind(&Manager::topic_callback_pullout, this, std::placeholders::_1)
-        );
-    std::cout << "Subscribe below topic" <<std::endl;
-    std::cout << "  /xyz_stage/move" <<std::endl;
-    std::cout << "  /pull_out" <<std::endl;
+        "pull_out", qos, std::bind(&Manager::topic_callback_pullout, this, std::placeholders::_1));
+    std::cout << "Subscribe below topic" << std::endl;
+    std::cout << "  /xyz_stage/move" << std::endl;
+    std::cout << "  /pull_out" << std::endl;
 }
 
 void Manager::topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
@@ -56,7 +53,7 @@ void Manager::initialize()
 {
     //TS01の状態に関するPublish用msg
     msg_status.set__data(false);
-    
+
     std::cout << "initial" << std::endl;
     //エンコーダーに関するPublish用msg
     msg_encoder.position.resize(ADOF);
@@ -116,30 +113,30 @@ void Manager::setMessage()
     enc[4] = eyeexplorer.shift_range(eyeexplorer.input.ssi[4] >> 1, 0x00003ffff); //
     for (size_t i = 0; i < ADOF; ++i)
     {
-      msg_encoder.position[i] = eyeexplorer.RQ[i] * enc[i];
-      // RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
+        msg_encoder.position[i] = eyeexplorer.RQ[i] * enc[i];
+        // RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
     }
     msg_encoder.header.stamp = this->now();
 
     //DI
     for (size_t i = 0; i < msg_di.data.size(); i++)
     {
-      //RCLCPP_INFO(node_logger, "DI #%zd = %d",i, eyeexplorer.input.din[i]);
-      msg_di.data[i] = eyeexplorer.input.din[i];
+        //RCLCPP_INFO(node_logger, "DI #%zd = %d",i, eyeexplorer.input.din[i]);
+        msg_di.data[i] = eyeexplorer.input.din[i];
     }
 
     //AI
     for (size_t i = 0; i < msg_ai.data.size(); i++)
     {
-      //RCLCPP_INFO(node_logger, "AI #%zd = %f", i, eyeexplorer.input.v[i]);
-      msg_ai.data[i] = eyeexplorer.input.v[i];
+        //RCLCPP_INFO(node_logger, "AI #%zd = %f", i, eyeexplorer.input.v[i]);
+        msg_ai.data[i] = eyeexplorer.input.v[i];
     }
 
     // Count
     for (size_t i = 0; i < msg_count.data.size(); i++)
     {
-      //RCLCPP_INFO(node_logger, "count #%zd = %f", i, eyeexplorer.input.count[i]);
-      msg_count.data[i] = eyeexplorer.input.count[i];
+        //RCLCPP_INFO(node_logger, "count #%zd = %f", i, eyeexplorer.input.count[i]);
+        msg_count.data[i] = eyeexplorer.input.count[i];
     }
 }
 
@@ -152,7 +149,6 @@ void Manager::publish()
     publisher_ai_->publish(msg_ai);
     publisher_count_->publish(msg_count);
 }
-
 
 void Manager::detatch()
 {
