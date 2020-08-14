@@ -141,12 +141,11 @@ private:
     void setKeyFrame();
     void setCameraInfo();
     void chooseKeyFrame();
+    void updateKeyFrameDatabase();
+    void managePointCloud();
     void keyframe_detector();
     void estimate_move();
     void process();
-    void manageMap();
-    void registMap(const cv::Mat &point3D_);
-    void checkMapPoint();
     void showImage();
     void publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
 
@@ -156,10 +155,10 @@ private:
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
     std::vector<Map> map_point;
-    cv::Mat point3D, point3D_hold,
-        point3D_BA, point3D_BA_hold,
-        point3D_filtered, point3D_filtered_hold,
-        point3D_est, point3D_est_hold;
+    cv::Mat point3D_hold,
+        point3D_BA_hold,
+        point3D_filtered_hold,
+        point3D_est_hold;
     cv::Mat matching_image, nomatching_image;
     cv::Mat R_eye_move, t_eye_move;
     cv::Mat Rot_est, trans_est;

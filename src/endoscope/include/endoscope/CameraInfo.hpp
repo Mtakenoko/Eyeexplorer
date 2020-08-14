@@ -193,12 +193,22 @@ public:
     int frame_num;
 };
 
+class Point3D
+{
+public:
+    cv::Mat point3D;
+    cv::Mat point3D_filtered;
+    cv::Mat point3D_BA;
+    cv::Mat point3D_est;
+};
+
 class FrameDatabase
 {
 public:
     FrameDatabase(){};
     Extractor extractor;
     CameraInfo camerainfo;
+    Point3D point_3D;
     std::multimap<int, MatchedData> keyponit_map;
 };
 
