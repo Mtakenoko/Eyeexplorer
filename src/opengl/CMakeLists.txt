@@ -25,8 +25,10 @@ find_package(GLUT REQUIRED)
 add_executable(opengl_test
   src/opengl_test.cpp
 )
-include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} )
-target_link_libraries(opengl_test ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} )
+target_link_libraries(opengl_test
+  ${OPENGL_LIBRARIES}
+  ${GLUT_LIBRARY}
+)
 # コンパイルターゲットに依存パッケージの情報を追加する
 ament_target_dependencies(opengl_test
   "rclcpp"
@@ -36,6 +38,27 @@ ament_target_dependencies(opengl_test
 # 実行ファイルをインストール
 install(TARGETS
   opengl_test
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# texture_test node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(texture_test
+  src/texture_test.cpp
+)
+target_link_libraries(texture_test
+  ${OPENGL_LIBRARIES}
+  ${GLUT_LIBRARY}
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(texture_test
+  "rclcpp"
+  "OpenGL"
+  "GLUT"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  texture_test
   DESTINATION lib/${PROJECT_NAME}
 )
 
