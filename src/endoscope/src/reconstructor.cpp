@@ -30,11 +30,10 @@ int main(int argc, char *argv[])
     size_t num_scene = 4;
     size_t matching_method = Reconstruction::Matching::BruteForce;
     size_t extractor = Extractor::DetectorType::AKAZE;
-    size_t publish = Reconstruction::Publish::FILTER_HOLD;
     // Configure demo parameters with command line options.
     if (!parse_command_options(argc, argv, &depth, &reliability_policy, &history_policy,
                                &show_camera, &ceres_stdout, &mode, &est_move, &thresh_knn_ratio, &thresh_ransac,
-                               &cpu_core, &num_scene, &matching_method, &extractor, &publish))
+                               &cpu_core, &num_scene, &matching_method, &extractor))
     {
         return 0;
     }
@@ -51,27 +50,43 @@ int main(int argc, char *argv[])
     reconstructor.setUseMode(mode);
     reconstructor.setMatchingMethod(matching_method);
     reconstructor.setExtractor(extractor);
-    reconstructor.setPublishType(publish);
 
     // node
     auto node = rclcpp::Node::make_shared("reconstructor"); //Set QoS to Publish
 
-    // Topic Name
+    // Subscriber Topic Name
     std::string topic_sub_track("endoscope_image");
     std::string topic_sub_arm("endoscope_transform");
-    std::string topic_pub("pointcloud");
+    // Publisher Topic Name
+    std::string topic_pub_normal("/pointcloud/normal");
+    std::string topic_pub_normal_hold("/pointcloud/normal_hold");
+    std::string topic_pub_BA("/pointcloud/BA");
+    std::string topic_pub_BA_hold("/pointcloud/BA_hold");
+    std::string topic_pub_filtered("/pointcloud/filtered");
+    std::string topic_pub_filtered_hold("/pointcloud/filtered_hold");
+    std::string topic_pub_est("/pointcloud/est");
+    std::string topic_pub_est_hold("/pointcloud/est_hold");
 
     // Set quality of service profile based on command line options.
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
     // Pub/Subの設定
-    RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub.c_str());
-    auto publisher_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub, qos);
+    auto publisher_normal_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_normal, qos);
+    auto publisher_normal_hold_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_normal_hold, qos);
+    auto publisher_BA_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_BA, qos);
+    auto publisher_BA_hold_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_BA_hold, qos);
+    auto publisher_filtered_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_filtered, qos);
+    auto publisher_filtered_hold_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_filtered_hold, qos);
+    auto publisher_est_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_est, qos);
+    auto publisher_est_hold_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_est_hold, qos);
+
     message_filters::Subscriber<sensor_msgs::msg::Image> sub_track_(node.get(), topic_sub_track);
     message_filters::Subscriber<geometry_msgs::msg::Transform> sub_arm_(node.get(), topic_sub_arm);
     message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync_(sub_track_, sub_arm_, 1000);
-    sync_.registerCallback(std::bind(&Reconstruction::topic_callback_, reconstructor, std::placeholders::_1, std::placeholders::_2, publisher_));
+    sync_.registerCallback(std::bind(&Reconstruction::topic_callback_, reconstructor, std::placeholders::_1, std::placeholders::_2,
+                                     publisher_normal_, publisher_normal_hold_, publisher_BA_, publisher_BA_hold_,
+                                     publisher_filtered_, publisher_filtered_hold_, publisher_est_, publisher_est_hold_));
 
     rclcpp::spin(node);
     rclcpp::shutdown();
