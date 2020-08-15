@@ -54,7 +54,7 @@ bool parse_command_options(
     size_t *mode,
     bool *est_move, float *thresh_knn_ratio, float *thresh_ransac,
     int *cpu_core, size_t *scene,
-    size_t *matching, size_t *extractor, size_t *publish)
+    size_t *matching, size_t *extractor)
 {
   std::vector<std::string> args(argv, argv + argc);
 
@@ -130,18 +130,6 @@ bool parse_command_options(
       ss << "   SIFT   : 3 " << std::endl;
       ss << "   SURF   : 4 " << std::endl;
       ss << "   BRIEF  : 5 " << std::endl;
-    }
-    if (publish != nullptr)
-    {
-      ss << " --publish: Set Publish pointcloud" << std::endl;
-      ss << "   NORMAL        : 0 " << std::endl;
-      ss << "   NORMAL_HOLD   : 1 " << std::endl;
-      ss << "   BUNDLE        : 2 " << std::endl;
-      ss << "   BUNDLE_HOLD   : 3 " << std::endl;
-      ss << "   FILTER        : 4 " << std::endl;
-      ss << "   FILTER_HOLD   : 5 (default)" << std::endl;
-      ss << "   ESTIMATE      : 6 " << std::endl;
-      ss << "   ESTIMATE_HOLD : 7 " << std::endl;
     }
 
     std::cout << ss.str();
@@ -227,12 +215,6 @@ bool parse_command_options(
   if (!extractor_str.empty())
   {
     *extractor = std::stoul(extractor_str.c_str());
-  }
-
-  auto publish_str = get_command_option(args, "--publish");
-  if (!publish_str.empty())
-  {
-    *publish = std::stoul(publish_str.c_str());
   }
 
   return true;

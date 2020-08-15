@@ -14,11 +14,18 @@ Reconstruction::Reconstruction()
       threshold_knn_ratio(0.7f), threshold_ransac(5.0),
       num_CPU_core(8), num_Scene(KEYPOINT_SCENE),
       matching_method(Matching::BruteForce), extract_type(Extractor::DetectorType::AKAZE),
-      publish_type(Publish::FILTER_HOLD), use_mode(UseMode::NORMAL_SCENE) {}
+      use_mode(UseMode::NORMAL_SCENE) {}
 
 void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                      const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal_hold,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA_hold,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold)
 {
     printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
     // 初期化
@@ -30,7 +37,10 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
     // 図示
     this->showImage();
     // Publish
-    this->publish(pub_pointcloud);
+    this->publish(pub_pointcloud_normal, pub_pointcloud_normal_hold,
+                  pub_pointcloud_BA, pub_pointcloud_BA_hold,
+                  pub_pointcloud_filtered, pub_pointcloud_filtered_hold,
+                  pub_pointcloud_est, pub_pointcloud_est_hold);
 }
 
 void Reconstruction::process()
@@ -72,7 +82,7 @@ void Reconstruction::process()
 
     // Keyframe_database
     this->updateKeyFrameDatabase();
-    
+
     // PointCloud
     this->managePointCloud();
 }
@@ -571,7 +581,7 @@ void Reconstruction::triangulate()
 }
 
 void Reconstruction::managePointCloud()
-{    
+{
     // pointcloud hold
     cv::Mat p3, p3_BA, p3_filtered, p3_est;
     for (auto itr = keyframe_database.begin(); itr != keyframe_database.end(); itr++)
@@ -850,7 +860,6 @@ void Reconstruction::estimate_move()
     // std::cout << "内積 : " << dot_est << std::endl;
 }
 
-
 void Reconstruction::showImage()
 {
     if (!flag_showImage)
@@ -908,45 +917,68 @@ void Reconstruction::showImage()
     }
 }
 
-void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud)
+void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal_hold,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA_hold,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold)
 {
     if (flag_setFirstFrame)
     {
         flag_setFirstFrame = false;
         return;
     }
-    cv::Mat pointCloud;
-    switch (publish_type)
-    {
-    case Publish::NORMAL:
-        keyframe_data.point_3D.point3D.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::NORMAL_HOLD:
-        point3D_hold.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::BUNDLE:
-        keyframe_data.point_3D.point3D_BA.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::BUNDLE_HOLD:
-        point3D_BA_hold.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::FILTER:
-        keyframe_data.point_3D.point3D_filtered.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::FILTER_HOLD:
-        point3D_filtered_hold.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::ESTIMATE:
-        keyframe_data.point_3D.point3D_est.convertTo(pointCloud, CV_32FC3);
-        break;
-    case Publish::ESTIMATE_HOLD:
-        point3D_est_hold.convertTo(pointCloud, CV_32FC3);
-        break;
-    }
 
-    auto msg_cloud_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud, *msg_cloud_pub, 0);
-    pub_pointcloud->publish(std::move(msg_cloud_pub));
+    cv::Mat pointCloud_normal;
+    keyframe_data.point_3D.point3D.convertTo(pointCloud_normal, CV_32FC3);
+    auto msg_cloud_normal_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_normal, *msg_cloud_normal_pub, 0);
+    pub_pointcloud_normal->publish(std::move(msg_cloud_normal_pub));
+
+    cv::Mat pointCloud_normal_hold;
+    point3D_hold.convertTo(pointCloud_normal_hold, CV_32FC3);
+    auto msg_cloud_normal_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, 0);
+    pub_pointcloud_normal_hold->publish(std::move(msg_cloud_normal_hold_pub));
+
+    cv::Mat pointCloud_BA;
+    keyframe_data.point_3D.point3D_BA.convertTo(pointCloud_BA, CV_32FC3);
+    auto msg_cloud_BA_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_BA, *msg_cloud_BA_pub, 0);
+    pub_pointcloud_BA->publish(std::move(msg_cloud_BA_pub));
+
+    cv::Mat pointCloud_BA_hold;
+    point3D_BA_hold.convertTo(pointCloud_BA_hold, CV_32FC3);
+    auto msg_cloud_BA_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, 0);
+    pub_pointcloud_BA_hold->publish(std::move(msg_cloud_BA_hold_pub));
+
+    cv::Mat pointCloud_filtered;
+    keyframe_data.point_3D.point3D_filtered.convertTo(pointCloud_filtered, CV_32FC3);
+    auto msg_cloud_filtered_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_filtered, *msg_cloud_filtered_pub, 0);
+    pub_pointcloud_filtered->publish(std::move(msg_cloud_filtered_pub));
+
+    cv::Mat pointCloud_filtered_hold;
+    point3D_filtered_hold.convertTo(pointCloud_filtered_hold, CV_32FC3);
+    auto msg_cloud_filtered_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, 0);
+    pub_pointcloud_filtered_hold->publish(std::move(msg_cloud_filtered_hold_pub));
+
+    cv::Mat pointCloud_est;
+    keyframe_data.point_3D.point3D_est.convertTo(pointCloud_est, CV_32FC3);
+    auto msg_cloud_est_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_est, *msg_cloud_est_pub, 0);
+    pub_pointcloud_est->publish(std::move(msg_cloud_est_pub));
+
+    cv::Mat pointCloud_est_hold;
+    point3D_est_hold.convertTo(pointCloud_est_hold, CV_32FC3);
+    auto msg_cloud_est_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
+    converter.cvMat_to_msgPointCloud2(pointCloud_est_hold, *msg_cloud_est_hold_pub, 0);
+    pub_pointcloud_est_hold->publish(std::move(msg_cloud_est_hold_pub));
 }
 
 void Reconstruction::setThreshold_knn_ratio(float thresh)
@@ -985,11 +1017,6 @@ void Reconstruction::setCPUCoreforBundler(int num)
 void Reconstruction::setSceneNum(size_t num)
 {
     this->num_Scene = num;
-}
-
-void Reconstruction::setPublishType(size_t num)
-{
-    this->publish_type = num;
 }
 
 void Reconstruction::setUseMode(size_t num)
