@@ -60,7 +60,6 @@ bool parse_command_options(
     bool *est_move = nullptr,
     float *thresh_knn_ratio = nullptr, float *thresh_ransac = nullptr,
     int *cpu_core = nullptr, size_t *scene = nullptr,
-    size_t *matching = nullptr, size_t *extractor = nullptr,
-    size_t *publish = nullptr);
+    size_t *matching = nullptr, size_t *extractor = nullptr);
 
 #endif // RECONSTRUCTION__OPTIONS_HPP_

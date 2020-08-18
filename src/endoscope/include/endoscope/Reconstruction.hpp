@@ -87,7 +87,14 @@ public:
     Reconstruction();
     void topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                          const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
-                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal_hold,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA_hold,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold);
     void setThreshold_knn_ratio(float thresh);
     void setThreshold_ransac(float thresh);
     void setFlagShowImage(bool flag);
@@ -95,7 +102,6 @@ public:
     void setFlagEstimationMovement(bool flag);
     void setCPUCoreforBundler(int num);
     void setSceneNum(size_t num);
-    void setPublishType(size_t num);
     void setUseMode(size_t num);
     void setMatchingMethod(size_t num);
     void setExtractor(size_t num);
@@ -104,18 +110,6 @@ public:
     {
         KNN = 0,
         BruteForce = 1
-    };
-
-    enum Publish
-    {
-        NORMAL = 0,
-        NORMAL_HOLD = 1,
-        BUNDLE = 2,
-        BUNDLE_HOLD = 3,
-        FILTER = 4,
-        FILTER_HOLD = 5,
-        ESTIMATE = 6,
-        ESTIMATE_HOLD = 7
     };
 
     enum UseMode
@@ -141,14 +135,20 @@ private:
     void setKeyFrame();
     void setCameraInfo();
     void chooseKeyFrame();
+    void updateKeyFrameDatabase();
+    void managePointCloud();
     void keyframe_detector();
     void estimate_move();
     void process();
-    void manageMap();
-    void registMap(const cv::Mat &point3D_);
-    void checkMapPoint();
     void showImage();
-    void publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud);
+    void publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_normal_hold,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_BA_hold,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold);
 
 private:
     // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
@@ -156,10 +156,10 @@ private:
     FrameDatabase keyframe_data;
     std::vector<FrameDatabase> keyframe_database;
     std::vector<Map> map_point;
-    cv::Mat point3D, point3D_hold,
-        point3D_BA, point3D_BA_hold,
-        point3D_filtered, point3D_filtered_hold,
-        point3D_est, point3D_est_hold;
+    cv::Mat point3D_hold,
+        point3D_BA_hold,
+        point3D_filtered_hold,
+        point3D_est_hold;
     cv::Mat matching_image, nomatching_image;
     cv::Mat R_eye_move, t_eye_move;
     cv::Mat Rot_est, trans_est;
@@ -181,7 +181,6 @@ private:
     size_t num_Scene;
     size_t matching_method;
     int extract_type;
-    size_t publish_type;
     size_t use_mode;
 
     std::vector<cv::DMatch> dmatch, inliners_matches;

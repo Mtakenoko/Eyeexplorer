@@ -116,15 +116,6 @@ ros2 run endoscope reconstructor
    SIFT   : 3 
    SURF   : 4 
    BRIEF  : 5 
- --publish: Set Publish pointcloud
-   NORMAL        : 0 
-   NORMAL_HOLD   : 1 
-   BUNDLE        : 2 
-   BUNDLE_HOLD   : 3 
-   FILTER        : 4 
-   FILTER_HOLD   : 5 (default)
-   ESTIMATE      : 6 
-   ESTIMATE_HOLD : 7 
 ```
 ## map
 点群から平面や球面など指定したモデルを推定し、そこまでの距離を計測する。そして近ければ内視鏡抜去する信号をpublishする。
