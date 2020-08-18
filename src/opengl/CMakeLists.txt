@@ -62,6 +62,27 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# texture_test2 node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(texture_test2
+  src/texture_test2.cpp
+)
+target_link_libraries(texture_test2
+  ${OPENGL_LIBRARIES}
+  ${GLUT_LIBRARY}
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(texture_test2
+  "rclcpp"
+  "OpenGL"
+  "GLUT"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  texture_test2
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
