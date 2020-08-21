@@ -35,7 +35,7 @@
 #define CHOOSE_KF_PHI_MAX_N 0.1
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
-#define CHOOSE_KF_Z_MAX_E 0.01
+#define CHOOSE_KF_Z_MAX_E 0.005
 #define CHOOSE_KF_XY_MIN_E 0.005
 #define CHOOSE_KF_XY_MAX_E 0.01
 #define CHOOSE_KF_PHI_MIN_E 0.005

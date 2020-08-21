@@ -892,17 +892,28 @@ void Reconstruction::showImage()
         }
     }
 
-    // マッチングの様子なしの比較画像を図示
-    cv::Mat left_image = keyframe_data.extractor.image.clone();
-    cv::Mat right_image = frame_data.extractor.image.clone();
-    cv::hconcat(left_image, right_image, nomatching_image);
+    if (flag_reconstruction)
+    {
+        // マッチングの様子なしの比較画像を図示
+        cv::Mat left_image = keyframe_data.extractor.image.clone();
+        cv::Mat right_image = frame_data.extractor.image.clone();
+        cv::hconcat(left_image, right_image, nomatching_image);
 
-    // カメラのuv方向への移動量を矢印で追加で図示
-    cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
-    cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
-    cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
-                                           frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
-    cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
+        // カメラのuv方向への移動量を矢印で追加で図示
+        cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
+        cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
+        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
+                                               frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
+        cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
+
+        if (!t_eye_move.empty())
+        {
+            cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
+            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
+                                                       trans_est.at<float>(1) * 10000 + image_center2.y);
+            cv::arrowedLine(nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
+        }
+    }
 
     // 表示
     if (!matching_image.empty())
