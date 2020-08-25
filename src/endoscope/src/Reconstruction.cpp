@@ -1000,12 +1000,10 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
 
     // Image
     auto msg_matching_image = std::make_unique<sensor_msgs::msg::Image>();
-    msg_matching_image->is_bigendian = false;
     this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
     pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
 
     auto msg_nomatching_image = std::make_unique<sensor_msgs::msg::Image>();
-    msg_nomatching_image->is_bigendian = false;
     this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
     pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
 }
@@ -1034,6 +1032,7 @@ void Reconstruction::convert_frame_to_message(const cv::Mat &frame, size_t frame
     msg.width = frame.cols;
     msg.encoding = mat_type2encoding(frame.type());
     msg.step = static_cast<sensor_msgs::msg::Image::_step_type>(frame.step);
+    msg.is_bigendian = false;
     size_t size = frame.step * frame.rows;
     msg.data.resize(size);
     memcpy(&msg.data[0], frame.data, size);
