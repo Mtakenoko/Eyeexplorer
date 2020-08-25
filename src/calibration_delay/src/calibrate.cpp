@@ -251,9 +251,9 @@ void Calib_Param::optimization_without_ceres()
 
                 // カメラ座標系
                 float Point[3];
-                for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
                 {
-                    Point[i] = (float)endoscope_pose[0][i] * (point[0] - (float)Ptip[0]) + (float)endoscope_pose[1][i] * (point[1] - (float)Ptip[1]) + (float)endoscope_pose[2][i] * (point[2] - (float)Ptip[2]);
+                    Point[j] = (float)endoscope_pose[0][j] * (point[0] - (float)Ptip[0]) + (float)endoscope_pose[1][j] * (point[1] - (float)Ptip[1]) + (float)endoscope_pose[2][j] * (point[2] - (float)Ptip[2]);
                 }
 
                 // カメラ正規化座標系
@@ -275,10 +275,10 @@ void Calib_Param::optimization_without_ceres()
                 error[0] = predicted_x - observed_x;
                 error[1] = predicted_y - observed_y;
                 error_distance += sqrt(error[0] * error[0] + error[1] * error[1]);
-                printf("point[%0.1lf %0.1lf %0.1lf], Ptip[%0.1lf %0.1lf %0.1lf]\n", point[0], point[1], point[2], Ptip[0], Ptip[1], Ptip[2]);
-                endoscope_pose.print();
-                printf("Point[%0.1lf %0.1lf %0.1lf], image_point[%0.1lf %0.1lf]\n", Point[0], Point[1], Point[2], xp, yp);
-                printf("obs[%0.1lf %0.1lf], pre[%0.1lf %0.1lf]\n", observed_x, observed_y, predicted_x, predicted_y);
+                // printf("point[%0.1lf %0.1lf %0.1lf], Ptip[%0.1lf %0.1lf %0.1lf]\n", point[0], point[1], point[2], Ptip[0], Ptip[1], Ptip[2]);
+                // endoscope_pose.print();
+                // printf("Point[%0.1lf %0.1lf %0.1lf], image_point[%0.1lf %0.1lf]\n", Point[0], Point[1], Point[2], xp, yp);
+                // printf("obs[%0.1lf %0.1lf], pre[%0.1lf %0.1lf]\n", observed_x, observed_y, predicted_x, predicted_y);
                 error_container.push_back(error_distance);
             }
         }
