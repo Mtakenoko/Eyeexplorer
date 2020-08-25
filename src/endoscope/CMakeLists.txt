@@ -60,7 +60,6 @@ add_executable(reconstructor
   src/triangulate.cpp
   src/cost_function.cpp
   option/options_reconstructor.cpp
-  ../HTL/src/transform.cpp
   ../HTL/src/msg_converter.cpp
 )
 target_link_libraries(reconstructor

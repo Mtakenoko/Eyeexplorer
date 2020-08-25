@@ -54,7 +54,7 @@
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 4
-#define KEYPOINT_SCENE_DELETE 10
+#define KEYPOINT_SCENE_DELETE 50
 
 // マッチング誤対応除去用パラメータ
 #define THRESH_VARIANCE 100       // 分散のしきい値
@@ -132,7 +132,7 @@ private:
     void outlier_remover();
     void triangulate();
     void bundler();
-    bool pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D);
+    void pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat *OutputPoint3D, const CameraInfo &camera_state);
     void setFirstFrame();
     void setKeyFrame();
     void setCameraInfo();

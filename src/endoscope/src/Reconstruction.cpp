@@ -2,11 +2,8 @@
 #include "../include/endoscope/triangulate.hpp"
 #include "../include/endoscope/Bundler.hpp"
 #include "../include/endoscope/cost_function.hpp"
-#include "../../HTL/include/transform.h"
+#include "../include/endoscope/transformer.hpp"
 #include "../../HTL/include/msg_converter.h"
-
-Transform transform;
-Converter converter;
 
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true),
@@ -172,7 +169,7 @@ void Reconstruction::chooseKeyFrame()
         bool moving_xy_max = cv::norm(t_move_xy) < XY_MAX;
         bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN;
         // 仰角
-        float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+        float phi = Transformer<float>::RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
         bool moving_phi_max = std::abs(phi) < PHI_MAX;
         bool moving_phi_min = std::abs(phi) > PHI_MIN;
 
@@ -231,7 +228,7 @@ void Reconstruction::setKeyFrame()
             cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
             bool moving_xy = cv::norm(t_move_xy) < XY_MAX;
             // 仰角
-            float phi = transform.RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+            float phi = Transformer<float>::RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
             bool moving_phi = std::abs(phi) < PHI_MAX;
             if (moving_xy && moving_phi)
             {
@@ -300,6 +297,7 @@ int Reconstruction::encoding2mat_type(const std::string &encoding)
         throw std::runtime_error("Unsupported encoding type");
     }
 }
+
 std::vector<cv::Point2f> Reconstruction::keypoint2Point(std::vector<cv::KeyPoint> kp)
 {
     std::vector<cv::Point2f> points;
@@ -309,6 +307,7 @@ std::vector<cv::Point2f> Reconstruction::keypoint2Point(std::vector<cv::KeyPoint
     }
     return points;
 }
+
 void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                 const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm)
 {
@@ -321,7 +320,7 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
     frame_data.extractor.image = frame_image.clone();
 
     // 運動学で求めたグローバル座標からみたカメラの位置姿勢
-    frame_data.camerainfo.Rotation_world = transform.QuaternionToRotMat(msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
+    frame_data.camerainfo.Rotation_world = Transformer<float>::QuaternionToRotMat((float)msg_arm->rotation.x, (float)msg_arm->rotation.y, (float)msg_arm->rotation.z, (float)msg_arm->rotation.w);
     frame_data.camerainfo.Transform_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x, msg_arm->translation.y, msg_arm->translation.z);
     frame_data.camerainfo.setData();
 
@@ -330,11 +329,6 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
 
     // 特徴点検出・特徴量記述
     frame_data.extractor.extractAndcompute(extract_type);
-
-    // コマンドラインに表示
-    // std::cout << "frame_id : " << frame_data.camerainfo.frame_num << std::endl;
-    // std::cout << "Rotation_world : " << frame_data.camerainfo.Rotation_world << std::endl;
-    // std::cout << "Trans_world : " << frame_data.camerainfo.Transform_world << std::endl;
 }
 
 void Reconstruction::matching()
@@ -575,10 +569,11 @@ void Reconstruction::triangulate()
         keyframe_data.point_3D.point3D = p3.clone();
     }
 
-    // 点群の統計フィルタ
-    cv::Mat p3_filter;
-    if (this->pointcloud_statics_filter(keyframe_data.point_3D.point3D, &p3_filter))
+    // 点群フィルタ（眼球モードの時だけ起動）
+    if (use_mode == UseMode::EYE)
     {
+        cv::Mat p3_filter;
+        this->pointcloud_eye_filter(keyframe_data.point_3D.point3D, &p3_filter, keyframe_data.camerainfo);
         keyframe_data.point_3D.point3D_filtered = p3_filter.clone();
     }
 }
@@ -723,42 +718,59 @@ void Reconstruction::bundler()
     }
 }
 
-bool Reconstruction::pointcloud_statics_filter(const cv::Mat &Point3D, cv::Mat *output_point3D)
+void Reconstruction::pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat *OutputPoint3D, const CameraInfo &camera_state)
 {
-    int point_num = Point3D.rows;
+    int point_num = InputPoint3D.rows;
     if (point_num == 0)
-        return false;
+        return;
 
+    cv::Mat temp_Point3D, temp_Point3D_cam;
+    // 内視鏡からの距離が24mm以内かつカメラ視線方向にあるかどうか一点ごとに検査
+    for (int i = 0; i < point_num; i++)
+    {
+        cv::Mat point_world(3, 1, CV_32FC1);
+        point_world.at<float>(0) = InputPoint3D.at<cv::Point3f>(i).x;
+        point_world.at<float>(1) = InputPoint3D.at<cv::Point3f>(i).y;
+        point_world.at<float>(2) = InputPoint3D.at<cv::Point3f>(i).z;
+        float distance = std::sqrt((point_world.at<float>(0) - camera_state.Transform_world.at<float>(0)) * (point_world.at<float>(0) - camera_state.Transform_world.at<float>(0)) +
+                                   (point_world.at<float>(1) - camera_state.Transform_world.at<float>(1)) * (point_world.at<float>(1) - camera_state.Transform_world.at<float>(1)) +
+                                   (point_world.at<float>(2) - camera_state.Transform_world.at<float>(2)) * (point_world.at<float>(2) - camera_state.Transform_world.at<float>(2)));
+        cv::Mat point_cam = camera_state.Rotation_world.t() * (point_world - camera_state.Transform_world);
+        std::cout << "distance : " << distance << std::endl;
+        std::cout << "point_cam : " << point_cam << std::endl;
+        if (distance < 0.024 && point_cam.at<float>(2) > 0)
+        {
+            temp_Point3D.push_back(InputPoint3D.at<cv::Point3f>(i));
+        }
+        cv::Point3f pt;
+        pt.x = point_cam.at<float>(0);
+        pt.y = point_cam.at<float>(1);
+        pt.z = point_cam.at<float>(2);
+        temp_Point3D_cam.push_back(pt);
+    }
+
+    // カメラ座標系から見た点群のz方向の分散が大きかったら除外
     // 平均
     cv::Point3f point_average;
-    for (int i = 0; i < point_num; i++)
+    for (int i = 0; i < temp_Point3D_cam.rows; i++)
     {
-        point_average.x += Point3D.at<cv::Vec3f>(i, 0)[0];
-        point_average.y += Point3D.at<cv::Vec3f>(i, 0)[1];
-        point_average.z += Point3D.at<cv::Vec3f>(i, 0)[2];
+        point_average.z += temp_Point3D_cam.at<cv::Vec3f>(i, 0)[2];
     }
-    point_average.x /= point_num;
-    point_average.y /= point_num;
-    point_average.z /= point_num;
+    point_average.z /= temp_Point3D_cam.rows;
     // 分散
     cv::Point3f point_variance;
-    for (int i = 0; i < point_num; i++)
+    for (int i = 0; i < temp_Point3D_cam.rows; i++)
     {
-        point_variance.x += (Point3D.at<cv::Vec3f>(i, 0)[0] - point_average.x) * (Point3D.at<cv::Vec3f>(i, 0)[0] - point_average.x);
-        point_variance.y += (Point3D.at<cv::Vec3f>(i, 0)[1] - point_average.y) * (Point3D.at<cv::Vec3f>(i, 0)[1] - point_average.y);
-        point_variance.z += (Point3D.at<cv::Vec3f>(i, 0)[2] - point_average.z) * (Point3D.at<cv::Vec3f>(i, 0)[2] - point_average.z);
+        point_variance.z += (temp_Point3D_cam.at<cv::Vec3f>(i, 0)[2] - point_average.z) * (temp_Point3D_cam.at<cv::Vec3f>(i, 0)[2] - point_average.z);
     }
-    point_average.x /= point_num;
-    point_average.y /= point_num;
-    point_average.z /= point_num;
-    // printf("mean:[%f %f %f], var:[%f %f %f]\n", point_average.x, point_average.y, point_average.z, point_variance.x, point_variance.y, point_variance.z);
+    point_average.z /= temp_Point3D_cam.rows;
+    // printf("var:[%f]\n", point_variance.z);
 
     //分散がでかすぎたらアウト
-    if (point_variance.x > THRESH_VARIANCE_POINT || point_variance.y > THRESH_VARIANCE_POINT || point_variance.z > THRESH_VARIANCE_POINT)
-        return false;
-
-    *output_point3D = Point3D.clone();
-    return true;
+    if (point_variance.z < THRESH_VARIANCE_POINT)
+    {
+        *OutputPoint3D = temp_Point3D;
+    }
 }
 
 void Reconstruction::estimate_move()
@@ -953,49 +965,49 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     cv::Mat pointCloud_normal;
     keyframe_data.point_3D.point3D.convertTo(pointCloud_normal, CV_32FC3);
     auto msg_cloud_normal_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_normal, *msg_cloud_normal_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_normal, *msg_cloud_normal_pub, 0);
     pub_pointcloud_normal->publish(std::move(msg_cloud_normal_pub));
 
     cv::Mat pointCloud_normal_hold;
     point3D_hold.convertTo(pointCloud_normal_hold, CV_32FC3);
     auto msg_cloud_normal_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, 0);
     pub_pointcloud_normal_hold->publish(std::move(msg_cloud_normal_hold_pub));
 
     cv::Mat pointCloud_BA;
     keyframe_data.point_3D.point3D_BA.convertTo(pointCloud_BA, CV_32FC3);
     auto msg_cloud_BA_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_BA, *msg_cloud_BA_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_BA, *msg_cloud_BA_pub, 0);
     pub_pointcloud_BA->publish(std::move(msg_cloud_BA_pub));
 
     cv::Mat pointCloud_BA_hold;
     point3D_BA_hold.convertTo(pointCloud_BA_hold, CV_32FC3);
     auto msg_cloud_BA_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, 0);
     pub_pointcloud_BA_hold->publish(std::move(msg_cloud_BA_hold_pub));
 
     cv::Mat pointCloud_filtered;
     keyframe_data.point_3D.point3D_filtered.convertTo(pointCloud_filtered, CV_32FC3);
     auto msg_cloud_filtered_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_filtered, *msg_cloud_filtered_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_filtered, *msg_cloud_filtered_pub, 0);
     pub_pointcloud_filtered->publish(std::move(msg_cloud_filtered_pub));
 
     cv::Mat pointCloud_filtered_hold;
     point3D_filtered_hold.convertTo(pointCloud_filtered_hold, CV_32FC3);
     auto msg_cloud_filtered_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, 0);
     pub_pointcloud_filtered_hold->publish(std::move(msg_cloud_filtered_hold_pub));
 
     cv::Mat pointCloud_est;
     keyframe_data.point_3D.point3D_est.convertTo(pointCloud_est, CV_32FC3);
     auto msg_cloud_est_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_est, *msg_cloud_est_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_est, *msg_cloud_est_pub, 0);
     pub_pointcloud_est->publish(std::move(msg_cloud_est_pub));
 
     cv::Mat pointCloud_est_hold;
     point3D_est_hold.convertTo(pointCloud_est_hold, CV_32FC3);
     auto msg_cloud_est_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    converter.cvMat_to_msgPointCloud2(pointCloud_est_hold, *msg_cloud_est_hold_pub, 0);
+    Converter::cvMat_to_msgPointCloud2(pointCloud_est_hold, *msg_cloud_est_hold_pub, 0);
     pub_pointcloud_est_hold->publish(std::move(msg_cloud_est_hold_pub));
 
     // Image

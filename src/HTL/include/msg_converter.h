@@ -13,10 +13,10 @@ class Converter
 {
 public:
     explicit Converter();
-    void cvimage_to_msg(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg);
-    void cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::msg::PointCloud &msg_cloud_pub);
-    void cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count = 0);
-    std::string mat_type2encoding(int mat_type);
+    static void cvimage_to_msg(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg);
+    static void cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::msg::PointCloud &msg_cloud_pub);
+    static void cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count = 0);
+    static std::string mat_type2encoding(int mat_type);
 private:
 
 };
