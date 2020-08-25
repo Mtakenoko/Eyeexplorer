@@ -113,7 +113,6 @@ void Marker::setPosition(int marker_id)
 }
 
 Scene::Scene()
-    : joint_counter(0),
-      set_joint_flag(true), set_image_flag(true), finish_flag(false)
+    : set_joint_flag(true), set_image_flag(true), delete_flag(false)
 {
 }

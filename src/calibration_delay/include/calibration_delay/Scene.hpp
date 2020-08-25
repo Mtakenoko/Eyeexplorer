@@ -26,14 +26,20 @@ class Scene
 {
 public:
     Scene();
+    void clear()
+    {
+        this->marker.clear();
+        this->set_image_flag = true;
+        this->set_joint_flag = true;
+        this->delete_flag = false;
+    }
 
 public:
     std::vector<Marker> marker;
-    Joint joint[MAX_DELAY_TIME];
-    int joint_counter;
+    std::vector<Joint> joint;
     cv::Mat Image;
     bool set_joint_flag;
     bool set_image_flag;
-    bool finish_flag;
+    bool delete_flag;
 };
 #endif

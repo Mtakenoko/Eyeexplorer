@@ -13,7 +13,8 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include "Scene.hpp"
 
-#define SCENE_NUM 50
+#define SCENE_NUM 35
+#define DELAY_TIME 100
 
 class Calib_Param
 {
@@ -29,14 +30,17 @@ public:
     void setCalibrationFlag();
     void setStartFlag();
     void saveOffsetData();
+
 private:
     void input_image_data(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void input_joint_data(const sensor_msgs::msg::JointState::SharedPtr msg_image);
     bool detect_marker(const cv::Mat &image, std::vector<Marker> *marker);
     void optimization_without_ceres();
+    void drawReprojectedMarkerPoint(const Scene &scene);
     void clear();
     int encoding2mat_type(const std::string &encoding);
     void setNewScene();
+    void decideHandleScene();
 
 private:
     // マーカーの三次元位置および画像平面での位置およびその画像
