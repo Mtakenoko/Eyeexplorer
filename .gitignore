@@ -6,3 +6,4 @@ src/calibration/Output/offset.txt
 src/calibration_delay/Output/delay.txt
 src/arm/arm_rviz/launch/__pycache__
 src/arm/arm_status/offset
+memo.md
