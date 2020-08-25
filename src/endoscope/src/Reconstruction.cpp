@@ -25,7 +25,9 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold)
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image)
 {
     printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
     // 初期化
@@ -40,7 +42,8 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
     this->publish(pub_pointcloud_normal, pub_pointcloud_normal_hold,
                   pub_pointcloud_BA, pub_pointcloud_BA_hold,
                   pub_pointcloud_filtered, pub_pointcloud_filtered_hold,
-                  pub_pointcloud_est, pub_pointcloud_est_hold);
+                  pub_pointcloud_est, pub_pointcloud_est_hold,
+                  pub_pointcloud_matching_image, pub_pointcloud_nomatching_image);
 }
 
 void Reconstruction::process()
@@ -873,9 +876,10 @@ void Reconstruction::showImage()
         // マッチングの様子を図示
         cv::Scalar match_line_color = cv::Scalar(255, 0, 0);
         cv::Scalar match_point_color = cv::Scalar(255, 255, 0);
+        std::vector<char> matchesMask;
         cv::drawMatches(keyframe_data.extractor.image, keyframe_data.extractor.keypoints,
                         frame_data.extractor.image, frame_data.extractor.keypoints,
-                        inliners_matches, matching_image, match_line_color, match_point_color);
+                        inliners_matches, matching_image, match_line_color, match_point_color, matchesMask, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
         // カメラのuv方向への移動量を矢印で追加で図示
         cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
@@ -935,7 +939,9 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
-                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold)
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image)
 {
     if (flag_setFirstFrame)
     {
@@ -943,6 +949,7 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
         return;
     }
 
+    // Pointcloud
     cv::Mat pointCloud_normal;
     keyframe_data.point_3D.point3D.convertTo(pointCloud_normal, CV_32FC3);
     auto msg_cloud_normal_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
@@ -990,6 +997,47 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     auto msg_cloud_est_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
     converter.cvMat_to_msgPointCloud2(pointCloud_est_hold, *msg_cloud_est_hold_pub, 0);
     pub_pointcloud_est_hold->publish(std::move(msg_cloud_est_hold_pub));
+
+    // Image
+    auto msg_matching_image = std::make_unique<sensor_msgs::msg::Image>();
+    msg_matching_image->is_bigendian = false;
+    this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
+    pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
+
+    auto msg_nomatching_image = std::make_unique<sensor_msgs::msg::Image>();
+    msg_nomatching_image->is_bigendian = false;
+    this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
+    pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
+}
+
+std::string Reconstruction::mat_type2encoding(int mat_type)
+{
+    switch (mat_type)
+    {
+    case CV_8UC1:
+        return "mono8";
+    case CV_8UC3:
+        return "bgr8";
+    case CV_16SC1:
+        return "mono16";
+    case CV_8UC4:
+        return "rgba8";
+    default:
+        throw std::runtime_error("Unsupported encoding type");
+    }
+}
+
+void Reconstruction::convert_frame_to_message(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg)
+{
+    // copy cv information into ros message
+    msg.height = frame.rows;
+    msg.width = frame.cols;
+    msg.encoding = mat_type2encoding(frame.type());
+    msg.step = static_cast<sensor_msgs::msg::Image::_step_type>(frame.step);
+    size_t size = frame.step * frame.rows;
+    msg.data.resize(size);
+    memcpy(&msg.data[0], frame.data, size);
+    msg.header.frame_id = std::to_string(frame_id);
 }
 
 void Reconstruction::setThreshold_knn_ratio(float thresh)

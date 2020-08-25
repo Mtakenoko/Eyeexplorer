@@ -66,6 +66,8 @@ int main(int argc, char *argv[])
     std::string topic_pub_filtered_hold("/pointcloud/filtered_hold");
     std::string topic_pub_est("/pointcloud/est");
     std::string topic_pub_est_hold("/pointcloud/est_hold");
+    std::string topic_pub_matching_image("/matching_image");
+    std::string topic_pub_nomatching_image("/nomatching_image");
 
     // Set quality of service profile based on command line options.
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
@@ -80,13 +82,16 @@ int main(int argc, char *argv[])
     auto publisher_filtered_hold_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_filtered_hold, qos);
     auto publisher_est_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_est, qos);
     auto publisher_est_hold_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(topic_pub_est_hold, qos);
+    auto publisher_matching_image_ = node->create_publisher<sensor_msgs::msg::Image>(topic_pub_matching_image, qos);
+    auto publisher_nomatching_image_ = node->create_publisher<sensor_msgs::msg::Image>(topic_pub_nomatching_image, qos);
 
     message_filters::Subscriber<sensor_msgs::msg::Image> sub_track_(node.get(), topic_sub_track);
     message_filters::Subscriber<geometry_msgs::msg::Transform> sub_arm_(node.get(), topic_sub_arm);
     message_filters::TimeSynchronizer<sensor_msgs::msg::Image, geometry_msgs::msg::Transform> sync_(sub_track_, sub_arm_, 1000);
     sync_.registerCallback(std::bind(&Reconstruction::topic_callback_, reconstructor, std::placeholders::_1, std::placeholders::_2,
                                      publisher_normal_, publisher_normal_hold_, publisher_BA_, publisher_BA_hold_,
-                                     publisher_filtered_, publisher_filtered_hold_, publisher_est_, publisher_est_hold_));
+                                     publisher_filtered_, publisher_filtered_hold_, publisher_est_, publisher_est_hold_,
+                                     publisher_matching_image_, publisher_nomatching_image_));
 
     rclcpp::spin(node);
     rclcpp::shutdown();

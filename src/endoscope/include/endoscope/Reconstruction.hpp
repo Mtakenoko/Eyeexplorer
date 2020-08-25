@@ -29,16 +29,16 @@
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(一般用)
 #define CHOOSE_KF_Z_MAX_N 0.01
-#define CHOOSE_KF_XY_MIN_N 0.008
+#define CHOOSE_KF_XY_MIN_N 0.01
 #define CHOOSE_KF_XY_MAX_N 0.03
 #define CHOOSE_KF_PHI_MIN_N 0.001
 #define CHOOSE_KF_PHI_MAX_N 0.1
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
-#define CHOOSE_KF_Z_MAX_E 0.005
+#define CHOOSE_KF_Z_MAX_E 0.001
 #define CHOOSE_KF_XY_MIN_E 0.005
 #define CHOOSE_KF_XY_MAX_E 0.01
-#define CHOOSE_KF_PHI_MIN_E 0.005
+#define CHOOSE_KF_PHI_MIN_E 0.03
 #define CHOOSE_KF_PHI_MAX_E 0.05
 
 // // 新しくKF挿入するためのパラメータ(一般用)
@@ -48,8 +48,8 @@
 #define SET_KF_PHI_MAX_N 0.05
 
 // 新しくKF挿入するためのパラメータ(眼球用)
-#define SET_KF_Z_MAX_E 0.01
-#define SET_KF_XY_MAX_E 0.03
+#define SET_KF_Z_MAX_E 0.003
+#define SET_KF_XY_MAX_E 0.01
 #define SET_KF_PHI_MAX_E 0.03
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
@@ -94,7 +94,9 @@ public:
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
-                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold);
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
+                         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image);
     void setThreshold_knn_ratio(float thresh);
     void setThreshold_ransac(float thresh);
     void setFlagShowImage(bool flag);
@@ -148,7 +150,11 @@ private:
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered,
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
-                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold);
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
+                 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image);
+    std::string mat_type2encoding(int mat_type);
+    void convert_frame_to_message(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg);
 
 private:
     // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
