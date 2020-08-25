@@ -57,52 +57,52 @@ void Marker::setPosition(int marker_id)
         this->Position.z = -161.0;
         break;
     case 10:
-        this->Position.x = -192.0;
+        this->Position.x = -201.0;
         this->Position.y = 341.5;
         this->Position.z = -210.0;
         break;
     case 11:
-        this->Position.x = -192.0;
+        this->Position.x = -201.0;
         this->Position.y = 404.0;
         this->Position.z = -210.0;
         break;
     case 12:
-        this->Position.x = -192.0;
+        this->Position.x = -201.0;
         this->Position.y = 467.0;
         this->Position.z = -210.0;
         break;
     case 13:
-        this->Position.x = -192.0;
+        this->Position.x = -201.0;
         this->Position.y = 529.7;
         this->Position.z = -210.0;
         break;
     case 14:
-        this->Position.x = -139.8;
+        this->Position.x = -148.8;
         this->Position.y = 404.0;
         this->Position.z = -210.0;
         break;
     case 15:
-        this->Position.x = -139.8;
+        this->Position.x = -148.8;
         this->Position.y = 467.0;
         this->Position.z = -210.0;
         break;
     case 16:
-        this->Position.x = -87.0;
+        this->Position.x = -96.0;
         this->Position.y = 341.5;
         this->Position.z = -210.0;
         break;
     case 17:
-        this->Position.x = -87.0;
+        this->Position.x = -96.0;
         this->Position.y = 404.0;
         this->Position.z = -210.0;
         break;
     case 18:
-        this->Position.x = -87.0;
+        this->Position.x = -96.0;
         this->Position.y = 467.0;
         this->Position.z = -210.0;
         break;
     case 19:
-        this->Position.x = -87.0;
+        this->Position.x = -96.0;
         this->Position.y = 529.7;
         this->Position.z = -210.0;
         break;

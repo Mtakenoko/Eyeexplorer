@@ -39,9 +39,9 @@
   <link name="link_base">
     <visual>
       <geometry>
-        <box size = "0.009 0.01 0.032"/>
+        <box size = "0.019 0.01 0.022"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0.0045 0 0.016"/>
+      <origin rpy="0 0 0" xyz="0.0095 0 0.011"/>
       <material name="ARM/orange"/>
     </visual>
   </link>
@@ -49,7 +49,7 @@
   <joint name="arm_joint2" type="continuous">
     <parent link="link_base"/>
     <child link="arm_link1"/>
-    <origin rpy="0 0 0" xyz="0.009 0 0.032"/>
+    <origin rpy="0 0 0" xyz="0.019 0 0.022"/>
     <axis xyz="0 1 0"/>
   </joint>
 
@@ -205,9 +205,9 @@
   <link name="endoscope_link2">
     <visual>
       <geometry>
-        <box size="0.005 0.005 -0.03"/>
+        <box size="0.005 0.005 -0.035"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0 -0.015"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0175"/>
       <material name="ARM/white"/>
     </visual>
   </link>
@@ -215,7 +215,7 @@
   <joint name="endoscope_camera" type="fixed">
     <parent link="endoscope_link2"/>
     <child link="endoscope"/>
-    <origin rpy="0 3.14 0" xyz="0 0 -0.03"/>
+    <origin rpy="0 3.14 0" xyz="0 0 -0.035"/>
   </joint>
 
   <link name="endoscope">

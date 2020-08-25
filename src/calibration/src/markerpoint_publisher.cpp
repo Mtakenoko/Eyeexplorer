@@ -109,61 +109,61 @@ int main(int argc, char *argv[])
             }
             else if (i == 10)
             {
-                pt.x = -0.191;
+                pt.x = -0.201;
                 pt.y = 0.3415;
                 pt.z = -0.210;
             }
             else if (i == 11)
             {
-                pt.x = -0.191;
+                pt.x = -0.201;
                 pt.y = 0.404;
                 pt.z = -0.210;
             }
             else if (i == 12)
             {
-                pt.x = -0.191;
+                pt.x = -0.201;
                 pt.y = 0.467;
                 pt.z = -0.210;
             }
             else if (i == 13)
             {
-                pt.x = -0.191;
+                pt.x = -0.201;
                 pt.y = 0.5297;
                 pt.z = -0.210;
             }
             else if (i == 14)
             {
-                pt.x = -0.1388;
+                pt.x = -0.1488;
                 pt.y = 0.404;
                 pt.z = -0.210;
             }
             else if (i == 15)
             {
-                pt.x = -0.1388;
+                pt.x = -0.1488;
                 pt.y = 0.467;
                 pt.z = -0.210;
             }
             else if (i == 16)
             {
-                pt.x = -0.086;
+                pt.x = -0.096;
                 pt.y = 0.3415;
                 pt.z = -0.210;
             }
             else if (i == 17)
             {
-                pt.x = -0.086;
+                pt.x = -0.096;
                 pt.y = 0.404;
                 pt.z = -0.210;
             }
             else if (i == 18)
             {
-                pt.x = -0.086;
+                pt.x = -0.096;
                 pt.y = 0.467;
                 pt.z = -0.210;
             }
             else if (i == 19)
             {
-                pt.x = -0.086;
+                pt.x = -0.096;
                 pt.y = 0.5297;
                 pt.z = -0.210;
             }
