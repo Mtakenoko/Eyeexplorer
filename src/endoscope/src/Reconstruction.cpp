@@ -736,8 +736,8 @@ void Reconstruction::pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat 
                                    (point_world.at<float>(1) - camera_state.Transform_world.at<float>(1)) * (point_world.at<float>(1) - camera_state.Transform_world.at<float>(1)) +
                                    (point_world.at<float>(2) - camera_state.Transform_world.at<float>(2)) * (point_world.at<float>(2) - camera_state.Transform_world.at<float>(2)));
         cv::Mat point_cam = camera_state.Rotation_world.t() * (point_world - camera_state.Transform_world);
-        std::cout << "distance : " << distance << std::endl;
-        std::cout << "point_cam : " << point_cam << std::endl;
+        // std::cout << "distance : " << distance << std::endl;
+        // std::cout << "point_cam : " << point_cam << std::endl;
         if (distance < 0.024 && point_cam.at<float>(2) > 0)
         {
             temp_Point3D.push_back(InputPoint3D.at<cv::Point3f>(i));

@@ -86,8 +86,8 @@ bool parse_command_options(
     if (mode != nullptr)
     {
       ss << " --mode: Select Mode:" << std::endl;
-      ss << "    0 - Normal (default)" << std::endl;
-      ss << "    1 - Eye" << std::endl;
+      ss << "    0 - Normal" << std::endl;
+      ss << "    1 - Eye (default)" << std::endl;
     }
     if (est_move != nullptr)
     {

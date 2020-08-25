@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
     bool show_camera = false;
     bool ceres_stdout = false;
-    size_t mode = 0;
+    size_t mode = Reconstruction::UseMode::EYE;
     bool est_move = false;
     float thresh_knn_ratio = 0.7f;
     float thresh_ransac = 5.0;
