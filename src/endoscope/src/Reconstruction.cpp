@@ -877,12 +877,6 @@ void Reconstruction::estimate_move()
 
 void Reconstruction::showImage()
 {
-    if (!flag_showImage)
-        return;
-
-    if (keyframe_data.extractor.image.empty())
-        return;
-
     if (!inliners_matches.empty())
     {
         // マッチングの様子を図示
@@ -893,23 +887,6 @@ void Reconstruction::showImage()
                         frame_data.extractor.image, frame_data.extractor.keypoints,
                         inliners_matches, matching_image, match_line_color, match_point_color, matchesMask, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-        // カメラのuv方向への移動量を矢印で追加で図示
-        cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
-        cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
-        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
-                                               frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
-        cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
-        if (!t_eye_move.empty())
-        {
-            cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
-                                                       trans_est.at<float>(1) * 10000 + image_center2.y);
-            cv::arrowedLine(matching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
-        }
-    }
-
-    if (flag_reconstruction)
-    {
         // マッチングの様子なしの比較画像を図示
         cv::Mat left_image = keyframe_data.extractor.image.clone();
         cv::Mat right_image = frame_data.extractor.image.clone();
@@ -920,24 +897,27 @@ void Reconstruction::showImage()
         cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
         cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
                                                frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
+        cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
         cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
 
+        // 眼球移動量推定を行っていればその結果も矢印で表記
         if (!t_eye_move.empty())
         {
             cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
             cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
                                                        trans_est.at<float>(1) * 10000 + image_center2.y);
+            cv::arrowedLine(matching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
             cv::arrowedLine(nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
         }
     }
 
     // 表示
-    if (!matching_image.empty())
+    if (!matching_image.empty() && flag_showImage)
     {
         cv::imshow("matching_image", matching_image);
         cv::waitKey(1);
     }
-    if (!nomatching_image.empty())
+    if (!nomatching_image.empty() && flag_showImage)
     {
         cv::imshow("nomatching_image", nomatching_image);
         cv::waitKey(1);
@@ -1011,13 +991,19 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     pub_pointcloud_est_hold->publish(std::move(msg_cloud_est_hold_pub));
 
     // Image
-    auto msg_matching_image = std::make_unique<sensor_msgs::msg::Image>();
-    this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
-    pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
+    if (!matching_image.empty())
+    {
+        auto msg_matching_image = std::make_unique<sensor_msgs::msg::Image>();
+        this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
+        pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
+    }
 
-    auto msg_nomatching_image = std::make_unique<sensor_msgs::msg::Image>();
-    this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
-    pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
+    if (!nomatching_image.empty())
+    {
+        auto msg_nomatching_image = std::make_unique<sensor_msgs::msg::Image>();
+        this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
+        pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
+    }
 }
 
 std::string Reconstruction::mat_type2encoding(int mat_type)
