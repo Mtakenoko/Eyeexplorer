@@ -4,10 +4,7 @@
 #include <ktl.h>
 #include <rclcpp/rclcpp.hpp>
 
-#include "../include/msg_converter.h"
-Converter::Converter()
-{
-}
+#include "../include/msg_converter.hpp"
 
 std::string Converter::mat_type2encoding(int mat_type)
 {
@@ -38,20 +35,25 @@ void Converter::cvimage_to_msg(const cv::Mat &frame, size_t frame_id, sensor_msg
     msg.header.frame_id = std::to_string(frame_id);
 }
 
-void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud, sensor_msgs::msg::PointCloud &msg_cloud_pub)
+void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, const size_t &color)
 {
     // msg_cloud_pub.header = std_msgs::msg::Header();
     // msg_cloud_pub.header.stamp = rclcpp::Clock().now();
     msg_cloud_pub.header.frame_id = "world";
 
-    geometry_msgs::msg::Point32 point;
-    for (int i = 0; i < pointCloud.rows; i++)
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_;
+    for (int i = 0; i < pointCloud2.rows; i++)
     {
-        point.x = pointCloud.at<float>(i, 0);
-        point.y = pointCloud.at<float>(i, 1);
-        point.z = pointCloud.at<float>(i, 2);
-        msg_cloud_pub.points.push_back(point);
+        //　色
+        pcl::PointXYZRGB pt;
+        pt = Converter::pclColor(color);
+        pt.x = pointCloud2.at<float>(i, 0);
+        pt.y = pointCloud2.at<float>(i, 1);
+        pt.z = pointCloud2.at<float>(i, 2);
+        cloud_.push_back(pt);
     }
+    // auto pc2_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    pcl::toROSMsg(cloud_, msg_cloud_pub);
 }
 
 void Converter::cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count)
@@ -91,4 +93,49 @@ void Converter::cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::
             floatData[i * (msg_cloud_pub.point_step / sizeof(float)) + j] = pointCloud2.at<cv::Vec3f>(i)[j];
         }
     }
+}
+
+pcl::PointXYZRGB Converter::pclColor(const size_t &color)
+{
+    pcl::PointXYZRGB pt;
+    switch (color)
+    {
+    case Converter::Color::BRACK:
+        pt = pcl::PointXYZRGB(0, 0, 0);
+        break;
+
+    case Converter::Color::WHITE:
+        pt = pcl::PointXYZRGB(255, 255, 255);
+        break;
+
+    case Converter::Color::SILVER:
+        pt = pcl::PointXYZRGB(192, 192, 192);
+        break;
+
+    case Converter::Color::BLUE:
+        pt = pcl::PointXYZRGB(0, 0, 255);
+        break;
+
+    case Converter::Color::RED:
+        pt = pcl::PointXYZRGB(255, 0, 0);
+        break;
+
+    case Converter::Color::GREEN:
+        pt = pcl::PointXYZRGB(0, 255, 0);
+        break;
+
+    case Converter::Color::YELLOW:
+        pt = pcl::PointXYZRGB(255, 255, 0);
+        break;
+
+    case Converter::Color::AQUA:
+        pt = pcl::PointXYZRGB(0, 255, 255);
+        break;
+
+    default:
+        pt = pcl::PointXYZRGB(255, 255, 255);
+        break;
+    }
+
+    return pt;
 }
