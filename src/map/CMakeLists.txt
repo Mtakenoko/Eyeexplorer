@@ -28,6 +28,7 @@ find_package(rcutils REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
@@ -141,6 +142,27 @@ ament_target_dependencies(pullout_endoscope
 # 実行ファイルをインストール
 install(TARGETS
   pullout_endoscope
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# eyeball_publisher node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(eyeball_publisher
+  src/eyeball_publisher.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(eyeball_publisher
+  "rclcpp"
+  "rcl_interfaces"
+  "rcutils"
+  "std_msgs"
+  "visualization_msgs"
+)
+target_link_libraries(eyeball_publisher
+  ${Boost_SYSTEM_LIBRARY}
+)
+# 実行ファイルをインストール
+install(TARGETS eyeball_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 

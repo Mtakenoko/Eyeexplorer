@@ -25,7 +25,7 @@ ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_dif_FK.launch
 ## 内視鏡キャプチャ
 WEBカメラデバイスとして認識できる内視鏡映像キャプチャデバイスを使用。内視鏡特有の黒い部分を自動的に切り抜くように設定。320*320の画像を`/endoscope_image`としてpublish。
 ```
-ros2 run endoscope cap_endoscope -c 2 -s 1
+ros2 run endoscope cap_endoscope -c 2
 ```
 またサイズ変更できるのもある（非推奨）
 ```
@@ -156,8 +156,7 @@ rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz
 ```
 ros2 bag play workspace/ros2_eyeexplorer/rosbag2/calib_flower.bag
 ```
-逆に記録するときはこんな感じ。基本的に取るべきトピックは`/ts01_encoder`と`/endoscope_image`の2つでOK。
+逆に記録するときはこんな感じ。基本的に取るべきトピックは`/joiont_states`と`/endoscope_image`の2つでOK。
 ```
-ros2 bag record -o  workspace/ros2_eyeexplorer/rosbag2/hoge.bag /ts01_encoder /endoscope_image
+ros2 bag record -o  workspace/ros2_eyeexplorer/rosbag2/hoge.bag /joint_states /endoscope_image
 ```
-

@@ -738,7 +738,7 @@ void Reconstruction::pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat 
         cv::Mat point_cam = camera_state.Rotation_world.t() * (point_world - camera_state.Transform_world);
         // std::cout << "distance : " << distance << std::endl;
         // std::cout << "point_cam : " << point_cam << std::endl;
-        if (distance < 0.024 && point_cam.at<float>(2) > 0)
+        if (distance < 0.010 && point_cam.at<float>(2) > 0)
         {
             temp_Point3D.push_back(InputPoint3D.at<cv::Point3f>(i));
         }
@@ -752,18 +752,18 @@ void Reconstruction::pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat 
     // カメラ座標系から見た点群のz方向の分散が大きかったら除外
     // 平均
     cv::Point3f point_average;
-    for (int i = 0; i < temp_Point3D_cam.rows; i++)
+    for (int i = 0; i < temp_Point3D.rows; i++)
     {
-        point_average.z += temp_Point3D_cam.at<cv::Vec3f>(i, 0)[2];
+        point_average.z += temp_Point3D.at<cv::Vec3f>(i, 0)[2];
     }
-    point_average.z /= temp_Point3D_cam.rows;
+    point_average.z /= temp_Point3D.rows;
     // 分散
     cv::Point3f point_variance;
-    for (int i = 0; i < temp_Point3D_cam.rows; i++)
+    for (int i = 0; i < temp_Point3D.rows; i++)
     {
-        point_variance.z += (temp_Point3D_cam.at<cv::Vec3f>(i, 0)[2] - point_average.z) * (temp_Point3D_cam.at<cv::Vec3f>(i, 0)[2] - point_average.z);
+        point_variance.z += (temp_Point3D.at<cv::Vec3f>(i, 0)[2] - point_average.z) * (temp_Point3D.at<cv::Vec3f>(i, 0)[2] - point_average.z);
     }
-    point_average.z /= temp_Point3D_cam.rows;
+    point_average.z /= temp_Point3D.rows;
     // printf("var:[%f]\n", point_variance.z);
 
     //分散がでかすぎたらアウト
