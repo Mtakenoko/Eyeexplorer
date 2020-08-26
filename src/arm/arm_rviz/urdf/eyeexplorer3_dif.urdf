@@ -192,7 +192,7 @@
         <box size="0.01 0.01 -0.03"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 -0.015"/>
-      <material name="ARM/blue"/>
+      <material name="ARM/black"/>
     </visual>
   </link>
 
@@ -205,7 +205,7 @@
   <link name="endoscope_link_dif1">
     <visual>
       <geometry>
-        <box size="0.005 0.005 -0.03"/>
+        <box size="0.002 0.002 -0.03"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 -0.015"/>
       <material name="ARM/white"/>

@@ -21,7 +21,7 @@
 
 using namespace std::chrono_literals;
 
-#define DELAY_TIME 100    //[ms]
+#define DELAY_TIME 1    //[ms]
 
 geometry_msgs::msg::Transform tip_msg;
 
