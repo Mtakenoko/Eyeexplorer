@@ -72,6 +72,8 @@ ament_target_dependencies(reconstructor
   "std_msgs"
   "OpenCV"
   "message_filters"
+  "pcl_conversions"
+  "Boost"
   "ceres"
 )
 install(TARGETS reconstructor

@@ -37,9 +37,6 @@ void Converter::cvimage_to_msg(const cv::Mat &frame, size_t frame_id, sensor_msg
 
 void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, const size_t &color)
 {
-    // msg_cloud_pub.header = std_msgs::msg::Header();
-    // msg_cloud_pub.header.stamp = rclcpp::Clock().now();
-    msg_cloud_pub.header.frame_id = "world";
 
     pcl::PointCloud<pcl::PointXYZRGB> cloud_;
     for (int i = 0; i < pointCloud2.rows; i++)
@@ -54,6 +51,10 @@ void Converter::cvMat_to_msgPointCloud(const cv::Mat pointCloud2, sensor_msgs::m
     }
     // auto pc2_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
     pcl::toROSMsg(cloud_, msg_cloud_pub);
+
+    // msg_cloud_pub.header = std_msgs::msg::Header();
+    // msg_cloud_pub.header.stamp = rclcpp::Clock().now();
+    msg_cloud_pub.header.frame_id = "world";
 }
 
 void Converter::cvMat_to_msgPointCloud2(const cv::Mat pointCloud2, sensor_msgs::msg::PointCloud2 &msg_cloud_pub, int dist_count)
@@ -130,6 +131,22 @@ pcl::PointXYZRGB Converter::pclColor(const size_t &color)
 
     case Converter::Color::AQUA:
         pt = pcl::PointXYZRGB(0, 255, 255);
+        break;
+
+    case Converter::Color::PINK:
+        pt = pcl::PointXYZRGB(255, 0, 255);
+        break;
+
+    case Converter::Color::OLIVE:
+        pt = pcl::PointXYZRGB(128, 128, 0);
+        break;
+
+    case Converter::Color::TEAL:
+        pt = pcl::PointXYZRGB(0, 128, 128);
+        break;
+
+    case Converter::Color::SKIN:
+        pt = pcl::PointXYZRGB(255, 222, 173);
         break;
 
     default:

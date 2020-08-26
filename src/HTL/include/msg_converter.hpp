@@ -27,7 +27,11 @@ public:
         RED = 4,
         GREEN = 5,
         YELLOW = 6,
-        AQUA = 7
+        AQUA = 7,
+        PINK = 8,
+        OLIVE = 9,
+        TEAL = 10,
+        SKIN = 11
     };
 };
 

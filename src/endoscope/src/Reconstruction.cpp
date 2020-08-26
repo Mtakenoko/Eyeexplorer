@@ -3,7 +3,7 @@
 #include "../include/endoscope/Bundler.hpp"
 #include "../include/endoscope/cost_function.hpp"
 #include "../include/endoscope/transformer.hpp"
-#include "../../HTL/include/msg_converter.h"
+#include "../../HTL/include/msg_converter.hpp"
 
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true),
@@ -791,10 +791,10 @@ void Reconstruction::estimate_move()
     for (size_t i = 0; i < matched_point1.size(); i++)
     {
         cv::Point2f point1, point2;
-        point1.x = matched_point1[i].x - U0;
-        point1.y = matched_point1[i].y - V0;
-        point2.x = matched_point2[i].x - U0;
-        point2.y = matched_point2[i].y - V0;
+        point1.x = matched_point1[i].x - PP_X;
+        point1.y = matched_point1[i].y - PP_Y;
+        point2.x = matched_point2[i].x - PP_X;
+        point2.y = matched_point2[i].y - PP_Y;
         pt1.push_back(point1);
         pt2.push_back(point2);
     }
@@ -802,7 +802,7 @@ void Reconstruction::estimate_move()
     // 5点アルゴリズム
     // １つめの画像を正規化座標としたときに2枚目の画像への回転・並進変換行列
     cv::Mat R_est_output, t_est_output, mask;
-    cv::Point2d principle_point(U0, V0);
+    cv::Point2d principle_point(PP_X, PP_Y);
     cv::Mat EssentialMat = cv::findEssentialMat(pt1, pt2, 1, cv::Point2f(0, 0), cv::RANSAC, 0.99, 1, mask);
     if (!(EssentialMat.rows == 3 && EssentialMat.cols == 3))
     {
@@ -944,63 +944,63 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     // Pointcloud
     cv::Mat pointCloud_normal;
     keyframe_data.point_3D.point3D.convertTo(pointCloud_normal, CV_32FC3);
-    auto msg_cloud_normal_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_normal, *msg_cloud_normal_pub, 0);
-    pub_pointcloud_normal->publish(std::move(msg_cloud_normal_pub));
+    auto msg_cloud_normal_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_normal, *msg_cloud_normal_pub, Converter::Color::BLUE);
+    pub_pointcloud_normal->publish(*msg_cloud_normal_pub);
 
     cv::Mat pointCloud_normal_hold;
     point3D_hold.convertTo(pointCloud_normal_hold, CV_32FC3);
-    auto msg_cloud_normal_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, 0);
-    pub_pointcloud_normal_hold->publish(std::move(msg_cloud_normal_hold_pub));
+    auto msg_cloud_normal_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, Converter::Color::YELLOW);
+    pub_pointcloud_normal_hold->publish(*msg_cloud_normal_hold_pub);
 
     cv::Mat pointCloud_BA;
     keyframe_data.point_3D.point3D_BA.convertTo(pointCloud_BA, CV_32FC3);
-    auto msg_cloud_BA_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_BA, *msg_cloud_BA_pub, 0);
-    pub_pointcloud_BA->publish(std::move(msg_cloud_BA_pub));
+    auto msg_cloud_BA_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_BA, *msg_cloud_BA_pub, Converter::Color::GREEN);
+    pub_pointcloud_BA->publish(*msg_cloud_BA_pub);
 
     cv::Mat pointCloud_BA_hold;
     point3D_BA_hold.convertTo(pointCloud_BA_hold, CV_32FC3);
-    auto msg_cloud_BA_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, 0);
-    pub_pointcloud_BA_hold->publish(std::move(msg_cloud_BA_hold_pub));
+    auto msg_cloud_BA_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, Converter::Color::RED);
+    pub_pointcloud_BA_hold->publish(*msg_cloud_BA_hold_pub);
 
     cv::Mat pointCloud_filtered;
     keyframe_data.point_3D.point3D_filtered.convertTo(pointCloud_filtered, CV_32FC3);
-    auto msg_cloud_filtered_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_filtered, *msg_cloud_filtered_pub, 0);
-    pub_pointcloud_filtered->publish(std::move(msg_cloud_filtered_pub));
+    auto msg_cloud_filtered_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_filtered, *msg_cloud_filtered_pub, Converter::Color::AQUA);
+    pub_pointcloud_filtered->publish(*msg_cloud_filtered_pub);
 
     cv::Mat pointCloud_filtered_hold;
     point3D_filtered_hold.convertTo(pointCloud_filtered_hold, CV_32FC3);
-    auto msg_cloud_filtered_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, 0);
-    pub_pointcloud_filtered_hold->publish(std::move(msg_cloud_filtered_hold_pub));
+    auto msg_cloud_filtered_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, Converter::Color::SKIN);
+    pub_pointcloud_filtered_hold->publish(*msg_cloud_filtered_hold_pub);
 
     cv::Mat pointCloud_est;
     keyframe_data.point_3D.point3D_est.convertTo(pointCloud_est, CV_32FC3);
-    auto msg_cloud_est_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_est, *msg_cloud_est_pub, 0);
-    pub_pointcloud_est->publish(std::move(msg_cloud_est_pub));
+    auto msg_cloud_est_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_est, *msg_cloud_est_pub, Converter::Color::TEAL);
+    pub_pointcloud_est->publish(*msg_cloud_est_pub);
 
     cv::Mat pointCloud_est_hold;
     point3D_est_hold.convertTo(pointCloud_est_hold, CV_32FC3);
-    auto msg_cloud_est_hold_pub = std::make_unique<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud2(pointCloud_est_hold, *msg_cloud_est_hold_pub, 0);
-    pub_pointcloud_est_hold->publish(std::move(msg_cloud_est_hold_pub));
+    auto msg_cloud_est_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    Converter::cvMat_to_msgPointCloud(pointCloud_est_hold, *msg_cloud_est_hold_pub, Converter::Color::OLIVE);
+    pub_pointcloud_est_hold->publish(*msg_cloud_est_hold_pub);
 
     // Image
     if (!matching_image.empty())
     {
-        auto msg_matching_image = std::make_unique<sensor_msgs::msg::Image>();
+        auto msg_matching_image = std::make_shared<sensor_msgs::msg::Image>();
         this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
         pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
     }
 
     if (!nomatching_image.empty())
     {
-        auto msg_nomatching_image = std::make_unique<sensor_msgs::msg::Image>();
+        auto msg_nomatching_image = std::make_shared<sensor_msgs::msg::Image>();
         this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
         pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
     }

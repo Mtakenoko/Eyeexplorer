@@ -18,8 +18,8 @@
 
 #define FOCAL_X 396.7
 #define FOCAL_Y 396.9
-#define U0 160
-#define V0 160
+#define PP_X 160
+#define PP_Y 160
 
 #define IMAGE_WIDTH 320
 #define IMAGE_HIGHT 320
@@ -177,8 +177,8 @@ private:
     bool flag_showImage;
     bool flag_ceres_stdout;
     bool flag_estimate_move;
-    const cv::Mat CameraMat = (cv::Mat_<float>(3, 3) << FOCAL_X, 0.0, U0,
-                               0.0, FOCAL_Y, V0,
+    const cv::Mat CameraMat = (cv::Mat_<float>(3, 3) << FOCAL_X, 0.0, PP_X,
+                               0.0, FOCAL_Y, PP_Y,
                                0.0, 0.0, 1.0);
 
     float threshold_knn_ratio;
