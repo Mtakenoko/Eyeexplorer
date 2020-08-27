@@ -16,9 +16,9 @@ namespace htl
     template <class T>
     T Vector::mean(std::vector<T> v)
     {
-        int size = v.size();
+        size_t size = v.size();
         T sum = 0;
-        for (int i = 0; i < size; i++)
+        for (size_t i = 0; i < size; i++)
         {
             sum += v[i];
         }
@@ -30,7 +30,7 @@ namespace htl
     {
         size_t size = v.size();
         std::vector<T> _v(v.size());
-        copy(v.begin(), v.end(), back_inserter(_v));
+        std::copy(v.begin(), v.end(), _v.begin());
         T tmp;
         for (size_t i = 0; i < size - 1; i++)
         {

@@ -61,7 +61,7 @@
 #define THRESH_SMIROFF_GRUBBS 0.3 // スミルノフ･グラブス検定
 
 // 3次元点の統計学的フィルタ用パラメータ
-#define THRESH_VARIANCE_POINT 0.001 // 分散のしきい値
+#define THRESH_VARIANCE_POINT 0.00001 // 分散のしきい値
 
 // 移動量推定と運動学との差がおおきいときに三次元復元しないかどうか決定するパラメータ
 #define THRESH_DOT 0.93

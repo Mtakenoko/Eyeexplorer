@@ -4,16 +4,34 @@
 #include <opencv2/opencv.hpp>
 #define ITR_TRIANGULATE 10
 #define TRI_ITERATIVE_TERM 0.001
+#define DISTANCE_CENTER 0.003
+#define DISTANCE_CENTER_Z 0.01
 
 class Triangulate
 {
-public:
-    Triangulate();
-    ~Triangulate();
+    struct ImagePair
+    {
+        ImagePair(int ID1, int ID2)
+        {
+            first_image_ID = ID1;
+            second_image_ID = ID2;
+        }
 
+        int first_image_ID;
+        int second_image_ID;
+    };
+
+public:
     // 多視点での三角測量
     static cv::Mat triangulation(const std::vector<cv::Point2f> &pnt,
-                          const std::vector<cv::Mat> &ProjectionMatrix);
+                                 const std::vector<cv::Mat> &ProjectionMatrix);
+    static cv::Mat triangulation_RANSAC(const std::vector<cv::Point2f> &pnt,
+                                        const std::vector<cv::Mat> &ProjectionMatrix);
+    // 2視点での三角測量
+    static cv::Mat triangulation(const cv::Point2f &pnt1, const cv::Mat &PrjMat1,
+                                 const cv::Point2f &pnt2, const cv::Mat &PrjMat2);
+
+private:
     static void BuildInhomogeneousEqnSystemForTriangulation(
         const std::vector<cv::Point3f> &norm_point,
         const std::vector<cv::Mat> &ProjectionMatrix,
@@ -21,9 +39,6 @@ public:
         cv::Mat &A, cv::Mat &B);
     static void SolveLinearEqn(const cv::Mat &A, const cv::Mat &B, cv::Matx41f &X);
 
-    // 2視点での三角測量
-    static cv::Mat triangulation(const cv::Point2f &pnt1, const cv::Mat &PrjMat1,
-                        const cv::Point2f &pnt2, const cv::Mat &PrjMat2);
     static void BuildInhomogeneousEqnSystemForTriangulation(
         const cv::Point3f &norm_p1, const cv::Mat &P1,
         const cv::Point3f &norm_p2, const cv::Mat &P2,

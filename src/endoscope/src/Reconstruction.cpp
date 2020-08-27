@@ -536,7 +536,7 @@ void Reconstruction::triangulate()
             }
 
             // 三次元復元
-            cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
+            cv::Mat point3D_result = Triangulate::triangulation_RANSAC(point2D, ProjectMat);
 
             // 点の登録
             p3.push_back(point3D_result.reshape(3, 1));
