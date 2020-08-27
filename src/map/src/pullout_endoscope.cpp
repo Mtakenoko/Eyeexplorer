@@ -4,8 +4,6 @@
 #include "../include/map/pullout_endoscope.hpp"
 #include "../../HTL/include/transform.hpp"
 
-Transform transform;
-
 PullOut::PullOut()
     : flag_pull(false), use_model(PLANE), threshold_ransac(RANSAC_DISTANCE_THRESHOLD),
       safety_distance(SAFETY_DISTANCE)
@@ -128,7 +126,7 @@ bool PullOut::input_data(const std::shared_ptr<const sensor_msgs::msg::PointClou
     }
 
     // 内視鏡の位置・姿勢
-    cv::Mat Rotation_world = transform.QuaternionToRotMat(msg_arm->rotation.x, msg_arm->rotation.y, msg_arm->rotation.z, msg_arm->rotation.w);
+    cv::Mat Rotation_world = htl::Transform::QuaternionToRotMat((float)msg_arm->rotation.x, (float)msg_arm->rotation.y, (float)msg_arm->rotation.z, (float)msg_arm->rotation.w);
     cv::Mat Transform_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x, msg_arm->translation.y, msg_arm->translation.z);
     cv::cv2eigen(Rotation_world, endoscopePose->Rotation);
     cv::cv2eigen(Transform_world, endoscopePose->Transform);
