@@ -738,7 +738,7 @@ void Reconstruction::pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat 
         cv::Mat point_cam = camera_state.Rotation_world.t() * (point_world - camera_state.Transform_world);
         // std::cout << "distance : " << distance << std::endl;
         // std::cout << "point_cam : " << point_cam << std::endl;
-        if (distance < 0.010 && point_cam.at<float>(2) > 0)
+        if (distance < 0.010 && point_cam.at<float>(2) > 0.001)
         {
             temp_Point3D.push_back(InputPoint3D.at<cv::Point3f>(i));
         }
@@ -975,7 +975,7 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     cv::Mat pointCloud_filtered_hold;
     point3D_filtered_hold.convertTo(pointCloud_filtered_hold, CV_32FC3);
     auto msg_cloud_filtered_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, Converter::Color::SKIN);
+    Converter::cvMat_to_msgPointCloud(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, Converter::Color::RED);
     pub_pointcloud_filtered_hold->publish(*msg_cloud_filtered_hold_pub);
 
     cv::Mat pointCloud_est;

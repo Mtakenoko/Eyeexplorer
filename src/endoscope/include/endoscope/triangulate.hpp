@@ -3,7 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #define ITR_TRIANGULATE 10
-#define TRI_ITERATIVE_TERM 0.1
+#define TRI_ITERATIVE_TERM 0.001
 
 class Triangulate
 {

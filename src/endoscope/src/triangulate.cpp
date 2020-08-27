@@ -40,7 +40,7 @@ cv::Mat Triangulate::triangulation(const std::vector<cv::Point2f> &point,
     Triangulate::SolveLinearEqn(A, B, X);
 
     // 反復計算による三次元復元の高精度化
-    for (int i = 0; i < ITR_TRIANGULATE; i++)
+    for (int itr = 0; itr < ITR_TRIANGULATE; itr++)
     {
         std::vector<cv::Mat> PrjMat;
         for (size_t t = 0; t < size; t++)
@@ -68,14 +68,14 @@ cv::Mat Triangulate::triangulation(const std::vector<cv::Point2f> &point,
         }
 
         // 反復を終了するか判定
-        bool iter_end = true;
+        bool iter_end = false;
         for (size_t i = 0; i < size; i++)
         {
-            // printf("[weight, p2] = [%lf %lf]\n", weight[i], p2[i]);
+            // printf("#%zu [weight, p2] = [%lf %lf], abs = %lf\n", i, weight[i], p2[i], std::abs(weight[i] - p2[i]));
             // 一個でもおかしいのがあれば反復計算は引き続き実行
-            if (std::abs(weight[i] - p2[i]) > TRI_ITERATIVE_TERM)
+            if (std::abs(weight[i] - p2[i]) < TRI_ITERATIVE_TERM)
             {
-                iter_end = false;
+                iter_end = true;
             }
         }
         if (iter_end)
@@ -85,8 +85,7 @@ cv::Mat Triangulate::triangulation(const std::vector<cv::Point2f> &point,
         weight.clear(); // push_back()するので、一旦要素を空にする
         for (size_t i = 0; i < size; i++)
         {
-            double w = p2[i];
-            weight.push_back(w);
+            weight.push_back(p2[i]);
         }
 
         Triangulate::BuildInhomogeneousEqnSystemForTriangulation(norm_point, ProjectionMatrix, weight, A, B);
