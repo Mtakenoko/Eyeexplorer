@@ -37,7 +37,6 @@ find_package(message_filters REQUIRED)
 add_executable(forward_kinematics
   src/forward_kinematics.cpp
   src/encoder.cpp
-  ../../HTL/src/transform.cpp
   src/arm_ver3.cpp
 )
 # 実行ファイルをリンクする

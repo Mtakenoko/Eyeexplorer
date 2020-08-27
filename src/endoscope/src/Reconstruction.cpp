@@ -3,7 +3,7 @@
 #include "../include/endoscope/Bundler.hpp"
 #include "../include/endoscope/cost_function.hpp"
 #include "../include/endoscope/transformer.hpp"
-#include "../../HTL/include/msg_converter.hpp"
+#include "../../htl/include/msg_converter.hpp"
 
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true),

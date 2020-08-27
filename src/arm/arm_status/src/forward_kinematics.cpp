@@ -20,13 +20,12 @@
 
 #include "../include/arm/encoder.h"
 #include "../include/arm/arm.h"
-#include "../../../HTL/include/transform.h"
+#include "../../../htl/include/transform.hpp"
 
 using namespace std::chrono_literals;
 
 ReadEncoder readencoder;
 PassiveArm passivearm;
-Transform transform;
 geometry_msgs::msg::Transform tip_msg;
 sensor_msgs::msg::JointState q_msg;
 geometry_msgs::msg::TransformStamped tf_msg;
@@ -84,7 +83,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     //回転行列
     float qx, qy, qz, qw;
-    transform.RotMatToQuaternion(&qx, &qy, &qz, &qw,
+    htl::Transform::RotMatToQuaternion(&qx, &qy, &qz, &qw,
                                  (float)endoscope_pose[0][0], (float)endoscope_pose[0][1], (float)endoscope_pose[0][2],
                                  (float)endoscope_pose[1][0], (float)endoscope_pose[1][1], (float)endoscope_pose[1][2],
                                  (float)endoscope_pose[2][0], (float)endoscope_pose[2][1], (float)endoscope_pose[2][2]);
@@ -95,7 +94,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
 
     //表示
     double rall, pitch, yaw;
-    transform.QuaternionToEulerAngles(qx, qy, qz, qw, rall, pitch, yaw);
+    htl::Transform::QuaternionToEulerAngles((double)qx, (double)qy, (double)qz, (double)qw, rall, pitch, yaw);
 
     static int count = 0;
     count++;

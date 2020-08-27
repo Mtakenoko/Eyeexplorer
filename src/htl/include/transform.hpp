@@ -17,9 +17,8 @@ namespace htl
             const T &m31, const T &m32, const T &m33);
 
         template <class T>
-        static void QuaternionToEulerAngles(
-            T q0, T q1, T q2, T q3,
-            const T &roll, const T &pitch, const T &yaw);
+        static void QuaternionToEulerAngles(const T &q0, const T &q1, const T &q2, const T &q3,
+                                            T &roll, T &pitch, T &yaw);
 
         template <class T>
         static void QuaternionToRotMat(
@@ -98,8 +97,8 @@ namespace htl
     }
 
     template <class T>
-    void Transform::QuaternionToEulerAngles(T q0, T q1, T q2, T q3,
-                                            const T &roll, const T &pitch, const T &yaw)
+    void Transform::QuaternionToEulerAngles(const T &q0, const T &q1, const T &q2, const T &q3,
+                                            T &roll, T &pitch, T &yaw)
     {
         T q0q0 = q0 * q0;
         T q0q1 = q0 * q1;
