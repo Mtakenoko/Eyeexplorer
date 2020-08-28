@@ -536,13 +536,40 @@ void Reconstruction::triangulate()
             }
 
             // 三次元復元
-            cv::Mat point3D_result = Triangulate::triangulation_RANSAC(point2D, ProjectMat);
+            std::vector<bool> eliminated_scene;
+            cv::Mat point3D_result = Triangulate::triangulation_RANSAC(point2D, ProjectMat, eliminated_scene, num_Scene);
 
             // 点の登録
+            if (point3D_result.empty())
+            {
+                continue;
+            }
             p3.push_back(point3D_result.reshape(3, 1));
 
+            // RANSACでの三次元復元にて除外されたシーンをkeypoint_mapから削除
+            int count = 0;
+            std::cout << " point3D: " << point3D_result << std::endl;
+            printf("eliminated_scene size : %zu\n", eliminated_scene.size());
+            std::cout << "before keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
+            for (iterator itr = range.first; itr != range.second;)
+            {
+                std::cout << "eliminated_scene : " << eliminated_scene[count] << std::endl;
+                std::cout << "itr->first: " << itr->first << ", " << itr->second.image_points << std::endl;
+                if (eliminated_scene[count])
+                {
+                    itr = keyframe_data.keyponit_map.erase(itr);
+                    std::cout << "erased" << std::endl;
+                }
+                else
+                {
+                    itr++;
+                }
+                count++;
+            }
+            std::cout << "after keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
+            std::cout << std::endl;
+
             // バンドル調整用データ
-            typedef std::multimap<int, MatchedData>::iterator iterator;
             std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
             for (iterator itr = range2.first; itr != range2.second; itr++)
             {
@@ -560,8 +587,8 @@ void Reconstruction::triangulate()
             }
 
             // 終わったら辞書に登録してたフレーム情報を削除
-            if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE + KEYPOINT_SCENE_DELETE)
-                keyframe_data.keyponit_map.erase(dmatch_itr->queryIdx);
+            // if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE + KEYPOINT_SCENE_DELETE)
+            //     keyframe_data.keyponit_map.erase(dmatch_itr->queryIdx);
         }
     }
     if (!p3.empty())

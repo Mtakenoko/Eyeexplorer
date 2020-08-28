@@ -27,6 +27,10 @@ public:
                                  const std::vector<cv::Mat> &ProjectionMatrix);
     static cv::Mat triangulation_RANSAC(const std::vector<cv::Point2f> &pnt,
                                         const std::vector<cv::Mat> &ProjectionMatrix);
+    static cv::Mat triangulation_RANSAC(const std::vector<cv::Point2f> &pnt,
+                                        const std::vector<cv::Mat> &ProjectionMatrix,
+                                        std::vector<bool> &eliminated_scene,
+                                        const size_t min_reconstruction_scene);
     // 2視点での三角測量
     static cv::Mat triangulation(const cv::Point2f &pnt1, const cv::Mat &PrjMat1,
                                  const cv::Point2f &pnt2, const cv::Mat &PrjMat2);
