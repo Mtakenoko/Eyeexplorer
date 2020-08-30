@@ -25,7 +25,7 @@
   <material name="ARM/white">
     <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
-  
+
   <!-- Build your comprehensive robot -->
   <link name="world"/>
 
@@ -130,7 +130,7 @@
       <material name="ARM/red"/>
     </visual>
   </link>
-  
+
   <joint name="arm_joint_gimbal" type="fixed">
     <parent link="arm_link50"/>
     <child link="arm_link51"/>
@@ -205,7 +205,7 @@
   <link name="endoscope_link2">
     <visual>
       <geometry>
-        <box size="0.002 0.002 -0.035"/>
+        <cylinder length="0.035" radius="0.001" />
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 -0.0175"/>
       <material name="ARM/white"/>
