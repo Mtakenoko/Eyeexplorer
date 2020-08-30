@@ -539,56 +539,46 @@ void Reconstruction::triangulate()
             std::vector<bool> eliminated_scene;
             cv::Mat point3D_result = Triangulate::triangulation_RANSAC(point2D, ProjectMat, eliminated_scene, num_Scene);
 
-            // 点の登録
-            if (point3D_result.empty())
+            if (!point3D_result.empty())
             {
-                continue;
-            }
-            p3.push_back(point3D_result.reshape(3, 1));
+                // 点の登録
+                p3.push_back(point3D_result.reshape(3, 1));
 
-            // RANSACでの三次元復元にて除外されたシーンをkeypoint_mapから削除
-            int count = 0;
-            // std::cout << " point3D: " << point3D_result << std::endl;
-            // printf("eliminated_scene size : %zu\n", eliminated_scene.size());
-            // std::cout << "before keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
-            for (iterator itr = range.first; itr != range.second;)
-            {
-                // std::cout << "eliminated_scene : " << eliminated_scene[count] << std::endl;
-                // std::cout << "itr->first: " << itr->first << ", " << itr->second.image_points << std::endl;
-                if (eliminated_scene[count])
+                // RANSACでの三次元復元にて除外されたシーンをkeypoint_mapから削除
+                int count = 0;
+                for (iterator itr = range.first; itr != range.second;)
                 {
-                    itr = keyframe_data.keyponit_map.erase(itr);
-                    // std::cout << "erased" << std::endl;
+                    if (eliminated_scene[count])
+                        itr = keyframe_data.keyponit_map.erase(itr);
+                    else
+                        itr++;
+                    count++;
                 }
-                else
+
+                // バンドル調整用データ
+                std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
+                for (iterator itr = range2.first; itr != range2.second; itr++)
                 {
-                    itr++;
+                    CameraInfo temp_camerainfo;
+                    temp_camerainfo.ProjectionMatrix = itr->second.ProjectionMatrix.clone();
+                    temp_camerainfo.Rotation_world = itr->second.Rotation_world.clone();
+                    temp_camerainfo.Transform_world = itr->second.Transform_world.clone();
+                    temp_camerainfo.RodriguesVec_world = itr->second.RodriguesVec_world.clone();
+                    camerainfo_map.insert(std::make_pair(itr->second.frame_num, temp_camerainfo));
+
+                    PointData temp_pointData;
+                    temp_pointData.point3D = point3D_result.clone();
+                    temp_pointData.point2D = itr->second.image_points;
+                    pointData_map.insert(std::make_pair(itr->second.frame_num, temp_pointData));
                 }
-                count++;
             }
-            // std::cout << "after keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
-            std::cout << std::endl;
 
-            // バンドル調整用データ
-            std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
-            for (iterator itr = range2.first; itr != range2.second; itr++)
+            // 一つの特徴点についてKEYPOINT_SCENE_DELETE個以上のデータが集まれば始まりのほうのものについては削除
+            if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) >= KEYPOINT_SCENE_DELETE)
             {
-                CameraInfo temp_camerainfo;
-                temp_camerainfo.ProjectionMatrix = itr->second.ProjectionMatrix.clone();
-                temp_camerainfo.Rotation_world = itr->second.Rotation_world.clone();
-                temp_camerainfo.Transform_world = itr->second.Transform_world.clone();
-                temp_camerainfo.RodriguesVec_world = itr->second.RodriguesVec_world.clone();
-                camerainfo_map.insert(std::make_pair(itr->second.frame_num, temp_camerainfo));
-
-                PointData temp_pointData;
-                temp_pointData.point3D = point3D_result.clone();
-                temp_pointData.point2D = itr->second.image_points;
-                pointData_map.insert(std::make_pair(itr->second.frame_num, temp_pointData));
+                std::pair<iterator, iterator> range3 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
+                keyframe_data.keyponit_map.erase(range3.first);
             }
-
-            // 終わったら辞書に登録してたフレーム情報を削除
-            // if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) > KEYPOINT_SCENE + KEYPOINT_SCENE_DELETE)
-            //     keyframe_data.keyponit_map.erase(dmatch_itr->queryIdx);
         }
     }
     if (!p3.empty())
@@ -765,7 +755,7 @@ void Reconstruction::pointcloud_eye_filter(const cv::Mat &InputPoint3D, cv::Mat 
         cv::Mat point_cam = camera_state.Rotation_world.t() * (point_world - camera_state.Transform_world);
         // std::cout << "distance : " << distance << std::endl;
         // std::cout << "point_cam : " << point_cam << std::endl;
-        if (distance < 0.010 && point_cam.at<float>(2) > 0.001)
+        if (distance < THRESH_DISTANCE_EYE && point_cam.at<float>(2) > 0.001)
         {
             temp_Point3D.push_back(InputPoint3D.at<cv::Point3f>(i));
         }

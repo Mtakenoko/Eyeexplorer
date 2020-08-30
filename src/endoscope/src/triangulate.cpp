@@ -183,7 +183,8 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
     if (point2D.size() < 2)
     {
         std::cout << "point2D.size() = " << point2D.size() << std::endl;
-        cv::Mat ans = Triangulate::triangulation(point, ProjectionMatrix);
+        // cv::Mat ans = Triangulate::triangulation(point, ProjectionMatrix);
+        cv::Mat ans;
         return ans;
     }
     cv::Mat ans = Triangulate::triangulation(point2D, PrjMat);
@@ -295,7 +296,7 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
     // 除外したもので三角測量
     if (point2D.size() < min_reconstruction_scene)
     {
-        std::cout << "point2D.size() = " << point2D.size() << std::endl;
+        // std::cout << "point2D.size() = " << point2D.size() << std::endl;
         // cv::Mat ans = Triangulate::triangulation(point, ProjectionMatrix);
         cv::Mat ans;
         return ans;

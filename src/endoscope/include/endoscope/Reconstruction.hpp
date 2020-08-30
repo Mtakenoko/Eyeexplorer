@@ -48,17 +48,20 @@
 #define SET_KF_PHI_MAX_N 0.05
 
 // 新しくKF挿入するためのパラメータ(眼球用)
-#define SET_KF_Z_MAX_E 0.003
-#define SET_KF_XY_MAX_E 0.01
+#define SET_KF_Z_MAX_E 0.001
+#define SET_KF_XY_MAX_E 0.005
 #define SET_KF_PHI_MAX_E 0.03
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 4
-#define KEYPOINT_SCENE_DELETE 50
+#define KEYPOINT_SCENE_DELETE 10
 
 // マッチング誤対応除去用パラメータ
 #define THRESH_VARIANCE 100       // 分散のしきい値
 #define THRESH_SMIROFF_GRUBBS 0.3 // スミルノフ･グラブス検定
+
+// ３次元点の距離フィルタ用パラメータ
+#define THRESH_DISTANCE_EYE 0.02
 
 // 3次元点の統計学的フィルタ用パラメータ
 #define THRESH_VARIANCE_POINT 0.00001 // 分散のしきい値
