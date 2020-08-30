@@ -548,17 +548,17 @@ void Reconstruction::triangulate()
 
             // RANSACでの三次元復元にて除外されたシーンをkeypoint_mapから削除
             int count = 0;
-            std::cout << " point3D: " << point3D_result << std::endl;
-            printf("eliminated_scene size : %zu\n", eliminated_scene.size());
-            std::cout << "before keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
+            // std::cout << " point3D: " << point3D_result << std::endl;
+            // printf("eliminated_scene size : %zu\n", eliminated_scene.size());
+            // std::cout << "before keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
             for (iterator itr = range.first; itr != range.second;)
             {
-                std::cout << "eliminated_scene : " << eliminated_scene[count] << std::endl;
-                std::cout << "itr->first: " << itr->first << ", " << itr->second.image_points << std::endl;
+                // std::cout << "eliminated_scene : " << eliminated_scene[count] << std::endl;
+                // std::cout << "itr->first: " << itr->first << ", " << itr->second.image_points << std::endl;
                 if (eliminated_scene[count])
                 {
                     itr = keyframe_data.keyponit_map.erase(itr);
-                    std::cout << "erased" << std::endl;
+                    // std::cout << "erased" << std::endl;
                 }
                 else
                 {
@@ -566,7 +566,7 @@ void Reconstruction::triangulate()
                 }
                 count++;
             }
-            std::cout << "after keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
+            // std::cout << "after keypoint_map.count(" << dmatch_itr->queryIdx << ") : " << keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) << std::endl;
             std::cout << std::endl;
 
             // バンドル調整用データ
@@ -810,7 +810,7 @@ void Reconstruction::estimate_move()
     if (matched_point1.size() < 5)
         return;
 
-    std::cout << "Estimating Eye Moving" << std::endl;
+    std::cout << "Estimating Eye Moving : point.size = " << matched_point1.size() << std::endl;
 
     // 画像座標から正規化カメラ座標系に変換
     // focalについては無視（よくわからんけどこれで動くのでヨシ！）
@@ -833,14 +833,15 @@ void Reconstruction::estimate_move()
     cv::Mat EssentialMat = cv::findEssentialMat(pt1, pt2, 1, cv::Point2f(0, 0), cv::RANSAC, 0.99, 1, mask);
     if (!(EssentialMat.rows == 3 && EssentialMat.cols == 3))
     {
-        printf("EssentialMat.rows = %d, EssentialMat.cols = %d\n", EssentialMat.rows, EssentialMat.cols);
+        printf("Error: EssentialMat.rows = %d, EssentialMat.cols = %d\n", EssentialMat.rows, EssentialMat.cols);
         return;
     }
     cv::recoverPose(EssentialMat, pt1, pt2, R_est_output, t_est_output, 1, cv::Point2f(0, 0), mask);
 
     if (R_est_output.at<double>(0, 0) < 0.8 || R_est_output.at<double>(1, 1) < 0.8 || R_est_output.at<double>(2, 2) < 0.8)
     {
-        std::cout << "Estimated, but output is incorrect estimation." << std::endl;
+        std::cout << "Error: Move Estimated, but output is incorrect estimation." << std::endl;
+        // std::cout << "Incorrect R_estimate : " << R_est_output << std::endl;
         return;
     }
 
@@ -885,21 +886,20 @@ void Reconstruction::estimate_move()
     // {
     //     std::cout << "p1 : " << pt1[i] << "  p2 : " << pt2[i] << " mask : " << mask.at<bool>(i) << std::endl;
     // }
-    // std::cout << "5点アルゴリズム R_est : " << std::endl
-    //           << Rot_est << std::endl
-    //           << "5点アルゴリズム t_est : " << std::endl
-    //           << trans_est << std::endl
-    //           << "運動学 R : " << std::endl
-    //           << frame_data.camerainfo.Rotation << std::endl
-    //           << "運動学 t :" << std::endl
-    //           << frame_data.camerainfo.Transform << std::endl;
+    std::cout << "5点アルゴリズム R_est : " << std::endl
+              << Rot_est << std::endl
+              << "5点アルゴリズム t_est : " << std::endl
+              << trans_est << std::endl
+              << "運動学 R : " << std::endl
+              << frame_data.camerainfo.Rotation << std::endl
+              << "運動学 t :" << std::endl
+              << frame_data.camerainfo.Transform << std::endl
+              << "眼球移動量推定 R_eye_move" << std::endl
+              << R_eye_move << std::endl
+              << "眼球移動量推定 t_eye_move" << std::endl
+              << t_eye_move << std::endl;
 
-    // std::cout << "眼球移動量推定 R_eye_move" << std::endl
-    //           << R_eye_move << std::endl
-    //           << "眼球移動量推定 t_eye_move" << std::endl
-    //           << t_eye_move << std::endl;
-
-    // std::cout << "内積 : " << dot_est << std::endl;
+    std::cout << "内積 : " << dot_est << std::endl;
 }
 
 void Reconstruction::showImage()
