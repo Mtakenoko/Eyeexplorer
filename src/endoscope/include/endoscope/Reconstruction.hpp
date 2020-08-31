@@ -28,6 +28,7 @@
 #define KEYFRAME_DATABASE_NUM 3
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(一般用)
+// 0.017 [PI]はで1[°]
 #define CHOOSE_KF_Z_MAX_N 0.01
 #define CHOOSE_KF_XY_MIN_N 0.01
 #define CHOOSE_KF_XY_MAX_N 0.03
@@ -36,9 +37,9 @@
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
 #define CHOOSE_KF_Z_MAX_E 0.001
-#define CHOOSE_KF_XY_MIN_E 0.005
+#define CHOOSE_KF_XY_MIN_E 0.003
 #define CHOOSE_KF_XY_MAX_E 0.01
-#define CHOOSE_KF_PHI_MIN_E 0.03
+#define CHOOSE_KF_PHI_MIN_E 0.005
 #define CHOOSE_KF_PHI_MAX_E 0.05
 
 // // 新しくKF挿入するためのパラメータ(一般用)
@@ -161,9 +162,9 @@ private:
 
 private:
     // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
-    FrameDatabase frame_data;
-    FrameDatabase keyframe_data;
-    std::vector<FrameDatabase> keyframe_database;
+    NowFrameData frame_data;
+    KeyFrameData keyframe_data;
+    std::vector<KeyFrameData> keyframe_database;
     std::vector<Map> map_point;
     cv::Mat point3D_hold,
         point3D_BA_hold,
@@ -195,7 +196,7 @@ private:
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;
     size_t match_num;
-    std::vector<FrameDatabase>::iterator keyframe_itr;
+    std::vector<KeyFrameData>::iterator keyframe_itr;
 
     // バンドル調整用データコンテナ
     std::map<int, CameraInfo> camerainfo_map;    // keyはフレーム番号

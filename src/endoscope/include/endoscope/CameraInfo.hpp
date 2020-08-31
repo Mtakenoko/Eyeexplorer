@@ -145,6 +145,25 @@ public:
         cv::Rodrigues(Rotation_world_est, RodriguesVec_world_est);
     }
 
+    CameraInfo operator=(CameraInfo ci)
+    {
+        this->CameraMatrix = ci.CameraMatrix.clone();
+        this->CameraPose = ci.CameraPose.clone();
+        this->ProjectionMatrix = ci.ProjectionMatrix.clone();
+        this->Rotation = ci.Rotation.clone();
+        this->Rotation_world = ci.Rotation_world.clone();
+        this->Transform = ci.Transform.clone();
+        this->Transform_world = ci.Transform_world.clone();
+        this->CameraPose_est = ci.CameraPose_est.clone();
+        this->ProjectionMatrix_est = ci.ProjectionMatrix_est.clone();
+        this->Rotation_est = ci.Rotation_est.clone();
+        this->Rotation_world_est = ci.Rotation_world_est.clone();
+        this->Transform_est = ci.Transform_est.clone();
+        this->Transform_world_est = ci.Transform_world_est.clone();
+        this->frame_num = ci.frame_num;
+        return *this;
+    }
+
 public:
     cv::Mat CameraMatrix;
 
@@ -202,14 +221,23 @@ public:
     cv::Mat point3D_est;
 };
 
-class FrameDatabase
+class NowFrameData
 {
 public:
-    FrameDatabase(){};
+    Extractor extractor;
+    CameraInfo camerainfo;
+};
+
+class KeyFrameData
+{
+public:
+    KeyFrameData() : scene_counter(0){};
     Extractor extractor;
     CameraInfo camerainfo;
     Point3D point_3D;
     std::multimap<int, MatchedData> keyponit_map;
+    std::vector<CameraInfo> camerainfo_dataabase;
+    int scene_counter;
 };
 
 #endif

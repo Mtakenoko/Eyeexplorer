@@ -119,7 +119,11 @@ void Reconstruction::setFirstFrame()
 {
     frame_data.camerainfo.Rotation = Rotation_eye.clone();
     frame_data.camerainfo.Transform = Transform_zeros.clone();
-    keyframe_database.push_back(frame_data);
+
+    KeyFrameData temp_keyframedata;
+    temp_keyframedata.camerainfo = frame_data.camerainfo;
+    temp_keyframedata.extractor = frame_data.extractor;
+    keyframe_database.push_back(temp_keyframedata);
 }
 
 // 現在のフレームとマッチングさせるKeyFrameをKeyFrameDatabaseから一つ選ぶ
@@ -164,7 +168,7 @@ void Reconstruction::chooseKeyFrame()
         bool moving_z_max = std::abs(t_endo.at<float>(2)) < Z_MAX;
 
         // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
-        // xy方向の移動量
+        // xy方向の移動量bundler
         cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
         bool moving_xy_max = cv::norm(t_move_xy) < XY_MAX;
         bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN;
@@ -176,14 +180,59 @@ void Reconstruction::chooseKeyFrame()
         // printf("KF #%d: t_z = %f, xy = %f, phi = %f (%f)\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), cv::norm(t_move_xy), std::abs(phi), std::abs(phi) * 180 / M_PI);
         if (moving_z_max && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
         {
-            // 見つけた
-            std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used" << std::endl;
-            keyframe_itr = itr;
-            keyframe_data = *keyframe_itr;
-            flag_reconstruction = true;
-            return;
+            // このKFにすでに登録されているものの中で非常に近いものがあれば除外する
+            if (itr->keyponit_map.empty())
+            {
+                std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
+
+                // 見つけた
+                itr->scene_counter++;
+                itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
+                keyframe_itr = itr;
+                keyframe_data = *keyframe_itr;
+                flag_reconstruction = true;
+                return;
+            }
+            else
+            {
+                bool flag_catchNearFrame(false);
+                for (auto cam_itr = itr->camerainfo_dataabase.begin(); cam_itr != itr->camerainfo_dataabase.end(); cam_itr++)
+                {
+                    // 判定条件: xy方向の変化or仰角の変化が一定範囲内にある
+                    // xy方向の移動量bundler
+                    cv::Mat t_endo_2 = cam_itr->Rotation_world.t() * (frame_data.camerainfo.Transform_world - cam_itr->Transform_world);
+                    cv::Point2f t_move_2_xy(t_endo_2.at<float>(0), t_endo_2.at<float>(1));
+                    bool moving_2_xy_min = cv::norm(t_move_2_xy) < XY_MIN;
+                    // 仰角
+                    float phi_2 = Transformer<float>::RevFromRotMat(cam_itr->Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+                    bool moving_2_phi_min = std::abs(phi_2) < PHI_MIN;
+
+                    // std::cout << "moving_2_xy : " << cv::norm(t_move_2_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
+                    // std::cout << "phi_2 : " << phi_2 << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
+                    if (moving_2_xy_min && moving_2_phi_min)
+                    {
+                        // めっちゃ近い視点があるので今回はこのkeyframeには登録しないのでパス
+                        std::cout << "KeyFrame No. " << itr->camerainfo.frame_num << "近いやつある" << std::endl;
+                        flag_catchNearFrame = true;
+                        break;
+                    }
+                }
+
+                if (!flag_catchNearFrame)
+                {
+                    std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
+                    // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX << ")" << std::endl;
+                    // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
+                    // std::cout << "phi : " << phi << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
+                    itr->scene_counter++;
+                    itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
+                    keyframe_itr = itr;
+                    keyframe_data = *keyframe_itr;
+                    flag_reconstruction = true;
+                    return;
+                }
+            }
         }
-        // printf("戻るぞ\n");
     }
     // 何一つ当てはまるのがなければ三次元復元は行わない
     flag_reconstruction = false;
@@ -239,7 +288,11 @@ void Reconstruction::setKeyFrame()
     // 何一つ当てはまるのがなければKFとする
     frame_data.camerainfo.Rotation = Rotation_eye.clone();
     frame_data.camerainfo.Transform = Transform_zeros.clone();
-    keyframe_database.push_back(frame_data);
+    KeyFrameData temp_keyframedata;
+    temp_keyframedata.camerainfo = frame_data.camerainfo;
+    temp_keyframedata.extractor = frame_data.extractor;
+    temp_keyframedata.camerainfo_dataabase.push_back(frame_data.camerainfo);
+    keyframe_database.push_back(temp_keyframedata);
     printf("KeyFrame was setted!\n");
     return;
 }
@@ -249,7 +302,7 @@ void Reconstruction::updateKeyFrameDatabase()
     // keyframe_databaseの中から抽出したkeyframe_dataを変更する
     // keyframe_databaseからkeyframeを一旦削除し、新たに作成したkeyframe_dataを同じ位置を指定して挿入する
     keyframe_database.erase(keyframe_itr);
-    FrameDatabase newKeyFrameData = keyframe_data;
+    KeyFrameData newKeyFrameData = keyframe_data;
     keyframe_database.insert(keyframe_itr, newKeyFrameData);
 }
 
@@ -908,24 +961,22 @@ void Reconstruction::showImage()
         cv::Mat left_image = keyframe_data.extractor.image.clone();
         cv::Mat right_image = frame_data.extractor.image.clone();
         cv::hconcat(left_image, right_image, nomatching_image);
+    }
 
-        // カメラのuv方向への移動量を矢印で追加で図示
-        cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
-        cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
-        cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
-                                               frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
-        cv::arrowedLine(matching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
-        cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
+    // カメラのuv方向への移動量を矢印で追加で図示
+    cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
+    cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
+    cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
+                                           frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
+    cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
 
-        // 眼球移動量推定を行っていればその結果も矢印で表記
-        if (!t_eye_move.empty())
-        {
-            cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
-                                                       trans_est.at<float>(1) * 10000 + image_center2.y);
-            cv::arrowedLine(matching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
-            cv::arrowedLine(nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
-        }
+    // 眼球移動量推定を行っていればその結果も矢印で表記
+    if (!t_eye_move.empty())
+    {
+        cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
+        cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
+                                                   trans_est.at<float>(1) * 10000 + image_center2.y);
+        cv::arrowedLine(nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
     }
 
     // 表示
