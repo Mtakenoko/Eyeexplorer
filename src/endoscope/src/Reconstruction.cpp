@@ -71,14 +71,14 @@ void Reconstruction::process()
     // もし眼球移動を検知すれば
     this->estimate_move();
 
-    if (!flag_reconstruction)
-        return;
+    if (flag_reconstruction)
+    {
+        // 多視点での三角測量
+        this->triangulate(); // 三角測量
 
-    // 多視点での三角測量
-    this->triangulate(); // 三角測量
-
-    // バンドル調整
-    this->bundler(); // バンドル調整]
+        // バンドル調整
+        this->bundler(); // バンドル調整]
+    }
 
     // Keyframe_database
     this->updateKeyFrameDatabase();
@@ -139,6 +139,8 @@ void Reconstruction::chooseKeyFrame()
     }
 
     float Z_MAX, XY_MIN, XY_MAX, PHI_MIN, PHI_MAX;
+    float XY_MIN_2, PHI_MIN_2;
+
     switch (use_mode)
     {
     case UseMode::NORMAL_SCENE:
@@ -147,6 +149,8 @@ void Reconstruction::chooseKeyFrame()
         XY_MAX = CHOOSE_KF_XY_MAX_N;
         PHI_MIN = CHOOSE_KF_PHI_MIN_N;
         PHI_MAX = CHOOSE_KF_PHI_MAX_N;
+        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_N;
+        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_N;
         break;
 
     case UseMode::EYE:
@@ -155,6 +159,8 @@ void Reconstruction::chooseKeyFrame()
         XY_MAX = CHOOSE_KF_XY_MAX_E;
         PHI_MIN = CHOOSE_KF_PHI_MIN_E;
         PHI_MAX = CHOOSE_KF_PHI_MAX_E;
+        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_E;
+        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_E;
         break;
     }
 
@@ -180,7 +186,6 @@ void Reconstruction::chooseKeyFrame()
         // printf("KF #%d: t_z = %f, xy = %f, phi = %f (%f)\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), cv::norm(t_move_xy), std::abs(phi), std::abs(phi) * 180 / M_PI);
         if (moving_z_max && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
         {
-            // このKFにすでに登録されているものの中で非常に近いものがあれば除外する
             if (itr->keyponit_map.empty())
             {
                 std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
@@ -195,6 +200,7 @@ void Reconstruction::chooseKeyFrame()
             }
             else
             {
+                // このKFにすでに登録されているものの中で非常に近いものがあれば除外する
                 bool flag_catchNearFrame(false);
                 for (auto cam_itr = itr->camerainfo_dataabase.begin(); cam_itr != itr->camerainfo_dataabase.end(); cam_itr++)
                 {
@@ -202,10 +208,10 @@ void Reconstruction::chooseKeyFrame()
                     // xy方向の移動量bundler
                     cv::Mat t_endo_2 = cam_itr->Rotation_world.t() * (frame_data.camerainfo.Transform_world - cam_itr->Transform_world);
                     cv::Point2f t_move_2_xy(t_endo_2.at<float>(0), t_endo_2.at<float>(1));
-                    bool moving_2_xy_min = cv::norm(t_move_2_xy) < XY_MIN;
+                    bool moving_2_xy_min = cv::norm(t_move_2_xy) < XY_MIN_2;
                     // 仰角
                     float phi_2 = Transformer<float>::RevFromRotMat(cam_itr->Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-                    bool moving_2_phi_min = std::abs(phi_2) < PHI_MIN;
+                    bool moving_2_phi_min = std::abs(phi_2) < PHI_MIN_2;
 
                     // std::cout << "moving_2_xy : " << cv::norm(t_move_2_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
                     // std::cout << "phi_2 : " << phi_2 << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
@@ -561,7 +567,6 @@ void Reconstruction::outlier_remover()
                               frame_data.camerainfo.frame_num);
         keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData));
     }
-    match_num = inliners_matches.size();
 }
 
 void Reconstruction::triangulate()
@@ -571,17 +576,17 @@ void Reconstruction::triangulate()
 
     cv::Mat p3;
     // 今回使ったkeyframeがもつ特徴点毎に辞書を作成しているので、特徴点毎に計算
-    for (auto dmatch_itr = inliners_matches.begin(); dmatch_itr < inliners_matches.end(); dmatch_itr++)
+    for (size_t i = 0; i < keyframe_data.extractor.keypoints.size(); i++)
     {
         // マッチング辞書の中で十分マッチングframeを発見したものを探索
-        if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) >= num_Scene)
+        if (keyframe_data.keyponit_map.count(i) >= num_Scene)
         {
             // 3次元復元用データコンテナ
             std::vector<cv::Point2f> point2D;
             std::vector<cv::Mat> ProjectMat;
 
             typedef std::multimap<int, MatchedData>::iterator iterator;
-            std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
+            std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(i);
             for (iterator itr = range.first; itr != range.second; itr++)
             {
                 point2D.push_back(itr->second.image_points);
@@ -609,7 +614,7 @@ void Reconstruction::triangulate()
                 }
 
                 // バンドル調整用データ
-                std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
+                std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(i);
                 for (iterator itr = range2.first; itr != range2.second; itr++)
                 {
                     CameraInfo temp_camerainfo;
@@ -627,9 +632,9 @@ void Reconstruction::triangulate()
             }
 
             // 一つの特徴点についてKEYPOINT_SCENE_DELETE個以上のデータが集まれば始まりのほうのものについては削除
-            if (keyframe_data.keyponit_map.count(dmatch_itr->queryIdx) >= KEYPOINT_SCENE_DELETE)
+            if (keyframe_data.keyponit_map.count(i) >= KEYPOINT_SCENE_DELETE)
             {
-                std::pair<iterator, iterator> range3 = keyframe_data.keyponit_map.equal_range(dmatch_itr->queryIdx);
+                std::pair<iterator, iterator> range3 = keyframe_data.keyponit_map.equal_range(i);
                 keyframe_data.keyponit_map.erase(range3.first);
             }
         }
