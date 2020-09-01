@@ -197,6 +197,9 @@ private:
     size_t matching_method;
     int extract_type;
     size_t use_mode;
+    float Z_MAX, XY_MIN, XY_MAX, PHI_MIN, PHI_MAX;
+    float XY_MIN_2, PHI_MIN_2;
+
 
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;

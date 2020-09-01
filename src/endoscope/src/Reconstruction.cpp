@@ -11,7 +11,31 @@ Reconstruction::Reconstruction()
       threshold_knn_ratio(0.7f), threshold_ransac(5.0),
       num_CPU_core(8), num_Scene(KEYPOINT_SCENE),
       matching_method(Matching::BruteForce), extract_type(Extractor::DetectorType::AKAZE),
-      use_mode(UseMode::NORMAL_SCENE) {}
+      use_mode(UseMode::NORMAL_SCENE)
+{
+    switch (use_mode)
+    {
+    case UseMode::NORMAL_SCENE:
+        Z_MAX = CHOOSE_KF_Z_MAX_N;
+        XY_MIN = CHOOSE_KF_XY_MIN_N;
+        XY_MAX = CHOOSE_KF_XY_MAX_N;
+        PHI_MIN = CHOOSE_KF_PHI_MIN_N;
+        PHI_MAX = CHOOSE_KF_PHI_MAX_N;
+        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_N;
+        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_N;
+        break;
+
+    case UseMode::EYE:
+        Z_MAX = CHOOSE_KF_Z_MAX_E;
+        XY_MIN = CHOOSE_KF_XY_MIN_E;
+        XY_MAX = CHOOSE_KF_XY_MAX_E;
+        PHI_MIN = CHOOSE_KF_PHI_MIN_E;
+        PHI_MAX = CHOOSE_KF_PHI_MAX_E;
+        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_E;
+        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_E;
+        break;
+    }
+}
 
 void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::msg::Image> &msg_image,
                                      const std::shared_ptr<const geometry_msgs::msg::Transform> &msg_arm,
@@ -138,32 +162,6 @@ void Reconstruction::chooseKeyFrame()
         return;
     }
 
-    float Z_MAX, XY_MIN, XY_MAX, PHI_MIN, PHI_MAX;
-    float XY_MIN_2, PHI_MIN_2;
-
-    switch (use_mode)
-    {
-    case UseMode::NORMAL_SCENE:
-        Z_MAX = CHOOSE_KF_Z_MAX_N;
-        XY_MIN = CHOOSE_KF_XY_MIN_N;
-        XY_MAX = CHOOSE_KF_XY_MAX_N;
-        PHI_MIN = CHOOSE_KF_PHI_MIN_N;
-        PHI_MAX = CHOOSE_KF_PHI_MAX_N;
-        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_N;
-        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_N;
-        break;
-
-    case UseMode::EYE:
-        Z_MAX = CHOOSE_KF_Z_MAX_E;
-        XY_MIN = CHOOSE_KF_XY_MIN_E;
-        XY_MAX = CHOOSE_KF_XY_MAX_E;
-        PHI_MIN = CHOOSE_KF_PHI_MIN_E;
-        PHI_MAX = CHOOSE_KF_PHI_MAX_E;
-        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_E;
-        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_E;
-        break;
-    }
-
     // 新しく登録したキーフレームから探索する
     // for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
     for (auto itr = keyframe_database.begin(); itr != keyframe_database.end(); ++itr)
@@ -186,58 +184,16 @@ void Reconstruction::chooseKeyFrame()
         // printf("KF #%d: t_z = %f, xy = %f, phi = %f (%f)\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), cv::norm(t_move_xy), std::abs(phi), std::abs(phi) * 180 / M_PI);
         if (moving_z_max && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
         {
-            if (itr->keyponit_map.empty())
-            {
-                std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
-
-                // 見つけた
-                itr->scene_counter++;
-                itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
-                keyframe_itr = itr;
-                keyframe_data = *keyframe_itr;
-                flag_reconstruction = true;
-                return;
-            }
-            else
-            {
-                // このKFにすでに登録されているものの中で非常に近いものがあれば除外する
-                bool flag_catchNearFrame(false);
-                for (auto cam_itr = itr->camerainfo_dataabase.begin(); cam_itr != itr->camerainfo_dataabase.end(); cam_itr++)
-                {
-                    // 判定条件: xy方向の変化or仰角の変化が一定範囲内にある
-                    // xy方向の移動量bundler
-                    cv::Mat t_endo_2 = cam_itr->Rotation_world.t() * (frame_data.camerainfo.Transform_world - cam_itr->Transform_world);
-                    cv::Point2f t_move_2_xy(t_endo_2.at<float>(0), t_endo_2.at<float>(1));
-                    bool moving_2_xy_min = cv::norm(t_move_2_xy) < XY_MIN_2;
-                    // 仰角
-                    float phi_2 = Transformer<float>::RevFromRotMat(cam_itr->Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-                    bool moving_2_phi_min = std::abs(phi_2) < PHI_MIN_2;
-
-                    // std::cout << "moving_2_xy : " << cv::norm(t_move_2_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
-                    // std::cout << "phi_2 : " << phi_2 << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
-                    if (moving_2_xy_min && moving_2_phi_min)
-                    {
-                        // めっちゃ近い視点があるので今回はこのkeyframeには登録しないのでパス
-                        std::cout << "KeyFrame No. " << itr->camerainfo.frame_num << "近いやつある" << std::endl;
-                        flag_catchNearFrame = true;
-                        break;
-                    }
-                }
-
-                if (!flag_catchNearFrame)
-                {
-                    std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
-                    // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX << ")" << std::endl;
-                    // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
-                    // std::cout << "phi : " << phi << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
-                    itr->scene_counter++;
-                    itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
-                    keyframe_itr = itr;
-                    keyframe_data = *keyframe_itr;
-                    flag_reconstruction = true;
-                    return;
-                }
-            }
+            std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
+            // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX << ")" << std::endl;
+            // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
+            // std::cout << "phi : " << phi << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
+            itr->scene_counter++;
+            itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
+            keyframe_itr = itr;
+            keyframe_data = *keyframe_itr;
+            flag_reconstruction = true;
+            return;
         }
     }
     // 何一つ当てはまるのがなければ三次元復元は行わない
@@ -559,13 +515,40 @@ void Reconstruction::outlier_remover()
         }
 
         // keyframe_dataにマッチングした点のindexをkeyとして辞書(multimap)として登録
-        MatchedData matchData(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt,
-                              frame_data.camerainfo.ProjectionMatrix.clone(),
-                              frame_data.camerainfo.Rotation_world.clone(),
-                              frame_data.camerainfo.Transform_world.clone(),
-                              frame_data.camerainfo.RodriguesVec_world.clone(),
-                              frame_data.camerainfo.frame_num);
-        keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData));
+        // その前に過去にこの特徴点がかなり近いフレームから登録されているなら今回は登録しない
+        bool flag_insertMap(false);
+        typedef std::multimap<int, MatchedData>::iterator iterator;
+        std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(dmatch[num].queryIdx);
+        for (iterator itr = range.first; itr != range.second; itr++)
+        {
+            // 判定条件: xy方向の変化or仰角の変化が一定範囲内にある
+            cv::Mat t_endo = itr->second.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->second.Transform_world);
+            cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
+            bool moving_xy_min = cv::norm(t_move_xy) < XY_MIN_2;
+            // 仰角
+            float phi = Transformer<float>::RevFromRotMat(itr->second.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+            bool moving_phi_min = std::abs(phi) < PHI_MIN_2;
+            if (!(moving_xy_min && moving_phi_min))
+            {
+                printf("どりゃああ (xy: %f, %f) (phi: %f, %f)\n", cv::norm(t_move_xy), XY_MIN_2, std::abs(phi), PHI_MIN_2);
+                flag_insertMap = true;
+            }
+            else
+            {
+                printf("ひん (xy: %f, %f) (phi: %f, %f)\n", cv::norm(t_move_xy), XY_MIN_2, std::abs(phi), PHI_MIN_2);
+            }
+        }
+
+        if (flag_insertMap)
+        {
+            MatchedData matchData(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt,
+                                  frame_data.camerainfo.ProjectionMatrix.clone(),
+                                  frame_data.camerainfo.Rotation_world.clone(),
+                                  frame_data.camerainfo.Transform_world.clone(),
+                                  frame_data.camerainfo.RodriguesVec_world.clone(),
+                                  frame_data.camerainfo.frame_num);
+            keyframe_data.keyponit_map.insert(std::make_pair(dmatch[num].queryIdx, matchData));
+        }
     }
 }
 
