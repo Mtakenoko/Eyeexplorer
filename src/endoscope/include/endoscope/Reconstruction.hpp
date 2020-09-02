@@ -37,24 +37,24 @@
 #define CHOOSE_KF_XY_MIN_2_N 0.005
 #define CHOOSE_KF_PHI_MIN_2_N 0.02
 
-// 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
-#define CHOOSE_KF_Z_MAX_E 0.001
-#define CHOOSE_KF_XY_MIN_E 0.005
-#define CHOOSE_KF_XY_MAX_E 0.01
-#define CHOOSE_KF_PHI_MIN_E 0.02
-#define CHOOSE_KF_PHI_MAX_E 0.1
-#define CHOOSE_KF_XY_MIN_2_E 0.001
-#define CHOOSE_KF_PHI_MIN_2_E 0.005
-
 // // 新しくKF挿入するためのパラメータ(一般用)
 // // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
 #define SET_KF_Z_MAX_N 0.02
 #define SET_KF_XY_MAX_N 0.03
 #define SET_KF_PHI_MAX_N 0.05
 
+// 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
+#define CHOOSE_KF_Z_MAX_E 0.001
+#define CHOOSE_KF_XY_MIN_E 0.005
+#define CHOOSE_KF_XY_MAX_E 0.01
+#define CHOOSE_KF_PHI_MIN_E 0.01
+#define CHOOSE_KF_PHI_MAX_E 0.05
+#define CHOOSE_KF_XY_MIN_2_E 0.0005
+#define CHOOSE_KF_PHI_MIN_2_E 0.002
+
 // 新しくKF挿入するためのパラメータ(眼球用)
 // // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
-#define SET_KF_Z_MAX_E 0.001
+#define SET_KF_Z_MAX_E 0.002
 #define SET_KF_XY_MAX_E 0.01
 #define SET_KF_PHI_MAX_E 0.1
 

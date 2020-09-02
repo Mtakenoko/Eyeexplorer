@@ -4,6 +4,7 @@
 #include "../include/endoscope/cost_function.hpp"
 #include "../include/endoscope/transformer.hpp"
 #include "../../htl/include/msg_converter.hpp"
+#include "../../htl/include/transform.hpp"
 
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true),
@@ -82,33 +83,30 @@ void Reconstruction::process()
     // Keyframeならば挿入する
     this->setKeyFrame();
 
-    if (!flag_reconstruction)
-        return;
-
-    // カメラの位置姿勢を計算
-    this->setCameraInfo();
-
-    // 特徴点マッチングと誤対応除去
-    this->matching();
-    this->outlier_remover();
-
-    // もし眼球移動を検知すれば
-    this->estimate_move();
-
     if (flag_reconstruction)
     {
+        // カメラの位置姿勢を計算
+        this->setCameraInfo();
+
+        // 特徴点マッチングと誤対応除去
+        this->matching();
+        this->outlier_remover();
+
+        // もし眼球移動を検知すれば
+        this->estimate_move();
+
         // 多視点での三角測量
         this->triangulate(); // 三角測量
 
         // バンドル調整
         this->bundler(); // バンドル調整]
+
+        // Keyframe_database
+        this->updateKeyFrameDatabase();
+
+        // PointCloud
+        this->managePointCloud();
     }
-
-    // Keyframe_database
-    this->updateKeyFrameDatabase();
-
-    // PointCloud
-    this->managePointCloud();
 }
 
 void Reconstruction::initialize()
@@ -530,15 +528,10 @@ void Reconstruction::outlier_remover()
             bool moving_phi_min = std::abs(phi) < PHI_MIN_2;
             if (!(moving_xy_min && moving_phi_min))
             {
-                printf("どりゃああ (xy: %f, %f) (phi: %f, %f)\n", cv::norm(t_move_xy), XY_MIN_2, std::abs(phi), PHI_MIN_2);
+                // printf("どりゃああ #%d (xy: %f, %f) (phi: %f, %f)\n", dmatch[num].queryIdx, cv::norm(t_move_xy), XY_MIN_2, std::abs(phi), PHI_MIN_2);
                 flag_insertMap = true;
             }
-            else
-            {
-                printf("ひん (xy: %f, %f) (phi: %f, %f)\n", cv::norm(t_move_xy), XY_MIN_2, std::abs(phi), PHI_MIN_2);
-            }
         }
-
         if (flag_insertMap)
         {
             MatchedData matchData(frame_data.extractor.keypoints[dmatch[num].trainIdx].pt,
@@ -564,6 +557,7 @@ void Reconstruction::triangulate()
         // マッチング辞書の中で十分マッチングframeを発見したものを探索
         if (keyframe_data.keyponit_map.count(i) >= num_Scene)
         {
+            printf("keypoint_map.count(%zu) : %zu\n", i, keyframe_data.keyponit_map.count(i));
             // 3次元復元用データコンテナ
             std::vector<cv::Point2f> point2D;
             std::vector<cv::Mat> ProjectMat;
@@ -586,15 +580,15 @@ void Reconstruction::triangulate()
                 p3.push_back(point3D_result.reshape(3, 1));
 
                 // RANSACでの三次元復元にて除外されたシーンをkeypoint_mapから削除
-                int count = 0;
-                for (iterator itr = range.first; itr != range.second;)
-                {
-                    if (eliminated_scene[count])
-                        itr = keyframe_data.keyponit_map.erase(itr);
-                    else
-                        itr++;
-                    count++;
-                }
+                // int count = 0;
+                // for (iterator itr = range.first; itr != range.second;)
+                // {
+                //     if (eliminated_scene[count])
+                //         itr = keyframe_data.keyponit_map.erase(itr);
+                //     else
+                //         itr++;
+                //     count++;
+                // }
 
                 // バンドル調整用データ
                 std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(i);
@@ -945,38 +939,49 @@ void Reconstruction::showImage()
                         frame_data.extractor.image, frame_data.extractor.keypoints,
                         inliners_matches, matching_image, match_line_color, match_point_color, matchesMask, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
+        // 表示
+        if (!matching_image.empty() && flag_showImage)
+        {
+            cv::imshow("matching_image", matching_image);
+            cv::waitKey(1);
+        }
+    }
+
+    if (!keyframe_data.extractor.image.empty() && !frame_data.extractor.image.empty())
+    {
         // マッチングの様子なしの比較画像を図示
+        cv::Mat temp_nomatching_image;
         cv::Mat left_image = keyframe_data.extractor.image.clone();
         cv::Mat right_image = frame_data.extractor.image.clone();
-        cv::hconcat(left_image, right_image, nomatching_image);
-    }
+        cv::hconcat(left_image, right_image, temp_nomatching_image);
 
-    // カメラのuv方向への移動量を矢印で追加で図示
-    cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
-    cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
-    cv::Point2f center_t_arm = cv::Point2f(frame_data.camerainfo.Transform.at<float>(0) * 10000 + image_center.x,
-                                           frame_data.camerainfo.Transform.at<float>(1) * 10000 + image_center.y);
-    cv::arrowedLine(nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
+        // カメラのuv方向への移動量を矢印で追加で図示
+        cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
+        cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
+        // ロールピッチの回転による移動量
+        cv::Vec3f EulerAngles = htl::Transform::RotMatToEulerAngles<float>(frame_data.camerainfo.Rotation);
+        float x_pitch = (0.095 + 0.010) * tan(EulerAngles[1]);
+        float y_roll = -1 * (0.095 + 0.010) * tan(EulerAngles[0]);
+        cv::Point2f center_t_arm = cv::Point2f((frame_data.camerainfo.Transform.at<float>(0) + x_pitch) * 30000 + image_center.x,
+                                               (frame_data.camerainfo.Transform.at<float>(1) + y_roll) * 30000 + image_center.y);
+        cv::arrowedLine(temp_nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
 
-    // 眼球移動量推定を行っていればその結果も矢印で表記
-    if (!t_eye_move.empty())
-    {
-        cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-        cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 10000 + image_center2.x,
-                                                   trans_est.at<float>(1) * 10000 + image_center2.y);
-        cv::arrowedLine(nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
-    }
+        // 眼球移動量推定を行っていればその結果も矢印で表記
+        if (!t_eye_move.empty())
+        {
+            cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
+            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 5000 + image_center2.x,
+                                                       trans_est.at<float>(1) * 5000 + image_center2.y);
+            cv::arrowedLine(temp_nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
+        }
+        nomatching_image = temp_nomatching_image.clone();
 
-    // 表示
-    if (!matching_image.empty() && flag_showImage)
-    {
-        cv::imshow("matching_image", matching_image);
-        cv::waitKey(1);
-    }
-    if (!nomatching_image.empty() && flag_showImage)
-    {
-        cv::imshow("nomatching_image", nomatching_image);
-        cv::waitKey(1);
+        // 表示
+        if (!temp_nomatching_image.empty() && flag_showImage)
+        {
+            cv::imshow("nomatching_image", nomatching_image);
+            cv::waitKey(1);
+        }
     }
 }
 

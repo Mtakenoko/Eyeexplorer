@@ -1,11 +1,10 @@
-#ifndef ARM_STATUS__TRANSFORM_
-#define ARM_STATUS__TRANSFORM_
+#ifndef _TRANSFORM_OPENCV
+#define _TRANSFORM_OPENCV_
 
 #include <opencv2/opencv.hpp>
 
 namespace htl
 {
-
     class Transform
     {
     public:
@@ -36,6 +35,11 @@ namespace htl
         template <class T>
         static void RotMatToAngles(cv::Mat R,
                                    T &angle_x, T &angle_y, T &angle_z);
+
+        static bool isRotMat(const cv::Mat &R);
+
+        template <class T>
+        static cv::Vec3f RotMatToEulerAngles(const cv::Mat &R);
     };
 
     template <class T>
@@ -189,6 +193,46 @@ namespace htl
             angle_y = atan2(R.at<T>(2, 0), R.at<T>(2, 2));
             angle_z = atan2(R.at<T>(0, 1), R.at<T>(1, 1));
         }
+    }
+
+    // Checks if a matrix is a valid rotation matrix.
+    bool Transform::isRotMat(const cv::Mat &R)
+    {
+        cv::Mat Rt;
+        cv::transpose(R, Rt);
+        cv::Mat shouldBeIdentity = Rt * R;
+        cv::Mat I = cv::Mat::eye(3, 3, shouldBeIdentity.type());
+
+        return cv::norm(I, shouldBeIdentity) < 1e-6;
+    }
+
+    // Calculates rotation matrix to euler angles
+    // The result is the same as MATLAB except the order
+    // of the euler angles ( x and z are swapped ).
+    template <class T>
+    cv::Vec3f Transform::RotMatToEulerAngles(const cv::Mat &R)
+    {
+
+        assert(isRotMat(R));
+
+        float sy = std::sqrt(R.at<T>(0, 0) * R.at<T>(0, 0) + R.at<T>(1, 0) * R.at<T>(1, 0));
+
+        bool singular = sy < 1e-6; // If
+
+        float x, y, z;
+        if (!singular)
+        {
+            x = atan2(R.at<T>(2, 1), R.at<T>(2, 2));
+            y = atan2(-R.at<T>(2, 0), sy);
+            z = atan2(R.at<T>(1, 0), R.at<T>(0, 0));
+        }
+        else
+        {
+            x = atan2(-R.at<T>(1, 2), R.at<T>(1, 1));
+            y = atan2(-R.at<T>(2, 0), sy);
+            z = 0;
+        }
+        return cv::Vec3f(x, y, z);
     }
 } // namespace htl
 #endif
