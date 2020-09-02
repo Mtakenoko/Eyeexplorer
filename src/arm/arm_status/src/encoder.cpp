@@ -1,9 +1,4 @@
-#include <cstdio>
 #include <iostream>
-#include <string>
-#include <memory>
-#include <string>
-#include <utility>
 #include <ktl.h>
 
 #include "../include/arm/encoder.h"

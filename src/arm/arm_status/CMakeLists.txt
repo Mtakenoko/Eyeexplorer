@@ -32,30 +32,6 @@ find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 
-# forward_kinematics node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(forward_kinematics
-  src/forward_kinematics.cpp
-  src/encoder.cpp
-  src/arm_ver3.cpp
-)
-# 実行ファイルをリンクする
-target_link_libraries(forward_kinematics ts01 ktl ktlrt)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(forward_kinematics
-  "rclcpp"
-  "sensor_msgs"
-  "geometry_msgs"
-  "OpenCV"
-  "tf2_msgs"
-  "tf2_geometry_msgs"
-)
-# 実行ファイルをインストール
-install(TARGETS
-  forward_kinematics
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 # joint_publisher node
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(joint_publisher
