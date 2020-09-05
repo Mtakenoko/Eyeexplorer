@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
         marker_msg.color.b = 0.2;
 
         marker_msg.pose.position.x = 0.40058;
-        marker_msg.pose.position.y = -0.1989;
+        marker_msg.pose.position.y = -0.1959;
         marker_msg.pose.position.z = 0.0000;
 
         //Publish

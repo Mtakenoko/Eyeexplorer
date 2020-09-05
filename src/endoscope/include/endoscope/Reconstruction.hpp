@@ -32,10 +32,8 @@
 #define CHOOSE_KF_Z_MAX_N 0.01
 #define CHOOSE_KF_XY_MIN_N 0.01
 #define CHOOSE_KF_XY_MAX_N 0.03
-#define CHOOSE_KF_PHI_MIN_N 0.001
-#define CHOOSE_KF_PHI_MAX_N 0.1
+#define CHOOSE_KF_PHI_MAX_N 0.3
 #define CHOOSE_KF_XY_MIN_2_N 0.005
-#define CHOOSE_KF_PHI_MIN_2_N 0.02
 
 // // 新しくKF挿入するためのパラメータ(一般用)
 // // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
@@ -45,18 +43,15 @@
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
 #define CHOOSE_KF_Z_MAX_E 0.001
-#define CHOOSE_KF_XY_MIN_E 0.005
-#define CHOOSE_KF_XY_MAX_E 0.01
-#define CHOOSE_KF_PHI_MIN_E 0.01
+#define CHOOSE_KF_XY_MIN_E 0.0003
+#define CHOOSE_KF_XY_MAX_E 0.0008
 #define CHOOSE_KF_PHI_MAX_E 0.05
-#define CHOOSE_KF_XY_MIN_2_E 0.0005
-#define CHOOSE_KF_PHI_MIN_2_E 0.002
-
+#define CHOOSE_KF_XY_MIN_2_E 0.0001
 // 新しくKF挿入するためのパラメータ(眼球用)
 // // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
 #define SET_KF_Z_MAX_E 0.002
-#define SET_KF_XY_MAX_E 0.01
-#define SET_KF_PHI_MAX_E 0.1
+#define SET_KF_XY_MAX_E 0.001
+#define SET_KF_PHI_MAX_E 0.05
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 4
@@ -75,6 +70,8 @@
 // 移動量推定と運動学との差がおおきいときに三次元復元しないかどうか決定するパラメータ
 #define THRESH_DOT 0.93
 
+// ジンバルの中心から内視鏡先端までの距離
+#define LENGTH_ENDOSCOPE 0.105
 class Map
 {
 public:
@@ -186,6 +183,7 @@ private:
     bool flag_showImage;
     bool flag_ceres_stdout;
     bool flag_estimate_move;
+    bool flag_change_showImage;
     const cv::Mat CameraMat = (cv::Mat_<float>(3, 3) << FOCAL_X, 0.0, PP_X,
                                0.0, FOCAL_Y, PP_Y,
                                0.0, 0.0, 1.0);
@@ -197,9 +195,9 @@ private:
     size_t matching_method;
     int extract_type;
     size_t use_mode;
-    float Z_MAX, XY_MIN, XY_MAX, PHI_MIN, PHI_MAX;
-    float XY_MIN_2, PHI_MIN_2;
-
+    float Z_MAX_CHOOSE, XY_MIN_CHOOSE, XY_MAX_CHOOSE, PHI_MAX_CHOOSE;
+    float Z_MAX_SET, XY_MAX_SET, PHI_MAX_SET;
+    float XY_MIN_2;
 
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;

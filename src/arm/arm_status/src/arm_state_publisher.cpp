@@ -13,10 +13,6 @@
 
 using namespace std::chrono_literals;
 
-#define DELAY_TIME 1    //[ms]
-
-geometry_msgs::msg::Transform tip_msg;
-
 int main(int argc, char *argv[])
 {
     //Initialize
@@ -56,12 +52,6 @@ int main(int argc, char *argv[])
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
     auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
 
-    const int end_timing = DELAY_TIME; //[ms]だけ送らせて配信する
-    double x[end_timing], y[end_timing], z[end_timing];
-    double qx[end_timing], qy[end_timing], qz[end_timing], qw[end_timing];
-    bool PUB_START = false;
-    int timing = 0;
-    
     // lanuchファイルで立ち上げる時にまだ準備できていないときがあるので、少し待つ
     sleep(1);
 
@@ -72,48 +62,15 @@ int main(int argc, char *argv[])
             geometry_msgs::msg::TransformStamped TransformStamped;
             TransformStamped = buffer_.lookupTransform(target_frame, source_frame, tf2::TimePoint());
 
-            x[timing] = TransformStamped.transform.translation.x;
-            y[timing] = TransformStamped.transform.translation.y;
-            z[timing] = TransformStamped.transform.translation.z;
-            qx[timing] = TransformStamped.transform.rotation.x;
-            qy[timing] = TransformStamped.transform.rotation.y;
-            qz[timing] = TransformStamped.transform.rotation.z;
-            qw[timing] = TransformStamped.transform.rotation.w;
-            // printf("position_now   = [%0.4f %0.4f %0.4f]\n", x[timing], y[timing], z[timing]);
-
-            if (PUB_START)
-            {
-                if (timing == end_timing - 1)
-                {
-                    tip_msg.translation.x = x[0];
-                    tip_msg.translation.y = y[0];
-                    tip_msg.translation.z = z[0];
-                    tip_msg.rotation.x = qx[0];
-                    tip_msg.rotation.y = qy[0];
-                    tip_msg.rotation.z = qz[0];
-                    tip_msg.rotation.w = qw[0];
-                    timing = 0;
-                    // printf("position_delay = [%0.4f %0.4f %0.4f]\n", x[0], y[0], z[0]);
-                }
-                else
-                {
-                    tip_msg.translation.x = x[timing + 1];
-                    tip_msg.translation.y = y[timing + 1];
-                    tip_msg.translation.z = z[timing + 1];
-                    tip_msg.rotation.x = qx[timing + 1];
-                    tip_msg.rotation.y = qy[timing + 1];
-                    tip_msg.rotation.z = qz[timing + 1];
-                    tip_msg.rotation.w = qw[timing + 1];
-                    // printf("position_delay = [%0.4f %0.4f %0.4f]\n", x[timing + 1], y[timing + 1], z[timing + 1]);
-                    timing++;
-                }
-                pub_tip->publish(tip_msg);
-            }
-
-            if (!PUB_START)
-            {
-                PUB_START = true;
-            }
+            geometry_msgs::msg::Transform tip_msg;
+            tip_msg.translation.x = TransformStamped.transform.translation.x;
+            tip_msg.translation.y = TransformStamped.transform.translation.y;
+            tip_msg.translation.z = TransformStamped.transform.translation.z;
+            tip_msg.rotation.x = TransformStamped.transform.rotation.x;
+            tip_msg.rotation.y = TransformStamped.transform.rotation.y;
+            tip_msg.rotation.z = TransformStamped.transform.rotation.z;
+            tip_msg.rotation.w = TransformStamped.transform.rotation.w;
+            pub_tip->publish(tip_msg);
         }
         catch (tf2::TransformException &ex)
         {

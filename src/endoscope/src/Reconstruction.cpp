@@ -8,32 +8,32 @@
 
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true),
-      flag_showImage(false), flag_ceres_stdout(false), flag_estimate_move(false),
+      flag_showImage(false), flag_ceres_stdout(false), flag_estimate_move(false), flag_change_showImage(false),
       threshold_knn_ratio(0.7f), threshold_ransac(5.0),
       num_CPU_core(8), num_Scene(KEYPOINT_SCENE),
       matching_method(Matching::BruteForce), extract_type(Extractor::DetectorType::AKAZE),
-      use_mode(UseMode::NORMAL_SCENE)
+      use_mode(UseMode::EYE)
 {
     switch (use_mode)
     {
     case UseMode::NORMAL_SCENE:
-        Z_MAX = CHOOSE_KF_Z_MAX_N;
-        XY_MIN = CHOOSE_KF_XY_MIN_N;
-        XY_MAX = CHOOSE_KF_XY_MAX_N;
-        PHI_MIN = CHOOSE_KF_PHI_MIN_N;
-        PHI_MAX = CHOOSE_KF_PHI_MAX_N;
-        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_N;
-        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_N;
+        Z_MAX_CHOOSE = CHOOSE_KF_Z_MAX_N;
+        XY_MAX_CHOOSE = CHOOSE_KF_XY_MAX_N;
+        XY_MIN_CHOOSE = CHOOSE_KF_XY_MIN_N;
+        PHI_MAX_CHOOSE = CHOOSE_KF_PHI_MAX_N;
+        Z_MAX_SET = SET_KF_Z_MAX_N;
+        XY_MAX_SET = SET_KF_XY_MAX_N;
+        PHI_MAX_SET = SET_KF_PHI_MAX_N;
         break;
 
     case UseMode::EYE:
-        Z_MAX = CHOOSE_KF_Z_MAX_E;
-        XY_MIN = CHOOSE_KF_XY_MIN_E;
-        XY_MAX = CHOOSE_KF_XY_MAX_E;
-        PHI_MIN = CHOOSE_KF_PHI_MIN_E;
-        PHI_MAX = CHOOSE_KF_PHI_MAX_E;
-        XY_MIN_2 = CHOOSE_KF_XY_MIN_2_E;
-        PHI_MIN_2 = CHOOSE_KF_PHI_MIN_2_E;
+        Z_MAX_CHOOSE = CHOOSE_KF_Z_MAX_E;
+        XY_MAX_CHOOSE = CHOOSE_KF_XY_MAX_E;
+        XY_MIN_CHOOSE = CHOOSE_KF_XY_MIN_E;
+        PHI_MAX_CHOOSE = CHOOSE_KF_PHI_MAX_E;
+        Z_MAX_SET = SET_KF_Z_MAX_E;
+        XY_MAX_SET = SET_KF_XY_MAX_E;
+        PHI_MAX_SET = SET_KF_PHI_MAX_E;
         break;
     }
 }
@@ -129,6 +129,7 @@ void Reconstruction::initialize()
 
     frame_data.camerainfo.CameraMatrix = this->CameraMat.clone();
     flag_reconstruction = false;
+    flag_change_showImage = false;
 
     // pointcloud
     point3D_hold.zeros(0, 0, CV_32FC3);
@@ -167,30 +168,30 @@ void Reconstruction::chooseKeyFrame()
         // 判定条件1: Z方向の変化が少ない
         // カメラ座標での移動量の計算
         cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-        bool moving_z_max = std::abs(t_endo.at<float>(2)) < Z_MAX;
+        bool moving_z_max = std::abs(t_endo.at<float>(2)) < Z_MAX_CHOOSE;
 
         // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
         // xy方向の移動量bundler
         cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-        bool moving_xy_max = cv::norm(t_move_xy) < XY_MAX;
-        bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN;
+        bool moving_xy_max = cv::norm(t_move_xy) < XY_MAX_CHOOSE;
+        bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN_CHOOSE;
         // 仰角
         float phi = Transformer<float>::RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-        bool moving_phi_max = std::abs(phi) < PHI_MAX;
-        bool moving_phi_min = std::abs(phi) > PHI_MIN;
+        bool moving_phi_max = std::abs(phi) < PHI_MAX_CHOOSE;
 
-        // printf("KF #%d: t_z = %f, xy = %f, phi = %f (%f)\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), cv::norm(t_move_xy), std::abs(phi), std::abs(phi) * 180 / M_PI);
-        if (moving_z_max && moving_xy_max && moving_phi_max && (moving_xy_min || moving_phi_min))
+        // printf("KF #%d: t_z = %f[%f], xy = %f [%f %f], phi = %f [%f]\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), Z_MAX_CHOOSE, cv::norm(t_move_xy), XY_MIN_CHOOSE, XY_MAX_CHOOSE, std::abs(phi), PHI_MAX_CHOOSE);
+        if (moving_z_max && moving_xy_max && moving_xy_min && moving_phi_max)
         {
-            std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
-            // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX << ")" << std::endl;
-            // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN << ", " << XY_MAX << ")" << std::endl;
-            // std::cout << "phi : " << phi << " (" << PHI_MIN << ", " << PHI_MAX << ")" << std::endl;
+            // std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
+            // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX_CHOOSE << ")" << std::endl;
+            // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN_CHOOSE << ", " << XY_MAX_CHOOSE << ")" << std::endl;
+            // std::cout << "phi : " << phi << " (" << PHI_MAX_CHOOSE << ")" << std::endl;
             itr->scene_counter++;
             itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
             keyframe_itr = itr;
             keyframe_data = *keyframe_itr;
             flag_reconstruction = true;
+            flag_change_showImage = true;
             return;
         }
     }
@@ -208,37 +209,21 @@ void Reconstruction::setKeyFrame()
         return;
     }
 
-    float Z_MAX, XY_MAX, PHI_MAX;
-    switch (use_mode)
-    {
-    case UseMode::NORMAL_SCENE:
-        Z_MAX = SET_KF_Z_MAX_N;
-        XY_MAX = SET_KF_XY_MAX_N;
-        PHI_MAX = SET_KF_PHI_MAX_N;
-        break;
-
-    case UseMode::EYE:
-        Z_MAX = SET_KF_Z_MAX_E;
-        XY_MAX = SET_KF_XY_MAX_E;
-        PHI_MAX = SET_KF_PHI_MAX_E;
-        break;
-    }
-
     // 新しく登録したキーフレームから探索する(すぐ見つかりやすいので高速になる)
     for (auto itr = keyframe_database.end() - 1; itr != keyframe_database.begin() - 1; --itr)
     {
         // 判定条件1: Z方向の変化が少ない
         // カメラ座標での移動量の計算
         cv::Mat t_endo = itr->camerainfo.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->camerainfo.Transform_world);
-        if (std::abs(t_endo.at<float>(2)) < Z_MAX)
+        if (std::abs(t_endo.at<float>(2)) < Z_MAX_SET)
         {
             // 判定条件2: xy方向の変化or仰角の変化が一定範囲内にある
             // xy方向の移動量
             cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-            bool moving_xy = cv::norm(t_move_xy) < XY_MAX;
+            bool moving_xy = cv::norm(t_move_xy) < XY_MAX_SET;
             // 仰角
             float phi = Transformer<float>::RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-            bool moving_phi = std::abs(phi) < PHI_MAX;
+            bool moving_phi = std::abs(phi) < PHI_MAX_SET;
             if (moving_xy && moving_phi)
             {
                 return;
@@ -479,6 +464,7 @@ void Reconstruction::outlier_remover()
     // スミルノフ･グラブス検定
     //（外れ値 － 平均値） / σ
     std::vector<int> dmatch_num; // 検定で合格したもののindexが入ってるコンテナ
+
     for (size_t i = 0; i < distance.size(); i++)
     {
         cv::Point2f smi_grub;
@@ -492,7 +478,7 @@ void Reconstruction::outlier_remover()
     }
 
     // 誤対応除去したものを保存
-    // printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size());
+    // printf("size : [ %zu, %zu ]\n", inliners_idx.size(), dmatch_num.size()
     for (size_t i = 0; i < dmatch_num.size(); i++)
     {
         int num = dmatch_num[i];
@@ -514,7 +500,7 @@ void Reconstruction::outlier_remover()
 
         // keyframe_dataにマッチングした点のindexをkeyとして辞書(multimap)として登録
         // その前に過去にこの特徴点がかなり近いフレームから登録されているなら今回は登録しない
-        bool flag_insertMap(false);
+        bool flag_insertMap(true);
         typedef std::multimap<int, MatchedData>::iterator iterator;
         std::pair<iterator, iterator> range = keyframe_data.keyponit_map.equal_range(dmatch[num].queryIdx);
         for (iterator itr = range.first; itr != range.second; itr++)
@@ -523,13 +509,10 @@ void Reconstruction::outlier_remover()
             cv::Mat t_endo = itr->second.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->second.Transform_world);
             cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
             bool moving_xy_min = cv::norm(t_move_xy) < XY_MIN_2;
-            // 仰角
-            float phi = Transformer<float>::RevFromRotMat(itr->second.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
-            bool moving_phi_min = std::abs(phi) < PHI_MIN_2;
-            if (!(moving_xy_min && moving_phi_min))
+            if (moving_xy_min)
             {
-                // printf("どりゃああ #%d (xy: %f, %f) (phi: %f, %f)\n", dmatch[num].queryIdx, cv::norm(t_move_xy), XY_MIN_2, std::abs(phi), PHI_MIN_2);
-                flag_insertMap = true;
+                // printf("どりゃああ #%d (xy: %f, %f) (phi: %f)\n", dmatch[num].queryIdx, cv::norm(t_move_xy), XY_MIN_2, std::abs(phi));
+                flag_insertMap = false;
             }
         }
         if (flag_insertMap)
@@ -557,7 +540,7 @@ void Reconstruction::triangulate()
         // マッチング辞書の中で十分マッチングframeを発見したものを探索
         if (keyframe_data.keyponit_map.count(i) >= num_Scene)
         {
-            printf("keypoint_map.count(%zu) : %zu\n", i, keyframe_data.keyponit_map.count(i));
+            // printf("keypoint_map.count(%zu) : %zu\n", i, keyframe_data.keyponit_map.count(i));
             // 3次元復元用データコンテナ
             std::vector<cv::Point2f> point2D;
             std::vector<cv::Mat> ProjectMat;
@@ -580,15 +563,15 @@ void Reconstruction::triangulate()
                 p3.push_back(point3D_result.reshape(3, 1));
 
                 // RANSACでの三次元復元にて除外されたシーンをkeypoint_mapから削除
-                // int count = 0;
-                // for (iterator itr = range.first; itr != range.second;)
-                // {
-                //     if (eliminated_scene[count])
-                //         itr = keyframe_data.keyponit_map.erase(itr);
-                //     else
-                //         itr++;
-                //     count++;
-                // }
+                int count = 0;
+                for (iterator itr = range.first; itr != range.second;)
+                {
+                    if (eliminated_scene[count])
+                        itr = keyframe_data.keyponit_map.erase(itr);
+                    else
+                        itr++;
+                    count++;
+                }
 
                 // バンドル調整用データ
                 std::pair<iterator, iterator> range2 = keyframe_data.keyponit_map.equal_range(i);
@@ -929,6 +912,11 @@ void Reconstruction::estimate_move()
 
 void Reconstruction::showImage()
 {
+    if (!flag_change_showImage)
+    {
+        return;
+    }
+
     if (!inliners_matches.empty())
     {
         // マッチングの様子を図示
@@ -938,6 +926,13 @@ void Reconstruction::showImage()
         cv::drawMatches(keyframe_data.extractor.image, keyframe_data.extractor.keypoints,
                         frame_data.extractor.image, frame_data.extractor.keypoints,
                         inliners_matches, matching_image, match_line_color, match_point_color, matchesMask, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        // フレーム番号も記載
+        char numStr_keyframe_framenum[10];
+        char numStr_frame_framenum[10];
+        sprintf(numStr_keyframe_framenum, "#%d", keyframe_data.camerainfo.frame_num);
+        sprintf(numStr_frame_framenum, "#%d", frame_data.camerainfo.frame_num);
+        cv::putText(matching_image, numStr_keyframe_framenum, cv::Point(10, 300), cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 0, 200), 2, 16);
+        cv::putText(matching_image, numStr_frame_framenum, cv::Point(500, 300), cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 0, 200), 2, 16);
 
         // 表示
         if (!matching_image.empty() && flag_showImage)
@@ -960,18 +955,27 @@ void Reconstruction::showImage()
         cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
         // ロールピッチの回転による移動量
         cv::Vec3f EulerAngles = htl::Transform::RotMatToEulerAngles<float>(frame_data.camerainfo.Rotation);
-        float x_pitch = (0.095 + 0.010) * tan(EulerAngles[1]);
-        float y_roll = -1 * (0.095 + 0.010) * tan(EulerAngles[0]);
+        float x_pitch = LENGTH_ENDOSCOPE * tan(EulerAngles[1]);
+        float y_roll = -1 * LENGTH_ENDOSCOPE * tan(EulerAngles[0]);
+        // std::cout << "Transform : " << frame_data.camerainfo.Transform << std::endl;
+        // std::cout << "rall, pitch : [" << x_pitch << ", " << y_roll << "]" << std::endl;
         cv::Point2f center_t_arm = cv::Point2f((frame_data.camerainfo.Transform.at<float>(0) + x_pitch) * 30000 + image_center.x,
                                                (frame_data.camerainfo.Transform.at<float>(1) + y_roll) * 30000 + image_center.y);
-        cv::arrowedLine(temp_nomatching_image, image_center, center_t_arm, color_arrow, 2, 8, 0, 0.5);
+        cv::arrowedLine(temp_nomatching_image, image_center, center_t_arm, color_arrow, 3, 8, 0, 0.5);
+        // フレーム番号も記載
+        char numStr_keyframe_framenum[10];
+        char numStr_frame_framenum[10];
+        sprintf(numStr_keyframe_framenum, "#%d", keyframe_data.camerainfo.frame_num);
+        sprintf(numStr_frame_framenum, "#%d", frame_data.camerainfo.frame_num);
+        cv::putText(temp_nomatching_image, numStr_keyframe_framenum, cv::Point(10, 300), cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 0, 200), 2, 16);
+        cv::putText(temp_nomatching_image, numStr_frame_framenum, cv::Point(500, 300), cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 0, 200), 2, 16);
 
         // 眼球移動量推定を行っていればその結果も矢印で表記
         if (!t_eye_move.empty())
         {
             cv::Point2f image_center2 = cv::Point2f(frame_data.extractor.image.rows * 3. / 2., frame_data.extractor.image.cols / 2.);
-            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 5000 + image_center2.x,
-                                                       trans_est.at<float>(1) * 5000 + image_center2.y);
+            cv::Point2f center_t_arm_est = cv::Point2f(trans_est.at<float>(0) * 2500 + image_center2.x,
+                                                       trans_est.at<float>(1) * 2500 + image_center2.y);
             cv::arrowedLine(temp_nomatching_image, image_center2, center_t_arm_est, color_arrow, 2, 8, 0, 0.5);
         }
         nomatching_image = temp_nomatching_image.clone();
@@ -1139,6 +1143,29 @@ void Reconstruction::setSceneNum(size_t num)
 void Reconstruction::setUseMode(size_t num)
 {
     this->use_mode = num;
+
+    switch (use_mode)
+    {
+    case UseMode::NORMAL_SCENE:
+        Z_MAX_CHOOSE = CHOOSE_KF_Z_MAX_N;
+        XY_MAX_CHOOSE = CHOOSE_KF_XY_MAX_N;
+        XY_MIN_CHOOSE = CHOOSE_KF_XY_MIN_N;
+        PHI_MAX_CHOOSE = CHOOSE_KF_PHI_MAX_N;
+        Z_MAX_SET = SET_KF_Z_MAX_N;
+        XY_MAX_SET = SET_KF_XY_MAX_N;
+        PHI_MAX_SET = SET_KF_PHI_MAX_N;
+        break;
+
+    case UseMode::EYE:
+        Z_MAX_CHOOSE = CHOOSE_KF_Z_MAX_E;
+        XY_MAX_CHOOSE = CHOOSE_KF_XY_MAX_E;
+        XY_MIN_CHOOSE = CHOOSE_KF_XY_MIN_E;
+        PHI_MAX_CHOOSE = CHOOSE_KF_PHI_MAX_E;
+        Z_MAX_SET = SET_KF_Z_MAX_E;
+        XY_MAX_SET = SET_KF_XY_MAX_E;
+        PHI_MAX_SET = SET_KF_PHI_MAX_E;
+        break;
+    }
 }
 
 void Reconstruction::setMatchingMethod(size_t num)
