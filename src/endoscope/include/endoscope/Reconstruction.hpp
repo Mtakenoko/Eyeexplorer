@@ -8,7 +8,6 @@
 
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/msg/joint_state.hpp>
 #include <geometry_msgs/msg/transform.hpp>
 
 #include <ceres/ceres.h>

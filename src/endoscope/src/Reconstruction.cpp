@@ -186,6 +186,8 @@ void Reconstruction::chooseKeyFrame()
             // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX_CHOOSE << ")" << std::endl;
             // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN_CHOOSE << ", " << XY_MAX_CHOOSE << ")" << std::endl;
             // std::cout << "phi : " << phi << " (" << PHI_MAX_CHOOSE << ")" << std::endl;
+            float r_endo = cv::norm(t_move_xy) / std::tan(std::abs(phi));
+            std::cout << "r_endo : " << r_endo << std::endl;
             itr->scene_counter++;
             itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
             keyframe_itr = itr;
@@ -959,9 +961,10 @@ void Reconstruction::showImage()
         float y_roll = -1 * LENGTH_ENDOSCOPE * tan(EulerAngles[0]);
         // std::cout << "Transform : " << frame_data.camerainfo.Transform << std::endl;
         // std::cout << "rall, pitch : [" << x_pitch << ", " << y_roll << "]" << std::endl;
-        cv::Point2f center_t_arm = cv::Point2f((frame_data.camerainfo.Transform.at<float>(0) + x_pitch) * 30000 + image_center.x,
-                                               (frame_data.camerainfo.Transform.at<float>(1) + y_roll) * 30000 + image_center.y);
+        cv::Point2f center_t_arm = cv::Point2f((frame_data.camerainfo.Transform.at<float>(0)) * 100000 + image_center.x,
+                                               (frame_data.camerainfo.Transform.at<float>(1)) * 100000 + image_center.y);
         cv::arrowedLine(temp_nomatching_image, image_center, center_t_arm, color_arrow, 3, 8, 0, 0.5);
+        
         // フレーム番号も記載
         char numStr_keyframe_framenum[10];
         char numStr_frame_framenum[10];
