@@ -111,7 +111,8 @@ void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::Sha
     cv::Mat rot_now = htl::Transform::QuaternionToRotMat<float>(msg_trans.Orientation[0], msg_trans.Orientation[1], msg_trans.Orientation[2], msg_trans.Orientation[3]);
 
     bool near_frame_detect(false);
-    for (auto itr = trans_vector.begin(); itr < trans_vector.end(); itr++)
+    // 新しく登録したキーフレームから探索する(すぐ見つかりやすいので高速になる)
+    for (auto itr = trans_vector.end() - 1; itr != trans_vector.begin() - 1; --itr)
     {
         float phi = htl::Transform::RevFromRotMat<float>(itr->Rotation.t() * rot_now);
         near_frame_detect = std::abs(phi) < PHI_MAX_CHOOSE;
