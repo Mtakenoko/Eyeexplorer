@@ -28,6 +28,7 @@ find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
@@ -86,6 +87,24 @@ ament_target_dependencies(arm_state_publisher
 # 実行ファイルをインストール
 install(TARGETS
   arm_state_publisher
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# insertpoint_estimator node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(insertpoint_estimator
+  src/insertpoint_estimator.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(insertpoint_estimator
+  "rclcpp"
+  "geometry_msgs"
+  "visualization_msgs"
+  "OpenCV"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  insertpoint_estimator
   DESTINATION lib/${PROJECT_NAME}
 )
 

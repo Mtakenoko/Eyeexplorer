@@ -30,7 +30,7 @@ namespace htl
         static cv::Mat QuaternionToRotMat(const T &qx, const T &qy, const T &qz, const T &qw);
 
         template <class T>
-        static T RevFromRotMat(cv::Mat R);
+        static T RevFromRotMat(const cv::Mat &R);
 
         template <class T>
         static void RotMatToAngles(cv::Mat R,
@@ -142,7 +142,7 @@ namespace htl
     template <class T>
     cv::Mat Transform::QuaternionToRotMat(const T &qx, const T &qy, const T &qz, const T &qw)
     {
-        cv::Mat Output(3, 3, CV_64FC1);
+        cv::Mat Output(3, 3, CV_32FC1);
         Output.at<T>(0, 0) = qx * qx - qy * qy - qz * qz + qw * qw;
         Output.at<T>(0, 1) = 2.0 * (qx * qy - qz * qw);
         Output.at<T>(0, 2) = 2.0 * (qx * qz + qy * qw);
@@ -156,7 +156,7 @@ namespace htl
     }
 
     template <class T>
-    T Transform::RevFromRotMat(cv::Mat R_arm)
+    T Transform::RevFromRotMat(const cv::Mat &R_arm)
     {
         //回転行列をクォータニオンに変換
         T qx, qy, qz, qw;
