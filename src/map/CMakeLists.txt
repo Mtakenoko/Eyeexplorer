@@ -74,28 +74,28 @@ add_definitions(${PCL_DEFINITIONS})
 #   DESTINATION lib/${PROJECT_NAME}
 # )
 
-# # eyeball_estimator node
-# # スタンドアローンノードの実行ファイルをコンパイルする
-# add_executable(eyeball_estimator
-#   src/eyeball_estimator.cpp
-# )
-# # 実行ファイルをリンクする
-# target_link_libraries(eyeball_estimator
-#   ceres
-# )
-# # コンパイルターゲットに依存パッケージの情報を追加する
-# ament_target_dependencies(eyeball_estimator
-#   "rclcpp"
-#   "sensor_msgs"
-#   "visualization_msgs"
-#   "OpenCV"
-#   "ceres"
-# )
-# # 実行ファイルをインストール
-# install(TARGETS
-#   eyeball_estimator
-#   DESTINATION lib/${PROJECT_NAME}
-# )
+# eyeball_estimator node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(eyeball_estimator
+  src/eyeball_estimator.cpp
+)
+# 実行ファイルをリンクする
+target_link_libraries(eyeball_estimator
+  ceres
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(eyeball_estimator
+  "rclcpp"
+  "sensor_msgs"
+  "visualization_msgs"
+  "OpenCV"
+  "ceres"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  eyeball_estimator
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # pointcloud_filter node
 # スタンドアローンノードの実行ファイルをコンパイルする
