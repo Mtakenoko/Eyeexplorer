@@ -17,10 +17,15 @@ int main(int argc, char *argv[])
     {
         // TS-01の入力を読む
         manager->readData();
+        
         // Publish用messageに格納
         manager->setMessage();
+
         // Publish
         manager->publish();
+
+        // TS-01の出力を行う
+        manager->outputData();
 
         rclcpp::spin_some(manager);
         loop_rate.sleep();

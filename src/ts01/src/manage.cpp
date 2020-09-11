@@ -5,7 +5,7 @@ Manager::Manager(const rclcpp::NodeOptions &options)
 
 Manager::Manager(const std::string &name_space,
                  const rclcpp::NodeOptions &options)
-    : Node("ts_01_manager", name_space, options)
+    : Node("ts01_manager", name_space, options)
 {
     // Initialize default demo parameters
     size_t depth = rmw_qos_profile_default.depth;
@@ -17,26 +17,19 @@ Manager::Manager(const std::string &name_space,
     qos.reliability(reliability_policy);
 
     // Publish
-    publisher_status_ = this->create_publisher<std_msgs::msg::Bool>("ts01_status", qos);
-    publisher_encoder_ = this->create_publisher<sensor_msgs::msg::JointState>("ts01_encoder", qos);
-    publisher_di_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_di", qos);
-    publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("ts01_ai", qos);
-    publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("ts01_counter", qos);
-    std::cout << "Publish below topic" << std::endl;
-    std::cout << "  /ts01_status" << std::endl;
-    std::cout << "  /ts01_encoder" << std::endl;
-    std::cout << "  /ts01_di" << std::endl;
-    std::cout << "  /ts01_ai" << std::endl;
-    std::cout << "  /ts01_counter" << std::endl;
+    publisher_status_ = this->create_publisher<std_msgs::msg::Bool>(TOPIC_TS01_STATUS, qos);
+    publisher_encoder_ = this->create_publisher<sensor_msgs::msg::JointState>(TOPIC_TS01_ENCODER, qos);
+    publisher_di_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(TOPIC_TS01_DIN, qos);
+    publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>(TOPIC_TS01_AIN, qos);
+    publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(TOPIC_TS01_COUNTER, qos);
 
     // Subscribe
     subscription_stage_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-        "xyz_stage/move", qos, std::bind(&Manager::topic_callback_stage, this, std::placeholders::_1));
-    subscription_pullout_ = this->create_subscription<std_msgs::msg::Bool>(
-        "pull_out", qos, std::bind(&Manager::topic_callback_pullout, this, std::placeholders::_1));
-    std::cout << "Subscribe below topic" << std::endl;
-    std::cout << "  /xyz_stage/move" << std::endl;
-    std::cout << "  /pull_out" << std::endl;
+        "/xyz_stage/move", qos, std::bind(&Manager::topic_callback_stage, this, std::placeholders::_1));
+    subscription_dout_ = this->create_subscription<std_msgs::msg::Bool>(
+        TOPIC_TS01_DOUT, qos, std::bind(&Manager::topic_callback_dout, this, std::placeholders::_1));
+    subscription_aout_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+        TOPIC_TS01_AOUT, qos, std::bind(&Manager::topic_callback_aout, this, std::placeholders::_1));
 }
 
 void Manager::topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
@@ -44,9 +37,23 @@ void Manager::topic_callback_stage(const std_msgs::msg::Float32MultiArray::Share
     std::cout << "I get msg: " << msg->data[0] << std::endl;
 }
 
-void Manager::topic_callback_pullout(const std_msgs::msg::Bool::SharedPtr msg)
+void Manager::topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg)
 {
-    std::cout << "I get msg: " << msg->data << std::endl;
+    std::cout << "I get dout msg: " << msg->data << std::endl;
+
+    for (int i = 0; i < TS01_DO_CH_NUM; i++)
+    {
+        this->dout[i] = msg->data;
+    }
+}
+
+void Manager::topic_callback_aout(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+{
+    std::cout << "I get aout msg: " << msg->data[0] << std::endl;
+    for (int i = 0; i < TS01_AO_CH_NUM; i++)
+    {
+        this->aout[i] = (float)msg->data[i];
+    }
 }
 
 void Manager::initialize()
@@ -63,14 +70,14 @@ void Manager::initialize()
     }
 
     //DIに関するPublish用msg
-    msg_di.data.resize(DIGITAL_INPUT);
+    msg_di.data.resize(TS01_DI_CH_NUM);
     for (size_t i = 0; i < msg_di.data.size(); ++i)
     {
         msg_di.data[i] = 0;
     }
 
     // AIに関するPublish用msg
-    msg_ai.data.resize(ANALOG_INPUT);
+    msg_ai.data.resize(TS01_AI_CH_NUM);
     for (size_t i = 0; i < msg_ai.data.size(); ++i)
     {
         msg_ai.data[i] = 0.0;
@@ -81,6 +88,18 @@ void Manager::initialize()
     for (size_t i = 0; i < msg_count.data.size(); ++i)
     {
         msg_count.data[i] = 0.0;
+    }
+
+    // DOに関するメンバ変数の初期化
+    for (int i = 0; i < TS01_DO_CH_NUM; i++)
+    {
+        this->dout[i] = false;
+    }
+
+    // AOに関するメンバ変数の初期化
+    for (int i = 0; i < TS01_AO_CH_NUM; i++)
+    {
+        this->aout[i] = 5.0;
     }
 
     // 初期状態をとりあえずpublish
@@ -148,6 +167,20 @@ void Manager::publish()
     publisher_di_->publish(msg_di);
     publisher_ai_->publish(msg_ai);
     publisher_count_->publish(msg_count);
+}
+
+void Manager::outputData()
+{
+    for (int i = 0; i < TS01_DO_CH_NUM; i++)
+    {
+        eyeexplorer.output.dout[i] = this->dout[i];
+    }
+
+    for (int i = 0; i < TS01_AO_CH_NUM; i++)
+    {
+        eyeexplorer.output.u[i] = this->aout[i];
+    }
+    eyeexplorer.ts01.write_data(&eyeexplorer.output);
 }
 
 void Manager::detatch()
