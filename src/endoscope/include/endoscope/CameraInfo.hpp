@@ -73,7 +73,7 @@ private:
     }
     void extractAKAZE()
     {
-        detector_ = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.0000001f);
+        detector_ = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_MLDB, 0, 3, 0.00000001f);
     }
     void extractBRISK()
     {

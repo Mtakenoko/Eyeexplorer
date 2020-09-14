@@ -237,7 +237,7 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
             if (itr < itr2)
             {
                 cv::Mat point3D_2scene = Triangulate::triangulation(point[itr], ProjectionMatrix[itr], point[itr2], ProjectionMatrix[itr2]);
-                // std::cout << "point3D : " << point3D_2scene << std::endl;
+                std::cout << "point3D : " << point3D_2scene << std::endl;
                 point3D_X.push_back(point3D_2scene.at<float>(0));
                 point3D_Y.push_back(point3D_2scene.at<float>(1));
                 point3D_Z.push_back(point3D_2scene.at<float>(2));
@@ -252,7 +252,7 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
     center_point.y = htl::Vector::median(point3D_Y);
     center_point.z = htl::Vector::median(point3D_Z);
 
-    // std::cout << "center_point : " << center_point << std::endl;
+    std::cout << "center_point : " << center_point << std::endl;
 
     // 閾値より大きなものを除外した入力を再度生成
     std::vector<cv::Point2f> point2D;
@@ -264,7 +264,7 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
         float distance_X = std::fabs(point3D_X[i] - center_point.x);
         float distance_Y = std::fabs(point3D_Y[i] - center_point.y);
         float distance_Z = std::fabs(point3D_Z[i] - center_point.z);
-        // printf("(#%d #%d)distance [%f %f %f]\n", image_pair[i].first_image_ID, image_pair[i].second_image_ID, distance_X, distance_Y, distance_Z);
+        printf("(#%d #%d)distance [%f %f %f]\n", image_pair[i].first_image_ID, image_pair[i].second_image_ID, distance_X, distance_Y, distance_Z);
         if (distance_X > DISTANCE_CENTER ||
             distance_Y > DISTANCE_CENTER ||
             distance_Z > DISTANCE_CENTER)
@@ -283,27 +283,28 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
         // printf("image_error_counter[%zu] : %d\n", i, image_error_counter[i]);
         if (image_error_counter[i] < (int)((size - 1) / 2 + 1) && image_out_counter[i] == false)
         {
-            // printf("#%zu push_back\n", i);
+            printf("#%zu push_back(1)\n", i);
             point2D.push_back(point[i]);
             PrjMat.push_back(ProjectionMatrix[i]);
             eliminated_scene.push_back(false);
         }
         else if (image_error_counter[i] < (int)(size / 4 + 1) && image_out_counter[i] == true)
         {
-            // printf("#%zu push_back\n", i);
+            printf("#%zu push_back(2)\n", i);
             point2D.push_back(point[i]);
             PrjMat.push_back(ProjectionMatrix[i]);
             eliminated_scene.push_back(false);
         }
-        else if (size < min_reconstruction_scene * 2)
+        else if (size < min_reconstruction_scene)
         {
-            // printf("#%zu push_back\n", i);
+            printf("#%zu push_back(3)\n", i);
             point2D.push_back(point[i]);
             PrjMat.push_back(ProjectionMatrix[i]);
             eliminated_scene.push_back(false);
         }
         else
         {
+            printf("#%zu is incorrect(4)\n", i);
             eliminated_scene.push_back(true);
         }
     }
