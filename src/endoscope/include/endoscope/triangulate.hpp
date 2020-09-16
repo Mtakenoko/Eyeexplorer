@@ -5,7 +5,6 @@
 #define ITR_TRIANGULATE 10
 #define TRI_ITERATIVE_TERM 0.001
 #define DISTANCE_CENTER 0.003
-#define DISTANCE_CENTER_Z 0.01
 
 class Triangulate
 {

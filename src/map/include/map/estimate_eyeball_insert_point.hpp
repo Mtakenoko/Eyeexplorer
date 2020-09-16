@@ -8,7 +8,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#define THRESHOLD_NUM_POINTS 10
+#define THRESHOLD_NUM_POINTS 30
 
 class Eye_Shape
 {
@@ -174,7 +174,7 @@ void Estimation_EyeBall::estimate()
 
     printf("Estimation Pos [%f %f %f], r : %f\n", x_est, y_est, z_est, r_est);
 
-    if (true /*r_est < 0.04 && r_est > 0.001*/)
+    if (r_est < 0.018 && r_est > 0.001)
     {
         // 大きさ
         eye_shape.Scale.at<float>(0) = r_est * 2.;
