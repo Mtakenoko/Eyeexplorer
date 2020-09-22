@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
         // TS-01の出力を行う
         manager->outputData();
 
+        // ノンブロッキングでコールバック関数を読みに行く
+        // 関数実行時のキューを読み，キューがあればコールバックが呼ばれ，キューがなければコールバックが呼ばれない
         rclcpp::spin_some(manager);
         loop_rate.sleep();
     }

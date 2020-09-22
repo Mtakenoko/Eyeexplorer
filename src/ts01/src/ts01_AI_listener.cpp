@@ -17,8 +17,7 @@ using namespace std::chrono_literals;
 
 std_msgs::msg::Float32MultiArray AI_msg;
 
-void AI_information(const std_msgs::msg::Float32MultiArray::SharedPtr sub_msg, rclcpp::Clock::SharedPtr clock,
-                    rclcpp::Logger logger)
+void AI_information(const std_msgs::msg::Float32MultiArray::SharedPtr sub_msg, rclcpp::Logger logger)
 {
     float AI_port[16];
     static int count = 0;
@@ -27,7 +26,7 @@ void AI_information(const std_msgs::msg::Float32MultiArray::SharedPtr sub_msg, r
     {
         AI_port[i] = sub_msg->data[i];
         if (count % 10 == 0)
-            printf("AI_port[%d] = %0.1f\n", i, AI_port[i]);
+            RCLCPP_INFO(logger, "AI_port[%d] = %0.1f\n", i, AI_port[i]);
     }
 }
 
@@ -56,8 +55,8 @@ int main(int argc, char *argv[])
     rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
     ts.attachClock(clock);
 
-    auto callback = [clock, &node](const std_msgs::msg::Float32MultiArray::SharedPtr msg_sub) {
-        AI_information(msg_sub, clock, node->get_logger());
+    auto callback = [&node](const std_msgs::msg::Float32MultiArray::SharedPtr msg_sub) {
+        AI_information(msg_sub, node->get_logger());
     };
 
     //Set QoS to Subscribe
