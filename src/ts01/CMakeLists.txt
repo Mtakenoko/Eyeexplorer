@@ -47,7 +47,7 @@ add_executable(ts01_manager
   src/manage.cpp
   src/TS_01.cpp
 )
-target_link_libraries(ts01_manager -lts01 -lktl)
+target_link_libraries(ts01_manager -lts01)
 ament_target_dependencies(ts01_manager
   "rclcpp"
   "std_msgs"

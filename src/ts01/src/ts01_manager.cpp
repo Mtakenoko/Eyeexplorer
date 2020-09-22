@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 
     // TS-01との接続など
     auto manager = std::make_shared<Manager>();
-    RCLCPP_INFO(manager->get_logger(), "Initializing...");
+    RCLCPP_INFO(manager->get_logger(), "Connecting...");
     const int opened = manager->initialize();
     while (rclcpp::ok() && opened == 1)
     {
@@ -27,12 +27,12 @@ int main(int argc, char *argv[])
         rclcpp::spin_some(manager);
 
         // TS-01の出力を行う
-        // manager->outputData();
-        
+        manager->outputData();
+
         loop_rate.sleep();
     }
 
-    // TS-01シャットダウン
+    // TS-01をクローズ
     manager->detatch();
     rclcpp::shutdown();
     return 0;

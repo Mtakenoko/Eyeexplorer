@@ -81,7 +81,7 @@ int Manager::initialize()
     msg_encoder.position.resize(ADOF);
     for (size_t i = 0; i < ADOF; ++i)
     {
-        msg_encoder.position.push_back(0.0);
+        msg_encoder.position[i] = 0.0;
     }
 
     //DIに関するPublish用msg
@@ -121,11 +121,9 @@ int Manager::initialize()
     this->publish();
 
     // TS-01へ接続
-    // RCLCPP_INFO(this->get_logger(), "Waiting for opening TS01");
     int opened = eyeexplorer.init_module();
     if (opened == 1)
     {
-        // RCLCPP_INFO(this->get_logger(), "TS01 is opened");
         msg_status.data = true;
     }
     return opened;
@@ -148,28 +146,28 @@ void Manager::setMessage()
     for (size_t i = 0; i < ADOF; ++i)
     {
         msg_encoder.position[i] = eyeexplorer.RQ[i] * enc[i];
-        // RCLCPP_INFO(node_logger, "encoder #%zd = %f, enc = %d", i, msg_encoder_.position[i], enc[i]);
+        // RCLCPP_INFO(this->get_logger(), "encoder #%zd = %f", i, eyeexplorer.RQ[i] * enc[i]);
     }
     msg_encoder.header.stamp = this->now();
 
     //DI
     for (size_t i = 0; i < msg_di.data.size(); i++)
     {
-        //RCLCPP_INFO(node_logger, "DI #%zd = %d",i, eyeexplorer.input.din[i]);
+        // RCLCPP_INFO(this->get_logger(), "DI #%zd = %d",i, eyeexplorer.input.din[i]);
         msg_di.data[i] = eyeexplorer.input.din[i];
     }
 
     //AI
     for (size_t i = 0; i < msg_ai.data.size(); i++)
     {
-        //RCLCPP_INFO(node_logger, "AI #%zd = %f", i, eyeexplorer.input.v[i]);
+        //RCLCPP_INFO(this->get_logger(), "AI #%zd = %f", i, eyeexplorer.input.v[i]);
         msg_ai.data[i] = eyeexplorer.input.v[i];
     }
 
     // Count
     for (size_t i = 0; i < msg_count.data.size(); i++)
     {
-        //RCLCPP_INFO(node_logger, "count #%zd = %f", i, eyeexplorer.input.count[i]);
+        //RCLCPP_INFO(this->get_logger(), "count #%zd = %f", i, eyeexplorer.input.count[i]);
         msg_count.data[i] = eyeexplorer.input.count[i];
     }
 }

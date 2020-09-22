@@ -33,7 +33,6 @@ AO_Publisher::AO_Publisher()
     timer_ = this->create_wall_timer(
         1s,
         [this]() {
-            std::cout << "やあ" << std::endl;
             auto msg = std::make_shared<std_msgs::msg::Float32MultiArray>();
             msg->data.resize(TS01_AO_CH_NUM);
 
