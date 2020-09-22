@@ -27,7 +27,6 @@ public:
     int initialize();
     void readData();
     void setMessage();
-    void setOutput();
     void publish();
     void detatch();
     void outputData();
@@ -58,5 +57,5 @@ private:
 
     // Subscribeデータ保持用配列
     bool dout[TS01_DO_CH_NUM];
-    float aout[TS01_DO_CH_NUM];
+    float aout[TS01_AO_CH_NUM];
 };

@@ -1,3 +1,5 @@
+/* TS01の管理を行うノード */
+
 #include "../include/ts01/manage.hpp"
 
 int main(int argc, char *argv[])
