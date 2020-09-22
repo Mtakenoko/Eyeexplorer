@@ -24,18 +24,12 @@ Manager::Manager(const std::string &name_space,
     publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(TOPIC_TS01_COUNTER, qos);
 
     // Subscribe
-    subscription_stage_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-        "/xyz_stage/move", qos, std::bind(&Manager::topic_callback_stage, this, std::placeholders::_1));
     subscription_dout_ = this->create_subscription<std_msgs::msg::Bool>(
         TOPIC_TS01_DOUT, qos, std::bind(&Manager::topic_callback_dout, this, std::placeholders::_1));
     subscription_aout_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
         TOPIC_TS01_AOUT, qos, std::bind(&Manager::topic_callback_aout, this, std::placeholders::_1));
 }
 
-void Manager::topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
-{
-    std::cout << "I get msg: " << msg->data[0] << std::endl;
-}
 
 void Manager::topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg)
 {
@@ -60,8 +54,7 @@ void Manager::initialize()
 {
     //TS01の状態に関するPublish用msg
     msg_status.set__data(false);
-
-    std::cout << "initial" << std::endl;
+    
     //エンコーダーに関するPublish用msg
     msg_encoder.position.resize(ADOF);
     for (size_t i = 0; i < ADOF; ++i)

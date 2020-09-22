@@ -11,8 +11,6 @@ int main(int argc, char *argv[])
     auto manager = std::make_shared<Manager>();
     std::cout << "Initializing..." << std::endl;
     manager->initialize();
-    std::cout << "Finisuhed Initializing" << std::endl;
-
     while (rclcpp::ok())
     {
         // TS-01の入力を読む
@@ -25,8 +23,8 @@ int main(int argc, char *argv[])
         manager->publish();
 
         // TS-01の出力を行う
-        manager->outputData();
-
+        // manager->outputData();
+        
         // ノンブロッキングでコールバック関数を読みに行く
         // 関数実行時のキューを読み，キューがあればコールバックが呼ばれ，キューがなければコールバックが呼ばれない
         rclcpp::spin_some(manager);

@@ -34,10 +34,8 @@ public:
 
 private:
     // Subscribe
-    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_stage_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr subscription_dout_;
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_aout_;
-    void topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
     void topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg_dout_);
     void topic_callback_aout(const std_msgs::msg::Float32MultiArray::SharedPtr msg_aout_);
 

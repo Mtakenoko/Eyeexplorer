@@ -11,13 +11,13 @@
 #include "rclcpp/time_source.hpp"
 #include "rclcpp/clock.hpp"
 
-#include <std_msgs/msg/float32_multi_array.hpp>
+#include <std_msgs/msg/int32_multi_array.hpp>
 
 using namespace std::chrono_literals;
 
-std_msgs::msg::Float32MultiArray AI_msg;
+std_msgs::msg::Int32MultiArray AI_msg;
 
-void DI_information(const std_msgs::msg::Float32MultiArray::SharedPtr sub_msg, rclcpp::Logger logger)
+void DI_information(const std_msgs::msg::Int32MultiArray::SharedPtr sub_msg, rclcpp::Logger logger)
 {
     float DI_port[10];
     static int count = 0;
@@ -55,13 +55,13 @@ int main(int argc, char *argv[])
     rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
     ts.attachClock(clock);
 
-    auto callback = [&node](const std_msgs::msg::Float32MultiArray::SharedPtr msg_sub) {
+    auto callback = [&node](const std_msgs::msg::Int32MultiArray::SharedPtr msg_sub) {
         DI_information(msg_sub, node->get_logger());
     };
 
     //Set QoS to Subscribe
     RCLCPP_INFO(node->get_logger(), "Subscribing to topic '%s'", topic_sub.c_str());
-    auto sub = node->create_subscription<std_msgs::msg::Float32MultiArray>(topic_sub, qos, callback); // Initialize a subscriber that will receive the ROS Image message to be displayed.
+    auto sub = node->create_subscription<std_msgs::msg::Int32MultiArray>(topic_sub, qos, callback); // Initialize a subscriber that will receive the ROS Image message to be displayed.
 
     rclcpp::spin(node);
     rclcpp::shutdown();
