@@ -46,7 +46,7 @@ void Manager::topic_callback_aout(const std_msgs::msg::Float32MultiArray::Shared
     std::cout << "I get aout msg: " << msg->data[0] << std::endl;
     for (int i = 0; i < TS01_AO_CH_NUM; i++)
     {
-        this->aout[i] = (float)msg->data[i];
+        this->aout[i] = msg->data[i];
     }
 }
 
@@ -171,7 +171,7 @@ void Manager::outputData()
 
     for (int i = 0; i < TS01_AO_CH_NUM; i++)
     {
-        eyeexplorer.output.u[i] = this->aout[i];
+        eyeexplorer.output.u[i] = (double)this->aout[i];
     }
     eyeexplorer.ts01.write_data(&eyeexplorer.output);
 }

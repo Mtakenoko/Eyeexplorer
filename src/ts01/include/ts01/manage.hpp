@@ -58,5 +58,5 @@ private:
 
     // Subscribeデータ保持用配列
     bool dout[TS01_DO_CH_NUM];
-    bool aout[TS01_DO_CH_NUM];
+    float aout[TS01_DO_CH_NUM];
 };
