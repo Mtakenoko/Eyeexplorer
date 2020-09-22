@@ -21,6 +21,7 @@ Reconstruction::Reconstruction()
         XY_MAX_CHOOSE = CHOOSE_KF_XY_MAX_N;
         XY_MIN_CHOOSE = CHOOSE_KF_XY_MIN_N;
         PHI_MAX_CHOOSE = CHOOSE_KF_PHI_MAX_N;
+        XY_MIN_2_CHOOSE = CHOOSE_KF_XY_MIN_2_N;
         Z_MAX_SET = SET_KF_Z_MAX_N;
         XY_MAX_SET = SET_KF_XY_MAX_N;
         PHI_MAX_SET = SET_KF_PHI_MAX_N;
@@ -31,6 +32,7 @@ Reconstruction::Reconstruction()
         XY_MAX_CHOOSE = CHOOSE_KF_XY_MAX_E;
         XY_MIN_CHOOSE = CHOOSE_KF_XY_MIN_E;
         PHI_MAX_CHOOSE = CHOOSE_KF_PHI_MAX_E;
+        XY_MIN_2_CHOOSE = CHOOSE_KF_XY_MIN_2_E;
         Z_MAX_SET = SET_KF_Z_MAX_E;
         XY_MAX_SET = SET_KF_XY_MAX_E;
         PHI_MAX_SET = SET_KF_PHI_MAX_E;
@@ -99,7 +101,7 @@ void Reconstruction::process()
         this->triangulate(); // 三角測量
 
         // バンドル調整
-        this->bundler(); // バンドル調整]
+        // this->bundler(); // バンドル調整]
 
         // Keyframe_database
         this->updateKeyFrameDatabase();
@@ -186,8 +188,6 @@ void Reconstruction::chooseKeyFrame()
             // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX_CHOOSE << ")" << std::endl;
             // std::cout << "moving_xy : " << cv::norm(t_move_xy) << " (" << XY_MIN_CHOOSE << ", " << XY_MAX_CHOOSE << ")" << std::endl;
             // std::cout << "phi : " << phi << " (" << PHI_MAX_CHOOSE << ")" << std::endl;
-            float r_endo = cv::norm(t_move_xy) / std::tan(std::abs(phi));
-            std::cout << "r_endo : " << r_endo << std::endl;
             itr->scene_counter++;
             itr->camerainfo_dataabase.push_back(frame_data.camerainfo);
             keyframe_itr = itr;
@@ -510,10 +510,9 @@ void Reconstruction::outlier_remover()
             // 判定条件: xy方向の変化or仰角の変化が一定範囲内にある
             cv::Mat t_endo = itr->second.Rotation_world.t() * (frame_data.camerainfo.Transform_world - itr->second.Transform_world);
             cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
-            bool moving_xy_min = cv::norm(t_move_xy) < XY_MIN_2;
+            bool moving_xy_min = cv::norm(t_move_xy) < XY_MIN_2_CHOOSE;
             if (moving_xy_min)
             {
-                // printf("どりゃああ #%d (xy: %f, %f) (phi: %f)\n", dmatch[num].queryIdx, cv::norm(t_move_xy), XY_MIN_2, std::abs(phi));
                 flag_insertMap = false;
             }
         }
@@ -558,6 +557,7 @@ void Reconstruction::triangulate()
             // 三次元復元
             std::vector<bool> eliminated_scene;
             cv::Mat point3D_result = Triangulate::triangulation_RANSAC(point2D, ProjectMat, eliminated_scene, num_Scene);
+            // cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
 
             if (!point3D_result.empty())
             {
@@ -956,15 +956,15 @@ void Reconstruction::showImage()
         cv::Point2f image_center = cv::Point2f(frame_data.extractor.image.rows / 2., frame_data.extractor.image.cols / 2.);
         cv::Scalar color_arrow = cv::Scalar(0, 0, 255);
         // ロールピッチの回転による移動量
-        cv::Vec3f EulerAngles = htl::Transform::RotMatToEulerAngles<float>(frame_data.camerainfo.Rotation);
-        float x_pitch = LENGTH_ENDOSCOPE * tan(EulerAngles[1]);
-        float y_roll = -1 * LENGTH_ENDOSCOPE * tan(EulerAngles[0]);
+        // cv::Vec3f EulerAngles = htl::Transform::RotMatToEulerAngles<float>(frame_data.camerainfo.Rotation);
+        // float x_pitch = LENGTH_ENDOSCOPE * tan(EulerAngles[1]);
+        // float y_roll = -1 * LENGTH_ENDOSCOPE * tan(EulerAngles[0]);
         // std::cout << "Transform : " << frame_data.camerainfo.Transform << std::endl;
         // std::cout << "rall, pitch : [" << x_pitch << ", " << y_roll << "]" << std::endl;
         cv::Point2f center_t_arm = cv::Point2f((frame_data.camerainfo.Transform.at<float>(0)) * 100000 + image_center.x,
                                                (frame_data.camerainfo.Transform.at<float>(1)) * 100000 + image_center.y);
         cv::arrowedLine(temp_nomatching_image, image_center, center_t_arm, color_arrow, 3, 8, 0, 0.5);
-        
+
         // フレーム番号も記載
         char numStr_keyframe_framenum[10];
         char numStr_frame_framenum[10];

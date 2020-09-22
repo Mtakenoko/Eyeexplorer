@@ -97,6 +97,24 @@ add_definitions(${PCL_DEFINITIONS})
 #   DESTINATION lib/${PROJECT_NAME}
 # )
 
+# eyeball_estimator_insertion_point node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(eyeball_estimator_insertion_point
+  src/eyeball_estimator.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(eyeball_estimator_insertion_point
+  "rclcpp"
+  "sensor_msgs"
+  "visualization_msgs"
+  "OpenCV"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  eyeball_estimator_insertion_point
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # pointcloud_filter node
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(pointcloud_filter

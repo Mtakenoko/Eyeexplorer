@@ -150,44 +150,46 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
         float distance_X = std::fabs(point3D_X[i] - center_point.x);
         float distance_Y = std::fabs(point3D_Y[i] - center_point.y);
         float distance_Z = std::fabs(point3D_Z[i] - center_point.z);
-        // printf("(#%d #%d)distance [%f %f %f]\n", image_pair[i].first_image_ID, image_pair[i].second_image_ID, distance_X, distance_Y, distance_Z);
-        if (distance_X > DISTANCE_CENTER ||
-            distance_Y > DISTANCE_CENTER ||
-            distance_Z > DISTANCE_CENTER)
+        float distance = std::sqrt(distance_X * distance_X + distance_Y * distance_Y + distance_Z * distance_Z);
+        printf("(#%d #%d)distance [%f %f %f] => %f\n", image_pair[i].first_image_ID, image_pair[i].second_image_ID, distance_X, distance_Y, distance_Z, distance);
+        if (distance > DISTANCE_CENTER)
         {
             image_error_counter[image_pair[i].first_image_ID]++;
             image_error_counter[image_pair[i].second_image_ID]++;
-        }
-        if (distance_Z > DISTANCE_CENTER_Z)
-        {
-            image_out_counter[image_pair[i].first_image_ID] = true;
-            image_out_counter[image_pair[i].second_image_ID] = true;
         }
     }
 
     std::vector<cv::Point2f> point2D;
     std::vector<cv::Mat> PrjMat;
+
     for (size_t i = 0; i < size; i++)
     {
-        if (image_error_counter[i] < (int)((size - 1) / 2 + 1) && image_out_counter[i] == false)
+        // printf("image_error_counter[%zu] : %d\n", i, image_error_counter[i]);
+        // 誤差がある程度
+        if (image_error_counter[i] < (int)((size - 1) / 2 + 1))
         {
+            printf("#%zu push_back(1)\n", i);
             point2D.push_back(point[i]);
             PrjMat.push_back(ProjectionMatrix[i]);
         }
-        else if (image_error_counter[i] < (int)(size / 4 + 1) && image_out_counter[i] == true)
+        else
         {
-            point2D.push_back(point[i]);
-            PrjMat.push_back(ProjectionMatrix[i]);
+            printf("#%zu is incorrect(4)\n", i);
         }
     }
+
+    // 除外して残ったものが少ない場合は、復元を行わない
     if (point2D.size() < 2)
     {
-        std::cout << "point2D.size() = " << point2D.size() << std::endl;
+        // std::cout << "point2D.size() = " << point2D.size() << std::endl;
         // cv::Mat ans = Triangulate::triangulation(point, ProjectionMatrix);
         cv::Mat ans;
         return ans;
     }
+
+    // 除外したもので三角測量
     cv::Mat ans = Triangulate::triangulation(point2D, PrjMat);
+    std::cout << "ans point3D : " << ans << std::endl;
     return ans;
 }
 
@@ -237,7 +239,7 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
             if (itr < itr2)
             {
                 cv::Mat point3D_2scene = Triangulate::triangulation(point[itr], ProjectionMatrix[itr], point[itr2], ProjectionMatrix[itr2]);
-                // std::cout << "point3D : " << point3D_2scene << std::endl;
+                std::cout << "point3D : " << point3D_2scene << std::endl;
                 point3D_X.push_back(point3D_2scene.at<float>(0));
                 point3D_Y.push_back(point3D_2scene.at<float>(1));
                 point3D_Z.push_back(point3D_2scene.at<float>(2));
@@ -252,72 +254,57 @@ cv::Mat Triangulate::triangulation_RANSAC(const std::vector<cv::Point2f> &point,
     center_point.y = htl::Vector::median(point3D_Y);
     center_point.z = htl::Vector::median(point3D_Z);
 
-    // std::cout << "center_point : " << center_point << std::endl;
+    std::cout << "center_point : " << center_point << std::endl;
 
     // 閾値より大きなものを除外した入力を再度生成
     std::vector<cv::Point2f> point2D;
     std::vector<cv::Mat> PrjMat;
     std::vector<int> image_error_counter(size);
-    std::vector<bool> image_out_counter(size);
     for (size_t i = 0; i < image_pair.size(); i++)
     {
         float distance_X = std::fabs(point3D_X[i] - center_point.x);
         float distance_Y = std::fabs(point3D_Y[i] - center_point.y);
         float distance_Z = std::fabs(point3D_Z[i] - center_point.z);
-        // printf("(#%d #%d)distance [%f %f %f]\n", image_pair[i].first_image_ID, image_pair[i].second_image_ID, distance_X, distance_Y, distance_Z);
-        if (distance_X > DISTANCE_CENTER ||
-            distance_Y > DISTANCE_CENTER ||
-            distance_Z > DISTANCE_CENTER)
+        float distance = std::sqrt(distance_X * distance_X + distance_Y * distance_Y + distance_Z * distance_Z);
+        printf("(#%d #%d)distance [%f %f %f] => %f\n", image_pair[i].first_image_ID, image_pair[i].second_image_ID, distance_X, distance_Y, distance_Z, distance);
+        if (distance > DISTANCE_CENTER)
         {
             image_error_counter[image_pair[i].first_image_ID]++;
             image_error_counter[image_pair[i].second_image_ID]++;
-        }
-        if (distance_Z > DISTANCE_CENTER_Z)
-        {
-            image_out_counter[image_pair[i].first_image_ID] = true;
-            image_out_counter[image_pair[i].second_image_ID] = true;
         }
     }
     for (size_t i = 0; i < size; i++)
     {
         // printf("image_error_counter[%zu] : %d\n", i, image_error_counter[i]);
-        if (image_error_counter[i] < (int)((size - 1) / 2 + 1) && image_out_counter[i] == false)
+        // 誤差がある程度
+        if (image_error_counter[i] < (int)((size - 1) / 2 + 1))
         {
-            // printf("#%zu push_back\n", i);
-            point2D.push_back(point[i]);
-            PrjMat.push_back(ProjectionMatrix[i]);
-            eliminated_scene.push_back(false);
-        }
-        else if (image_error_counter[i] < (int)(size / 4 + 1) && image_out_counter[i] == true)
-        {
-            // printf("#%zu push_back\n", i);
-            point2D.push_back(point[i]);
-            PrjMat.push_back(ProjectionMatrix[i]);
-            eliminated_scene.push_back(false);
-        }
-        else if (size < min_reconstruction_scene * 2)
-        {
-            // printf("#%zu push_back\n", i);
+            printf("#%zu push_back(1)\n", i);
             point2D.push_back(point[i]);
             PrjMat.push_back(ProjectionMatrix[i]);
             eliminated_scene.push_back(false);
         }
         else
         {
+            printf("#%zu is incorrect\n", i);
             eliminated_scene.push_back(true);
         }
     }
 
-    // 除外したもので三角測量
-    if (point2D.size() < min_reconstruction_scene)
+    // 除外して残ったものが少ない場合は、復元を行わない
+    if (point2D.size() < 2)
     {
-        // std::cout << "point2D.size() = " << point2D.size() << std::endl;
-        // cv::Mat ans = Triangulate::triangulation(point, ProjectionMatrix);
+        std::cout << "point2D.size() = " << point2D.size() << std::endl;
+        std::cout << "So, I couldn't reconstruction" << std::endl;
+        std::cout << std::endl;
         cv::Mat ans;
         return ans;
     }
+
+    // 除外したもので三角測量
     cv::Mat ans = Triangulate::triangulation(point2D, PrjMat);
-    // std::cout << "ans point3D : " << ans << std::endl;
+    std::cout << "ans point3D : " << ans << std::endl;
+    std::cout << std::endl;
     return ans;
 }
 void Triangulate::BuildInhomogeneousEqnSystemForTriangulation(

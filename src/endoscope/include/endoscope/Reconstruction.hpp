@@ -34,21 +34,22 @@
 #define CHOOSE_KF_PHI_MAX_N 0.3
 #define CHOOSE_KF_XY_MIN_2_N 0.005
 
-// // 新しくKF挿入するためのパラメータ(一般用)
-// // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
+// 新しくKF挿入するためのパラメータ(一般用)
+// いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
 #define SET_KF_Z_MAX_N 0.02
 #define SET_KF_XY_MAX_N 0.03
 #define SET_KF_PHI_MAX_N 0.05
 
 // 現在のフレームと比較するKFを選択するためのパラメータ(眼球用)
 #define CHOOSE_KF_Z_MAX_E 0.001
-#define CHOOSE_KF_XY_MIN_E 0.0003
-#define CHOOSE_KF_XY_MAX_E 0.0008
+#define CHOOSE_KF_XY_MIN_E 0.0005
+#define CHOOSE_KF_XY_MAX_E 0.001
 #define CHOOSE_KF_PHI_MAX_E 0.05
 #define CHOOSE_KF_XY_MIN_2_E 0.0001
+
 // 新しくKF挿入するためのパラメータ(眼球用)
-// // いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
-#define SET_KF_Z_MAX_E 0.002
+// いっぱい取れるようにすると過去の分を使うことがなくなってしまうため、あまり一杯取らないように注意
+#define SET_KF_Z_MAX_E 0.001
 #define SET_KF_XY_MAX_E 0.001
 #define SET_KF_PHI_MAX_E 0.05
 
@@ -160,6 +161,7 @@ private:
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image);
     std::string mat_type2encoding(int mat_type);
     void convert_frame_to_message(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg);
+    void test();
 
 private:
     // std::unique_ptr<FrameDatabase> frame_data = std::make_unique<FrameDatabase>();
@@ -196,7 +198,7 @@ private:
     size_t use_mode;
     float Z_MAX_CHOOSE, XY_MIN_CHOOSE, XY_MAX_CHOOSE, PHI_MAX_CHOOSE;
     float Z_MAX_SET, XY_MAX_SET, PHI_MAX_SET;
-    float XY_MIN_2;
+    float XY_MIN_2_CHOOSE;
 
     std::vector<cv::DMatch> dmatch, inliners_matches;
     std::vector<cv::Point2f> matched_point1, matched_point2;
