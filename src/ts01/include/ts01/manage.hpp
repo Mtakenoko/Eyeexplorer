@@ -12,10 +12,10 @@
 #define COUNT_INPUT 3
 #define TOPIC_TS01_STATUS "/ts01/status"
 #define TOPIC_TS01_ENCODER "/ts01/encoder"
-#define TOPIC_TS01_DIN "/ts01/din"
-#define TOPIC_TS01_DOUT "/ts01/dout"
-#define TOPIC_TS01_AIN "/ts01/ain"
-#define TOPIC_TS01_AOUT "/ts01/aout"
+#define TOPIC_TS01_DIN "/ts01/digital/input"
+#define TOPIC_TS01_DOUT "/ts01/digital/output"
+#define TOPIC_TS01_AIN "/ts01/analog/input"
+#define TOPIC_TS01_AOUT "/ts01/analog/output"
 #define TOPIC_TS01_COUNTER "/ts01/counter"
 
 class Manager : public rclcpp::Node

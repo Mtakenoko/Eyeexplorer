@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     size_t depth = rmw_qos_profile_default.depth;
     rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
-    std::string topic_sub("ts01_di");
+    std::string topic_sub("/ts01/digital/input");
 
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
