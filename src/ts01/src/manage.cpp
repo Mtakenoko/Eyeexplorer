@@ -1,7 +1,30 @@
 #include "../include/ts01/manage.hpp"
 
 Manager::Manager(const rclcpp::NodeOptions &options)
-    : Manager("", options) {}
+    : Manager("", options)
+{
+    // Initialize default demo parameters
+    size_t depth = rmw_qos_profile_default.depth;
+    rmw_qos_reliability_policy_t reliability_policy = rmw_qos_profile_default.reliability;
+    rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
+
+    // Set quality of service profile based on command line options.
+    auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
+    qos.reliability(reliability_policy);
+
+    // Publish
+    publisher_status_ = this->create_publisher<std_msgs::msg::Bool>(TOPIC_TS01_STATUS, qos);
+    publisher_encoder_ = this->create_publisher<sensor_msgs::msg::JointState>(TOPIC_TS01_ENCODER, qos);
+    publisher_di_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(TOPIC_TS01_DIN, qos);
+    publisher_ai_ = this->create_publisher<std_msgs::msg::Float32MultiArray>(TOPIC_TS01_AIN, qos);
+    publisher_count_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(TOPIC_TS01_COUNTER, qos);
+
+    // Subscribe
+    subscription_dout_ = this->create_subscription<std_msgs::msg::Bool>(
+        TOPIC_TS01_DOUT, qos, std::bind(&Manager::topic_callback_dout, this, std::placeholders::_1));
+    subscription_aout_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+        TOPIC_TS01_AOUT, qos, std::bind(&Manager::topic_callback_aout, this, std::placeholders::_1));
+}
 
 Manager::Manager(const std::string &name_space,
                  const rclcpp::NodeOptions &options)
@@ -30,7 +53,6 @@ Manager::Manager(const std::string &name_space,
         TOPIC_TS01_AOUT, qos, std::bind(&Manager::topic_callback_aout, this, std::placeholders::_1));
 }
 
-
 void Manager::topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg)
 {
     std::cout << "I get dout msg: " << msg->data << std::endl;
@@ -50,11 +72,11 @@ void Manager::topic_callback_aout(const std_msgs::msg::Float32MultiArray::Shared
     }
 }
 
-void Manager::initialize()
+int Manager::initialize()
 {
     //TS01の状態に関するPublish用msg
     msg_status.set__data(false);
-    
+
     //エンコーダーに関するPublish用msg
     msg_encoder.position.resize(ADOF);
     for (size_t i = 0; i < ADOF; ++i)
@@ -99,14 +121,14 @@ void Manager::initialize()
     this->publish();
 
     // TS-01へ接続
-    RCLCPP_INFO(this->get_logger(), "Waiting for opening TS01");
-    eyeexplorer.init_module();
-
-    // TS-01がopen
-    RCLCPP_INFO(this->get_logger(), "TS01 is opened");
-    eyeexplorer.ts01.start_sampling(1000);
-
-    msg_status.data = true;
+    // RCLCPP_INFO(this->get_logger(), "Waiting for opening TS01");
+    int opened = eyeexplorer.init_module();
+    if (opened == 1)
+    {
+        // RCLCPP_INFO(this->get_logger(), "TS01 is opened");
+        msg_status.data = true;
+    }
+    return opened;
 }
 
 void Manager::readData()

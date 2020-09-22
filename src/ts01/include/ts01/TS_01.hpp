@@ -1,6 +1,7 @@
 #include <ktl.h>
 #include <libts01.h>
 
+#define FREQ 1000
 #define ADOF 5
 #define ssi_clock 16      // 16 * 100 ns
 #define ssi_timeout 40000 // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767
@@ -35,6 +36,14 @@ class Manage_EyeExplorer
       public Manage_Encoder
 {
 public:
+    Manage_EyeExplorer();
     int init_module(void);
     int cleanup_module(void);
+    bool isOpened()
+    {
+        return flag_opened;
+    }
+
+private:
+    bool flag_opened;
 };

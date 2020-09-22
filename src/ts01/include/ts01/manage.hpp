@@ -24,7 +24,7 @@ public:
     Manager(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
     Manager(const std::string &name_space,
             const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
-    void initialize();
+    int initialize();
     void readData();
     void setMessage();
     void setOutput();

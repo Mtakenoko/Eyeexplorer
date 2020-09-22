@@ -5,35 +5,35 @@ int main(int argc, char *argv[])
     // ROS2システムの設定
     rclcpp::init(argc, argv);
     rclcpp::WallRate loop_rate(LOOP_RATE);
-    std::cout << "Start connect TS-01" << std::endl;
 
     // TS-01との接続など
     auto manager = std::make_shared<Manager>();
-    std::cout << "Initializing..." << std::endl;
-    manager->initialize();
-    while (rclcpp::ok())
+    RCLCPP_INFO(manager->get_logger(), "Initializing...");
+    const int opened = manager->initialize();
+    while (rclcpp::ok() && opened == 1)
     {
+        RCLCPP_INFO(manager->get_logger(), "TS01 status is opened");
+
         // TS-01の入力を読む
         manager->readData();
-        
+
         // Publish用messageに格納
         manager->setMessage();
 
         // Publish
         manager->publish();
 
+        // ノンブロッキングでコールバック関数を読みに行く
+        rclcpp::spin_some(manager);
+
         // TS-01の出力を行う
         // manager->outputData();
         
-        // ノンブロッキングでコールバック関数を読みに行く
-        // 関数実行時のキューを読み，キューがあればコールバックが呼ばれ，キューがなければコールバックが呼ばれない
-        rclcpp::spin_some(manager);
         loop_rate.sleep();
     }
 
     // TS-01シャットダウン
     manager->detatch();
-    sleep(1);
     rclcpp::shutdown();
     return 0;
 }
