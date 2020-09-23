@@ -1,17 +1,23 @@
 # ros2_eyeexplorer
-・眼科用内視鏡を用いた三次元復元<br>
-・ARマーカーを用いたロボットの関節角等のパラメータ補正<br>
-・TS-01とのinput/output<br>
-などなど<br>
-
-各パッケージやノード、オプションなどの詳細なコマンドはcommand.mdを参照のこと
+眼科用内視鏡を用いた三次元復元のためのレポジトリ
+## Contents
+- 眼科用内視鏡を用いた三次元復元
+- EyeExplorerの運動学
+- 眼科用内視鏡の自動切り抜き
+- ARマーカーを用いたロボットの関節角等のパラメータ補正
+- TS-01管理
+などがあります
 
 # Application & Package
 ## TS-01との接続
 ```
 ros2 run ts01 ts01_sensor
 ```
-EyeExplorer用の設定です。
+また下記ロボットアームの運動学などもまとめたのがこれ。これやったら下のlaunchを立ち上げる必要はない。
+```
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/eyeexplorer.launch.py
+```
+
 ## Robot Arm
 EyeExplorer3.0号機のURDFを用いた順運動学ノードの立ち上げ。各関節や内視鏡先端の位置姿勢がpublishされる。
 ```
