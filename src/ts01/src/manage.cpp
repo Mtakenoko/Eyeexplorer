@@ -122,7 +122,7 @@ int Manager::initialize()
 
     // TS-01へ接続
     const int ts01_status = eyeexplorer.init_module();
-    if (ts01_status == TS01_OPENED)
+    if (ts01_status != TS01_UNOPENED)
     {
         msg_status.data = true;
     }

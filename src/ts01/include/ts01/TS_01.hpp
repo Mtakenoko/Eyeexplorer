@@ -2,7 +2,7 @@
 #include <math.h>
 
 #define SAMPLING_FREQ 1000 // [Hz]
-#define TS01_OPENED 15
+#define TS01_UNOPENED -1
 #define ADOF 5
 #define ssi_clock 16      // 16 * 100 ns
 #define ssi_timeout 40000 // / 8; // 40000ns / 8ns  //30usでは短すぎる //short型の最大値が32767

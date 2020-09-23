@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     RCLCPP_INFO(manager->get_logger(), "Connecting...");
     const int ts01_status = manager->initialize();
     std::cout << "ts01_status : " << ts01_status << std::endl;
-    if (ts01_status == TS01_OPENED)
+    if (ts01_status != TS01_UNOPENED)
     {
         RCLCPP_INFO(manager->get_logger(), "TS01 status is opened");
         while (rclcpp::ok())

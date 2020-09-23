@@ -49,7 +49,7 @@ Manage_EyeExplorer::Manage_EyeExplorer()
 int Manage_EyeExplorer::init_module(void)
 {
   int ts01_status = ts01.open(IP_TS01);
-  if (ts01_status == TS01_OPENED)
+  if (ts01_status != TS01_UNOPENED)
   {
     //--- SSI -----------------------------------------------
     for (int j = 0; j < ADOF; j++)
