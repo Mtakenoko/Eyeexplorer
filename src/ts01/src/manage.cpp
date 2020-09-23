@@ -121,12 +121,12 @@ int Manager::initialize()
     this->publish();
 
     // TS-01へ接続
-    int opened = eyeexplorer.init_module();
-    if (opened == 1)
+    const int ts01_status = eyeexplorer.init_module();
+    if (ts01_status == TS01_OPENED)
     {
         msg_status.data = true;
     }
-    return opened;
+    return ts01_status;
 }
 
 void Manager::readData()

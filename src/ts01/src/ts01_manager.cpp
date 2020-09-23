@@ -11,27 +11,30 @@ int main(int argc, char *argv[])
     // TS-01との接続など
     auto manager = std::make_shared<Manager>();
     RCLCPP_INFO(manager->get_logger(), "Connecting...");
-    const int opened = manager->initialize();
-    while (rclcpp::ok() && opened == 1)
+    const int ts01_status = manager->initialize();
+    std::cout << "ts01_status : " << ts01_status << std::endl;
+    if (ts01_status == TS01_OPENED)
     {
         RCLCPP_INFO(manager->get_logger(), "TS01 status is opened");
+        while (rclcpp::ok())
+        {
+            // TS-01の入力を読む
+            manager->readData();
 
-        // TS-01の入力を読む
-        manager->readData();
+            // Publish用messageに格納
+            manager->setMessage();
 
-        // Publish用messageに格納
-        manager->setMessage();
+            // Publish
+            manager->publish();
 
-        // Publish
-        manager->publish();
+            // ノンブロッキングでコールバック関数を読みに行く
+            rclcpp::spin_some(manager);
 
-        // ノンブロッキングでコールバック関数を読みに行く
-        rclcpp::spin_some(manager);
+            // TS-01の出力を行う
+            manager->outputData();
 
-        // TS-01の出力を行う
-        manager->outputData();
-
-        loop_rate.sleep();
+            loop_rate.sleep();
+        }
     }
 
     // TS-01をクローズ

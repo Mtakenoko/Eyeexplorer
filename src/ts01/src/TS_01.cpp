@@ -48,8 +48,8 @@ Manage_EyeExplorer::Manage_EyeExplorer()
  ****************************************************************** */
 int Manage_EyeExplorer::init_module(void)
 {
-  int opened = ts01.open(IP_TS01);
-  if (opened == 1)
+  int ts01_status = ts01.open(IP_TS01);
+  if (ts01_status == TS01_OPENED)
   {
     //--- SSI -----------------------------------------------
     for (int j = 0; j < ADOF; j++)
@@ -83,7 +83,7 @@ int Manage_EyeExplorer::init_module(void)
     this->flag_opened = true;
   }
 
-  return opened;
+  return ts01_status;
 }
 
 /*******************************************************************

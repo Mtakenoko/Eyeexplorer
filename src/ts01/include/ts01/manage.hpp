@@ -7,7 +7,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 
 #include "TS_01.hpp"
-
+#define TS01_OPENED 15
 #define LOOP_RATE 1000 // [Hz]
 #define COUNT_INPUT 3
 #define TOPIC_TS01_STATUS "/ts01/status"
