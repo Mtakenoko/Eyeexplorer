@@ -51,18 +51,18 @@ int main(int argc, char *argv[])
         marker_msg.type = visualization_msgs::msg::Marker::SPHERE;
         marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
-        marker_msg.scale.x = 0.026;
-        marker_msg.scale.y = 0.022;
-        marker_msg.scale.z = 0.026;
+        marker_msg.scale.x = 0.024;
+        marker_msg.scale.y = 0.024;
+        marker_msg.scale.z = 0.024;
 
         marker_msg.color.a = 0.3;
         marker_msg.color.r = 1.0;
         marker_msg.color.g = 1.0;
         marker_msg.color.b = 0.2;
 
-        marker_msg.pose.position.x = 0.40058;
-        marker_msg.pose.position.y = -0.1959;
-        marker_msg.pose.position.z = 0.0000;
+        marker_msg.pose.position.x = 0.3668;
+        marker_msg.pose.position.y = -0.1675;
+        marker_msg.pose.position.z = -0.0060;
 
         //Publish
         RCLCPP_INFO(node->get_logger(), "Publishing Sphere");
