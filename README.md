@@ -11,7 +11,7 @@
 # Application & Package
 ## TS-01との接続
 ```
-ros2 run ts01 ts01_sensor
+ros2 run ts01 ts01_manager
 ```
 また下記ロボットアームの運動学などもまとめたのがこれ。これやったら下のlaunchを立ち上げる必要はない。
 ```
