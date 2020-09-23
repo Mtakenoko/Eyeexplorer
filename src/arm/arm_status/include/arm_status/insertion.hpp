@@ -11,7 +11,7 @@
 
 #define QUEUE_START_SIZE 5
 #define QUEUE_MAX_SIZE 50
-#define PHI_MAX_CHOOSE 0.01
+#define PHI_MAX_CHOOSE 0.05
 
 struct Line_Intersect
 {
