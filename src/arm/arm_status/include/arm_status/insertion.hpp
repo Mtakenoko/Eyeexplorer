@@ -10,8 +10,8 @@
 #include "../../../../htl/include/transform.hpp"
 
 #define QUEUE_START_SIZE 5
-#define QUEUE_MAX_SIZE 50
-#define PHI_MAX_CHOOSE 0.05
+#define QUEUE_MAX_SIZE 10
+#define PHI_MAX_CHOOSE 0.1
 
 struct Line_Intersect
 {
