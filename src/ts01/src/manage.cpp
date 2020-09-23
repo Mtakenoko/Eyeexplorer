@@ -116,6 +116,7 @@ int Manager::initialize()
     {
         this->aout[i] = 0.0;
     }
+    this->aout[1] = 5.0;    // ブレーキはONにする
     this->aout[2] = 5.0;    // ソレノイドはONにする
 
     // 初期状態をとりあえずpublish
