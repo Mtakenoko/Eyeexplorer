@@ -73,7 +73,7 @@ int Manage_EyeExplorer::init_module(void)
 
     //--- AO ---------------------------
     for (int j = 0; j < TS01_AO_CH_NUM; j++)
-      output.u[j] = 5.0;
+      output.u[j] = 0.0;
     ts01.write_data(&output);
 
     // TS-01がopen
