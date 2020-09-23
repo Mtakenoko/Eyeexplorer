@@ -128,7 +128,7 @@ void PullOut_Endoscope::publish()
     ts01_aout_msg->data[AO_PORT_BRAKE] = 5.0;   // ブレーキは引き続きON
     if (flag_safety)
     {
-        ts01_aout_msg->data[AO_PORT_SOLENOID] = 5.0; // 抜去
+        ts01_aout_msg->data[AO_PORT_SOLENOID] = 0.0; // 抜去
     }
 
     // Publish
