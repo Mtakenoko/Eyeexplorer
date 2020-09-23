@@ -36,24 +36,17 @@ AO_Publisher::AO_Publisher()
             auto msg = std::make_shared<std_msgs::msg::Float32MultiArray>();
             msg->data.resize(TS01_AO_CH_NUM);
 
-            static bool flag = false;
-            if (flag)
+            static int counter = 0;
+            for (int i = 0; i < TS01_AO_CH_NUM; i++)
             {
-                for (int i = 0; i < TS01_AO_CH_NUM; i++)
-                {
-                    msg->data[i] = 0.0;
-                }
+                msg->data[i] = 0.0;
             }
-            else
-            {
-                for (int i = 0; i < TS01_AO_CH_NUM; i++)
-                {
-                    msg->data[i] = 5.0;
-                }
-            }
-            flag = !flag;
+            msg->data[counter] = 5.0;
+            counter++;
+            if (counter > TS01_AO_CH_NUM)
+                counter = 0;
 
-            std::cout << "msg->data[0] : " << msg->data[0] << std::endl;
+            RCLCPP_INFO(this->get_logger(), "msg->data[%d] is 5V", counter);
             publisher_->publish(*msg);
         });
 }

@@ -10,12 +10,18 @@ def generate_launch_description():
     return LaunchDescription([
         # TS01
         Node(package='ts01', node_executable='ts01_manager', output='screen'),
+        # 内視鏡キャプチャ
+        Node(package='endoscope', node_executable='cap_endoscope'),
         # map_server
-        Node(package='map_server', node_executable='map_server', output='screen'),
+        Node(package='map_server', node_executable='map_server'),
         # joint_state_publisher
         Node(package='arm_status', node_executable='joint_publisher', output='screen'),
         # arm_state_publisher
-        Node(package='arm_status', node_executable='arm_state_publisher', output='screen'),
+        Node(package='arm_status', node_executable='arm_state_publisher'),
         # robot_state_publisher
-        Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf])
+        Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf]),
+        # Insertion Point
+        Node(package='arm_status', node_executable='insertpoint_estimator'),
+        # Esitimate EyeBall
+        Node(package='map', node_executable='eyeball_estimator_insertion_point')  
     ])

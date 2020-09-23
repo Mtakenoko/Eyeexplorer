@@ -189,9 +189,9 @@
   <link name="endoscope_link">
     <visual>
       <geometry>
-        <box size="0.01 0.01 -0.03"/>
+        <box size="0.01 0.01 -0.032"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0 -0.015"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.016"/>
       <material name="ARM/black"/>
     </visual>
   </link>
@@ -199,15 +199,15 @@
   <joint name="endoscope_joint2" type="fixed">
     <parent link="endoscope_link"/>
     <child link="endoscope_link2"/>
-    <origin rpy="0 0 0" xyz="0 0 -0.03"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.032"/>
   </joint>
 
   <link name="endoscope_link2">
     <visual>
       <geometry>
-        <cylinder length="0.035" radius="0.001" />
+        <cylinder length="0.028" radius="0.001" />
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0 -0.0175"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.014"/>
       <material name="ARM/white"/>
     </visual>
   </link>
@@ -215,7 +215,7 @@
   <joint name="endoscope_camera" type="fixed">
     <parent link="endoscope_link2"/>
     <child link="endoscope"/>
-    <origin rpy="0 3.14 0" xyz="0 0 -0.035"/>
+    <origin rpy="0 3.14 0" xyz="0 0 -0.028"/>
   </joint>
 
   <link name="endoscope">

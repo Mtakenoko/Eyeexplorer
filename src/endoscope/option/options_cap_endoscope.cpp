@@ -85,6 +85,7 @@ bool parse_command_options(
     if (device != nullptr){
       ss << " -c: Camera device" << std::endl;
       ss << "    Please type number of camera device."  << std::endl;
+      ss << "    default : 2."  << std::endl;
     }
     if (movie_mode != nullptr) {
       ss << " -m: produce images of endoscope's movie rather than connecting to a camera" << std::endl;

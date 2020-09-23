@@ -114,8 +114,10 @@ int Manager::initialize()
     // AOに関するメンバ変数の初期化
     for (int i = 0; i < TS01_AO_CH_NUM; i++)
     {
-        this->aout[i] = 5.0;
+        this->aout[i] = 0.0;
     }
+    this->aout[1] = 5.0;    // ブレーキはONにする
+    this->aout[2] = 5.0;    // ソレノイドはONにする
 
     // 初期状態をとりあえずpublish
     this->publish();
