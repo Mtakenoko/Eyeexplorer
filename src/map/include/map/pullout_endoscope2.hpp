@@ -49,7 +49,7 @@ private:
 };
 
 PullOut_Endoscope::PullOut_Endoscope()
-    : Node("eyeball_estimator_insertion_point"), flag_SetPtip(false), flag_SetEyeball(false), flag_safety(false)
+    : Node("pullout"), flag_SetPtip(false), flag_SetEyeball(false), flag_safety(false)
 {
     // QoSの設定
     size_t depth = rmw_qos_profile_default.depth;
@@ -59,10 +59,10 @@ PullOut_Endoscope::PullOut_Endoscope()
     qos.reliability(reliability_policy);
 
     subscription_pointcloud_ = this->create_subscription<geometry_msgs::msg::Transform>(
-        "/pointcloud/filtered_hold", qos,
+        "/endoscope_transform", qos,
         std::bind(&PullOut_Endoscope::topic_Ptip_callback_, this, std::placeholders::_1));
     subscription_insertpoint_ = this->create_subscription<visualization_msgs::msg::Marker>(
-        "/Ptip", qos,
+        "/EyeBall", qos,
         std::bind(&PullOut_Endoscope::topic_eyeball_callback_, this, std::placeholders::_1));
 }
 
@@ -94,7 +94,7 @@ void PullOut_Endoscope::input_eyeball_data(const visualization_msgs::msg::Marker
     eye_shape.Scale.x = msg_tip->scale.x;
     eye_shape.Scale.y = msg_tip->scale.y;
     eye_shape.Scale.z = msg_tip->scale.z;
-    flag_SetPtip = true;
+    flag_SetEyeball = true;
 }
 
 void PullOut_Endoscope::calc_distance()
@@ -124,10 +124,14 @@ void PullOut_Endoscope::publish()
     {
         ts01_aout_msg->data[i] = 0.0;
     }
-    ts01_aout_msg->data[AO_PORT_SOLENOID] = 5.0 * (int)flag_safety;
+    if (flag_safety)
+    {
+        ts01_aout_msg->data[AO_PORT_SOLENOID] = 5.0; // 抜去
+    }
 
     // Publish
-    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/ts01/analg/output", 10);
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ =
+        this->create_publisher<std_msgs::msg::Float32MultiArray>("/ts01/analg/output", 10);
     publisher_->publish(std::move(ts01_aout_msg));
 }
 #endif
