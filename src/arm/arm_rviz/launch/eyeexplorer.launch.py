@@ -21,7 +21,7 @@ def generate_launch_description():
         # robot_state_publisher
         Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf]),
         # Insertion Point
-        Node(package='arm_status', node_executable='insertpoint_estimator')  
+        Node(package='arm_status', node_executable='insertpoint_estimator'),
         # Esitimate EyeBall
         Node(package='map', node_executable='eyeball_estimator_insertion_point')  
     ])
