@@ -162,6 +162,25 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# pullout node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(pullout
+  src/pullout.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(pullout
+  "rclcpp"
+  "std_msgs"
+  "geometry_msgs"
+  "visualization_msgs"
+  "OpenCV"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  pullout
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # eyeball_publisher node
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(eyeball_publisher
