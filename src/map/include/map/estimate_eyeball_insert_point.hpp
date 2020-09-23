@@ -8,7 +8,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#define THRESHOLD_NUM_POINTS 30
+#define THRESHOLD_NUM_POINTS 15
 
 class Eye_Shape
 {
