@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
     // Initialize a ROS node.
-    auto node = rclcpp::Node::make_shared("arm_state_holder");
+    auto node = rclcpp::Node::make_shared("arm_state_publisher");
     rclcpp::Logger node_logger = node->get_logger();
 
     // Set quality of service profile based on command line options.readencoder.Getoffset()

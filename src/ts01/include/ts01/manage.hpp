@@ -7,11 +7,16 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 
 #include "TS_01.hpp"
-
+#define TS01_OPENED 15
 #define LOOP_RATE 1000 // [Hz]
-#define DIGITAL_INPUT 10
-#define ANALOG_INPUT 16
 #define COUNT_INPUT 3
+#define TOPIC_TS01_STATUS "/ts01/status"
+#define TOPIC_TS01_ENCODER "/ts01/encoder"
+#define TOPIC_TS01_DIN "/ts01/digital/input"
+#define TOPIC_TS01_DOUT "/ts01/digital/output"
+#define TOPIC_TS01_AIN "/ts01/analog/input"
+#define TOPIC_TS01_AOUT "/ts01/analog/output"
+#define TOPIC_TS01_COUNTER "/ts01/counter"
 
 class Manager : public rclcpp::Node
 {
@@ -19,24 +24,27 @@ public:
     Manager(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
     Manager(const std::string &name_space,
             const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
-    void initialize();
+    int initialize();
     void readData();
     void setMessage();
     void publish();
     void detatch();
+    void outputData();
 
 private:
     // Subscribe
-    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_stage_;
-    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr subscription_pullout_;
-    void topic_callback_stage(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
-    void topic_callback_pullout(const std_msgs::msg::Bool::SharedPtr msg_pullout_);
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr subscription_dout_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_aout_;
+    void topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg_dout_);
+    void topic_callback_aout(const std_msgs::msg::Float32MultiArray::SharedPtr msg_aout_);
+
     // Publish
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr publisher_status_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_encoder_;
     rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr publisher_di_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ai_;
     rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr publisher_count_;
+
     // publish用msg
     std_msgs::msg::Bool msg_status;
     sensor_msgs::msg::JointState msg_encoder;
@@ -44,5 +52,10 @@ private:
     std_msgs::msg::Float32MultiArray msg_ai;
     std_msgs::msg::Int32MultiArray msg_count;
 
+    // Eyeexplorer
     Manage_EyeExplorer eyeexplorer;
+
+    // Subscribeデータ保持用配列
+    bool dout[TS01_DO_CH_NUM];
+    float aout[TS01_AO_CH_NUM];
 };

@@ -47,7 +47,7 @@ add_executable(ts01_manager
   src/manage.cpp
   src/TS_01.cpp
 )
-target_link_libraries(ts01_manager -lts01 -lktl)
+target_link_libraries(ts01_manager -lts01)
 ament_target_dependencies(ts01_manager
   "rclcpp"
   "std_msgs"
@@ -58,7 +58,7 @@ ts01_manager
   DESTINATION lib/${PROJECT_NAME}
 )
 
-#ts01_AI_listenernode
+#ts01_AI_listener node
 add_executable(ts01_AI_listener
   src/ts01_AI_listener.cpp
 )
@@ -66,14 +66,13 @@ target_link_libraries(ts01_AI_listener)
 ament_target_dependencies(ts01_AI_listener
   "rclcpp"
   "std_msgs"
-  "sensor_msgs"
 )
 install(TARGETS
   ts01_AI_listener
   DESTINATION lib/${PROJECT_NAME}
 )
 
-#ts01_AI_listenernode
+#ts01_DI_listener node
 add_executable(ts01_DI_listener
   src/ts01_DI_listener.cpp
 )
@@ -81,21 +80,28 @@ target_link_libraries(ts01_DI_listener)
 ament_target_dependencies(ts01_DI_listener
   "rclcpp"
   "std_msgs"
-  "sensor_msgs"
 )
 install(TARGETS
   ts01_DI_listener
   DESTINATION lib/${PROJECT_NAME}
 )
 
+#ts01_AO_talker node
+add_executable(ts01_AO_talker
+  src/ts01_AO_talker.cpp
+)
+target_link_libraries(ts01_AO_talker)
+ament_target_dependencies(ts01_AO_talker
+  "rclcpp"
+  "std_msgs"
+)
+install(TARGETS
+  ts01_AO_talker
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # uncomment the line when a copyright and license is not present in all source files
-  #set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # uncomment the line when this package is not in a git repo
-  #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 
