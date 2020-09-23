@@ -17,5 +17,7 @@ def generate_launch_description():
         # arm_state_publisher
         Node(package='arm_status', node_executable='arm_state_publisher', output='screen'),
         # robot_state_publisher
-        Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf])
+        Node(package='robot_state_publisher', node_executable='robot_state_publisher', output='screen', arguments=[urdf]),
+        # Insertion Point
+        Node(package='arm_status', node_executable='insertpoint_estimator')  
     ])
