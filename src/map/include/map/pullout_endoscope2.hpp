@@ -10,6 +10,7 @@
 #include <opencv2/opencv.hpp>
 
 #define DISTANCE_SAFETY 0.001
+#define AO_PORT_BRAKE 1
 #define AO_PORT_SOLENOID 2
 #define TS01_AO_CH_NUM 12
 
@@ -124,6 +125,7 @@ void PullOut_Endoscope::publish()
     {
         ts01_aout_msg->data[i] = 0.0;
     }
+    ts01_aout_msg->data[AO_PORT_BRAKE] = 5.0;   // ブレーキは引き続きON
     if (flag_safety)
     {
         ts01_aout_msg->data[AO_PORT_SOLENOID] = 5.0; // 抜去
