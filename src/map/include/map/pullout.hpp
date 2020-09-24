@@ -30,20 +30,20 @@ class PullOut_Endoscope : public rclcpp::Node
 {
 public:
     PullOut_Endoscope();
+    void calc_distance();
+    void publish();
     Eye_Shape eye_shape;
-    cv::Point3f Ptip;
+    cv::Point3d Ptip;
 
 private:
     void initialize();
     void input_Ptip_data(const geometry_msgs::msg::Transform::SharedPtr msg_tip);
     void input_eyeball_data(const visualization_msgs::msg::Marker::SharedPtr msg_tip);
-    void calc_distance();
-    void publish();
     void topic_Ptip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip);
     void topic_eyeball_callback_(const visualization_msgs::msg::Marker::SharedPtr msg_tip);
     rclcpp::Subscription<geometry_msgs::msg::Transform>::SharedPtr subscription_pointcloud_;
     rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr subscription_insertpoint_;
-
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_;
     bool flag_SetPtip;
     bool flag_SetEyeball;
     bool flag_safety;
@@ -59,6 +59,8 @@ PullOut_Endoscope::PullOut_Endoscope()
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
+    publisher_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/ts01/analog/output", 10);
+
     subscription_pointcloud_ = this->create_subscription<geometry_msgs::msg::Transform>(
         "/endoscope_transform", qos,
         std::bind(&PullOut_Endoscope::topic_Ptip_callback_, this, std::placeholders::_1));
@@ -69,14 +71,14 @@ PullOut_Endoscope::PullOut_Endoscope()
 
 void PullOut_Endoscope::topic_Ptip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip)
 {
-    PullOut_Endoscope::input_Ptip_data(msg_tip);
-    PullOut_Endoscope::calc_distance();
-    PullOut_Endoscope::publish();
+    this->input_Ptip_data(msg_tip);
+    this->calc_distance();
+    this->publish();
 }
 
 void PullOut_Endoscope::topic_eyeball_callback_(const visualization_msgs::msg::Marker::SharedPtr msg_marker)
 {
-    PullOut_Endoscope::input_eyeball_data(msg_marker);
+    this->input_eyeball_data(msg_marker);
 }
 
 void PullOut_Endoscope::input_Ptip_data(const geometry_msgs::msg::Transform::SharedPtr msg_tip)
@@ -87,14 +89,14 @@ void PullOut_Endoscope::input_Ptip_data(const geometry_msgs::msg::Transform::Sha
     flag_SetPtip = true;
 }
 
-void PullOut_Endoscope::input_eyeball_data(const visualization_msgs::msg::Marker::SharedPtr msg_tip)
+void PullOut_Endoscope::input_eyeball_data(const visualization_msgs::msg::Marker::SharedPtr msg_eyeball)
 {
-    eye_shape.Position.x = msg_tip->pose.position.x;
-    eye_shape.Position.y = msg_tip->pose.position.y;
-    eye_shape.Position.z = msg_tip->pose.position.z;
-    eye_shape.Scale.x = msg_tip->scale.x;
-    eye_shape.Scale.y = msg_tip->scale.y;
-    eye_shape.Scale.z = msg_tip->scale.z;
+    eye_shape.Position.x = msg_eyeball->pose.position.x;
+    eye_shape.Position.y = msg_eyeball->pose.position.y;
+    eye_shape.Position.z = msg_eyeball->pose.position.z;
+    eye_shape.Scale.x = msg_eyeball->scale.x;
+    eye_shape.Scale.y = msg_eyeball->scale.y;
+    eye_shape.Scale.z = msg_eyeball->scale.z;
     flag_SetEyeball = true;
 }
 
@@ -107,7 +109,7 @@ void PullOut_Endoscope::calc_distance()
     dist = std::fabs(std::sqrt((eye_shape.Position.x - Ptip.x) * (eye_shape.Position.x - Ptip.x) +
                                (eye_shape.Position.y - Ptip.y) * (eye_shape.Position.y - Ptip.y) +
                                (eye_shape.Position.z - Ptip.z) * (eye_shape.Position.z - Ptip.z)) -
-                     (eye_shape.Scale.x + eye_shape.Scale.y + eye_shape.Scale.z) / 3.);
+                     (eye_shape.Scale.x / 2. + eye_shape.Scale.y / 2. + eye_shape.Scale.z / 2.) / 3.);
     RCLCPP_INFO(this->get_logger(), "Distance : %lf", dist);
     if (dist > DISTANCE_SAFETY)
     {
@@ -125,15 +127,19 @@ void PullOut_Endoscope::publish()
     {
         ts01_aout_msg->data[i] = 0.0;
     }
-    ts01_aout_msg->data[AO_PORT_BRAKE] = 5.0;   // ブレーキは引き続きON
     if (flag_safety)
     {
+        ts01_aout_msg->data[AO_PORT_BRAKE] = 5.0;    // ブレーキは引き続きON
         ts01_aout_msg->data[AO_PORT_SOLENOID] = 0.0; // 抜去
+        flag_safety = false;
+    }
+    else
+    {
+        ts01_aout_msg->data[AO_PORT_BRAKE] = 5.0;    // ブレーキは引き続きON
+        ts01_aout_msg->data[AO_PORT_SOLENOID] = 5.0; // 維持
     }
 
     // Publish
-    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_ =
-        this->create_publisher<std_msgs::msg::Float32MultiArray>("/ts01/analg/output", 10);
-    publisher_->publish(std::move(ts01_aout_msg));
+    publisher_->publish(*ts01_aout_msg);
 }
 #endif

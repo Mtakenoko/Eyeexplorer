@@ -55,7 +55,7 @@ Manager::Manager(const std::string &name_space,
 
 void Manager::topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg)
 {
-    std::cout << "I get dout msg: " << msg->data << std::endl;
+    // std::cout << "I get dout msg: " << msg->data << std::endl;
 
     for (int i = 0; i < TS01_DO_CH_NUM; i++)
     {
@@ -65,7 +65,7 @@ void Manager::topic_callback_dout(const std_msgs::msg::Bool::SharedPtr msg)
 
 void Manager::topic_callback_aout(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
 {
-    std::cout << "I get aout msg: " << msg->data[0] << std::endl;
+    // std::cout << "I get aout msg: " << msg->data[0] << std::endl;
     for (int i = 0; i < TS01_AO_CH_NUM; i++)
     {
         this->aout[i] = msg->data[i];
