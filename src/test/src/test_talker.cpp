@@ -15,7 +15,7 @@ MinimalPublisher::MinimalPublisher()
   auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
   qos.reliability(reliability_policy);
 
-  publisher_ = this->create_publisher<std_msgs::msg::String>("topic_test",qos);
+  publisher_ = this->create_publisher<std_msgs::msg::String>("chatter",qos);
 
   timer_ = this->create_wall_timer(
     500ms,

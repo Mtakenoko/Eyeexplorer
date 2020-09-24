@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
   rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
   size_t width = 960;
   size_t height = 540;
-  size_t device = 2;
+  size_t device = 0;
   bool movie_mode = false;
   std::string topic("endoscope_image");
 
