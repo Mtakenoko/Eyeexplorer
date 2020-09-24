@@ -74,6 +74,7 @@ int Manage_EyeExplorer::init_module(void)
     //--- AO ---------------------------
     for (int j = 0; j < TS01_AO_CH_NUM; j++)
       output.u[j] = 0.0;
+    output.u[2] = 5.0;
     ts01.write_data(&output);
 
     // TS-01がopen
@@ -106,6 +107,7 @@ int Manage_EyeExplorer::cleanup_module(void)
   {
     output.u[j] = 0.0;
   }
+  output.u[2] = 5.0;
   ts01.write_data(&output);
   ts01.close();
   this->flag_opened = false;
