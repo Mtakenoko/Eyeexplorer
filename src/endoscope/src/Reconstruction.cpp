@@ -50,8 +50,9 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image)
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_matching_image,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_nomatching_image,
+                                     std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_keyframe_marker)
 {
     printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
     // 初期化
@@ -67,7 +68,8 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
                   pub_pointcloud_BA, pub_pointcloud_BA_hold,
                   pub_pointcloud_filtered, pub_pointcloud_filtered_hold,
                   pub_pointcloud_est, pub_pointcloud_est_hold,
-                  pub_pointcloud_matching_image, pub_pointcloud_nomatching_image);
+                  pub_matching_image, pub_nomatching_image,
+                  pub_keyframe_marker);
 }
 
 void Reconstruction::process()
@@ -1000,8 +1002,9 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
-                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
-                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image)
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_matching_image,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_nomatching_image,
+                             std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_keyframe_marker)
 {
     if (flag_setFirstFrame)
     {
@@ -1063,14 +1066,52 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     {
         auto msg_matching_image = std::make_shared<sensor_msgs::msg::Image>();
         this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
-        pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
+        pub_matching_image->publish(std::move(*msg_matching_image));
     }
 
     if (!nomatching_image.empty())
     {
         auto msg_nomatching_image = std::make_shared<sensor_msgs::msg::Image>();
         this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
-        pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
+        pub_nomatching_image->publish(std::move(*msg_nomatching_image));
+    }
+
+    // keframe
+    if (keyframe_database.size() > 0)
+    {
+        auto msg_keyframe_marker_array = std::make_shared<visualization_msgs::msg::MarkerArray>();
+        for (auto itr = keyframe_database.begin(); itr != keyframe_database.end(); itr++)
+        {
+            visualization_msgs::msg::Marker msg_marker;
+            msg_marker.header.frame_id = "world";
+            msg_marker.ns = "keyframe #" + std::to_string(itr->camerainfo.frame_num);
+            msg_marker.type = visualization_msgs::msg::Marker::CUBE;
+            msg_marker.action = visualization_msgs::msg::Marker::ADD;
+            // 大きさ
+            msg_marker.scale.x = 0.001;
+            msg_marker.scale.y = 0.001;
+            msg_marker.scale.z = 0.0001;
+            // 色
+            msg_marker.color.r = 0.0;
+            msg_marker.color.g = 1.0;
+            msg_marker.color.b = 1.0;
+            msg_marker.color.a = 0.4;
+            // 位置・姿勢
+            msg_marker.pose.position.x = (double)itr->camerainfo.Transform_world.at<float>(0);
+            msg_marker.pose.position.y = (double)itr->camerainfo.Transform_world.at<float>(1);
+            msg_marker.pose.position.z = (double)itr->camerainfo.Transform_world.at<float>(2);
+            cv::Vec4f temp_q;
+            htl::Transform::RotMatToQuaternion<float>(&temp_q[0], &temp_q[1], &temp_q[2], &temp_q[3],
+                                                      itr->camerainfo.Rotation_world.at<float>(0, 0), itr->camerainfo.Rotation_world.at<float>(0, 1), itr->camerainfo.Rotation_world.at<float>(0, 2),
+                                                      itr->camerainfo.Rotation_world.at<float>(1, 0), itr->camerainfo.Rotation_world.at<float>(1, 1), itr->camerainfo.Rotation_world.at<float>(1, 2),
+                                                      itr->camerainfo.Rotation_world.at<float>(2, 0), itr->camerainfo.Rotation_world.at<float>(2, 1), itr->camerainfo.Rotation_world.at<float>(2, 2));
+            msg_marker.pose.orientation.x = temp_q[0];
+            msg_marker.pose.orientation.y = temp_q[1];
+            msg_marker.pose.orientation.z = temp_q[2];
+            msg_marker.pose.orientation.w = temp_q[3];
+            msg_keyframe_marker_array->markers.push_back(msg_marker);
+        }
+        pub_keyframe_marker->publish(*msg_keyframe_marker_array);
     }
 }
 
