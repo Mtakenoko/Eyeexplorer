@@ -106,7 +106,8 @@ public:
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_matching_image,
                          std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_nomatching_image,
-                         std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_keyframe_marker);
+                         std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_keyframe_marker,
+                         std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_matchingframe_marker);
     void setThreshold_knn_ratio(float thresh);
     void setThreshold_ransac(float thresh);
     void setFlagShowImage(bool flag);
@@ -163,7 +164,8 @@ private:
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
                  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image,
-                 std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_keyframe_marker);
+                 std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_keyframe_marker,
+                 std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> pub_matchingframe_marker);
     std::string mat_type2encoding(int mat_type);
     void convert_frame_to_message(const cv::Mat &frame, size_t frame_id, sensor_msgs::msg::Image &msg);
     void test();
