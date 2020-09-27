@@ -50,8 +50,10 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
                                      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
-                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image)
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_matching_image,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_nomatching_image,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_keyframe_image,
+                                     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>> pub_keyframe_camerainfo)
 {
     printf("\nReceived image #%s\n", msg_image->header.frame_id.c_str());
     // 初期化
@@ -67,7 +69,8 @@ void Reconstruction::topic_callback_(const std::shared_ptr<const sensor_msgs::ms
                   pub_pointcloud_BA, pub_pointcloud_BA_hold,
                   pub_pointcloud_filtered, pub_pointcloud_filtered_hold,
                   pub_pointcloud_est, pub_pointcloud_est_hold,
-                  pub_pointcloud_matching_image, pub_pointcloud_nomatching_image);
+                  pub_matching_image, pub_nomatching_image,
+                  pub_keyframe_image, pub_keyframe_camerainfo);
 }
 
 void Reconstruction::process()
@@ -1000,8 +1003,10 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_filtered_hold,
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est,
                              std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_pointcloud_est_hold,
-                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_matching_image,
-                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_pointcloud_nomatching_image)
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_matching_image,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_nomatching_image,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> pub_keyframe_image,
+                             std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>> pub_keyframe_camerainfo)
 {
     if (flag_setFirstFrame)
     {
@@ -1063,14 +1068,40 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     {
         auto msg_matching_image = std::make_shared<sensor_msgs::msg::Image>();
         this->convert_frame_to_message(matching_image, frame_data.camerainfo.frame_num, *msg_matching_image);
-        pub_pointcloud_matching_image->publish(std::move(*msg_matching_image));
+        pub_matching_image->publish(std::move(*msg_matching_image));
     }
 
     if (!nomatching_image.empty())
     {
         auto msg_nomatching_image = std::make_shared<sensor_msgs::msg::Image>();
         this->convert_frame_to_message(nomatching_image, frame_data.camerainfo.frame_num, *msg_nomatching_image);
-        pub_pointcloud_nomatching_image->publish(std::move(*msg_nomatching_image));
+        pub_nomatching_image->publish(std::move(*msg_nomatching_image));
+    }
+
+    // image_transport
+    if (!frame_data.extractor.image.empty())
+    {
+        // 画像
+        auto msg_keyframe_image = std::make_shared<sensor_msgs::msg::Image>();
+        this->convert_frame_to_message(frame_data.extractor.image, frame_data.camerainfo.frame_num, *msg_keyframe_image);
+        pub_keyframe_image->publish(std::move(*msg_keyframe_image));
+
+        // camerainfo
+        auto msg_keyframe_camerainfo_ = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        msg_keyframe_camerainfo_->width = (uint32_t)frame_data.extractor.image.rows;
+        msg_keyframe_camerainfo_->height = (uint32_t)frame_data.extractor.image.cols;
+        msg_keyframe_camerainfo_->header.frame_id = "endoscope";
+        msg_keyframe_camerainfo_->distortion_model = "plumb_bob";
+        msg_keyframe_camerainfo_->d = {-0.303000, -0.200272, -0.004333, -0.002127, 0.000000};
+        msg_keyframe_camerainfo_->k = {frame_data.camerainfo.CameraMatrix.at<float>(0, 0), frame_data.camerainfo.CameraMatrix.at<float>(0, 1), frame_data.camerainfo.CameraMatrix.at<float>(0, 2),
+                                       frame_data.camerainfo.CameraMatrix.at<float>(1, 0), frame_data.camerainfo.CameraMatrix.at<float>(1, 1), frame_data.camerainfo.CameraMatrix.at<float>(1, 2),
+                                       frame_data.camerainfo.CameraMatrix.at<float>(2, 0), frame_data.camerainfo.CameraMatrix.at<float>(2, 1), frame_data.camerainfo.CameraMatrix.at<float>(2, 2)};
+        msg_keyframe_camerainfo_->p = {frame_data.camerainfo.CameraMatrix.at<float>(0, 0), frame_data.camerainfo.CameraMatrix.at<float>(0, 1), frame_data.camerainfo.CameraMatrix.at<float>(0, 2), 0.0,
+                                       frame_data.camerainfo.CameraMatrix.at<float>(1, 0), frame_data.camerainfo.CameraMatrix.at<float>(1, 1), frame_data.camerainfo.CameraMatrix.at<float>(1, 2), 0.0,
+                                       frame_data.camerainfo.CameraMatrix.at<float>(2, 0), frame_data.camerainfo.CameraMatrix.at<float>(2, 1), frame_data.camerainfo.CameraMatrix.at<float>(2, 2), 0.0};
+        msg_keyframe_camerainfo_->binning_x = 0;
+        msg_keyframe_camerainfo_->binning_y = 0;
+        pub_keyframe_camerainfo->publish(*msg_keyframe_camerainfo_);
     }
 }
 
