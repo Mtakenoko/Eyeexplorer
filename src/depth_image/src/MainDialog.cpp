@@ -8,8 +8,7 @@ MainDialog::MainDialog(QWidget *parent)
     : QDialog(parent),
       spla_girl("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/20191020032920502.png"),
       gui_logo("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/eyeexplorer_logo.png"),
-      topic_sub_image("endoscope_image"), topic_sub_transform("endoscope_transform"), topic_sub_model("eyeball"),
-      topic_pub_color_image("/endoscope/color_image"), topic_pub_depth_image("/endoscope/depth_image")
+      topic_sub_image("endoscope_image"), topic_sub_transform("endoscope_transform"), topic_sub_model("eyeball")
 {
   label = new QLabel(tr("empty"));
   setButton = new QPushButton(tr("Capture"));
@@ -80,10 +79,6 @@ void MainDialog::createROS2node(const char *node_name)
   rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
   auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
   qos.reliability(reliability_policy);
-
-  // Publisherの設定
-  auto publisher_color_image_ = node_->create_publisher<sensor_msgs::msg::Image>(topic_pub_color_image, qos);
-  auto publisher_depth_image_ = node_->create_publisher<sensor_msgs::msg::Image>(topic_pub_depth_image, qos);
 
   // Subscriberの設定
   subscription_image_ = node_->create_subscription<sensor_msgs::msg::Image>(

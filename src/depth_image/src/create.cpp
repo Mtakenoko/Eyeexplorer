@@ -1,7 +1,6 @@
 #include <fstream>
 #include <time.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #include <rclcpp/rclcpp.hpp>
 #include "../include/create.hpp"
@@ -58,7 +57,6 @@ void Depth_Create::input_image_data(const sensor_msgs::msg::Image::SharedPtr msg
     cv::Mat frame_image(msg_image->height, msg_image->width, Depth_Create::encoding2mat_type(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
     now_image = frame_image.clone();
     scene.flag_set_image = true;
-    // printf("sub[image] : #%s\n", msg_image->header.frame_id.c_str());
 }
 
 void Depth_Create::input_transform_data(const geometry_msgs::msg::Transform::SharedPtr msg_transform)
@@ -66,14 +64,12 @@ void Depth_Create::input_transform_data(const geometry_msgs::msg::Transform::Sha
     scene.Rotation_world = htl::Transform::QuaternionToRotMat<double>(msg_transform->rotation.x, msg_transform->rotation.y, msg_transform->rotation.z, msg_transform->rotation.w);
     scene.Transform_world = (cv::Mat_<double>(3, 1) << msg_transform->translation.x, msg_transform->translation.y, msg_transform->translation.z);
     scene.flag_set_transform = true;
-    // printf("sub[trans] : [%0.3lf %0.3lf %0.3lf]\n", msg_transform->translation.x, msg_transform->translation.y, msg_transform->translation.z);
 }
 
 void Depth_Create::input_model_data(const visualization_msgs::msg::Marker::SharedPtr msg_model)
 {
     scene.eyemodel = *msg_model;
     scene.flag_set_model = true;
-    // printf("sub[model] : [%0.3lf %0.3lf %0.3lf]\n", msg_model->pose.position.x, msg_model->pose.position.y, msg_model->pose.position.z);
 }
 
 void Depth_Create::calc()

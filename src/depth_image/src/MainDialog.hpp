@@ -62,8 +62,6 @@ private:
     std::string topic_sub_image;
     std::string topic_sub_transform;
     std::string topic_sub_model;
-    std::string topic_pub_color_image;
-    std::string topic_pub_depth_image;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_image_;
     rclcpp::Subscription<geometry_msgs::msg::Transform>::SharedPtr subscription_transform_;
     rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr subscription_model_;
