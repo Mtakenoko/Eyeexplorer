@@ -142,7 +142,9 @@ namespace htl
     template <class T>
     cv::Mat Transform::QuaternionToRotMat(const T &qx, const T &qy, const T &qz, const T &qw)
     {
-        cv::Mat Output(3, 3, CV_32FC1);
+        cv::Mat Output = (cv::Mat_<T>(3, 3) << 1., 0., 0.,
+                          0., 1., 0.,
+                          0., 0., 1.);
         Output.at<T>(0, 0) = qx * qx - qy * qy - qz * qz + qw * qw;
         Output.at<T>(0, 1) = 2.0 * (qx * qy - qz * qw);
         Output.at<T>(0, 2) = 2.0 * (qx * qz + qy * qw);
