@@ -13,50 +13,47 @@ MainDialog::MainDialog(QWidget *parent)
 {
   label = new QLabel(tr("empty"));
   setButton = new QPushButton(tr("Capture"));
-  resetButton = new QPushButton(tr("Reset"));
   deleteButton = new QPushButton(tr("Delete"));
   saveButton = new QPushButton(tr("Save"));
   lineEdit = new QLineEdit;
   graphics = new QGraphicsView;
-  graphics_marker = new QGraphicsView;
-  graphics_cam = new QGraphicsView;
+  graphics_color = new QGraphicsView;
+  graphics_depth = new QGraphicsView;
   graphics_logo = new QGraphicsView;
   scene = new QGraphicsScene;
-  scene_marker = new QGraphicsScene;
-  scene_cam = new QGraphicsScene;
+  scene_color = new QGraphicsScene;
+  scene_depth = new QGraphicsScene;
   scene_logo = new QGraphicsScene;
 
   // ButtoのSIGNAL SLOT
   connect(setButton, SIGNAL(clicked()), this, SLOT(setLabelText()));
   connect(setButton, SIGNAL(clicked()), this, SLOT(inputDataToggle()));
-  connect(resetButton, SIGNAL(clicked()), this, SLOT(resetToggle()));
   connect(deleteButton, SIGNAL(clicked()), this, SLOT(deleteToggle()));
   connect(saveButton, SIGNAL(clicked()), this, SLOT(saveToggle()));
 
   // 画像情報の入力
   scene->setSceneRect(QRectF(0, 0, 320, 320));
-  scene_marker->setSceneRect(QRectF(0, 0, 320, 320));
-  scene_cam->setSceneRect(QRectF(0, 0, 320, 320));
+  scene_color->setSceneRect(QRectF(0, 0, 320, 320));
+  scene_depth->setSceneRect(QRectF(0, 0, 320, 320));
 
-  // 最初なにもないのもつまらないのでイカちゃんの画像をいれてる。かわいい。
+  // 最初なにもないのもつまらないのでイカちゃん達の画像をいれてる。かわいい。
   MainDialog::initImage(scene, spla_girl);
-  MainDialog::initImage(scene_marker, spla_girl);
-  MainDialog::initImage(scene_cam, spla_girl);
+  MainDialog::initImage(scene_color, spla_girl);
+  MainDialog::initImage(scene_depth, spla_girl);
   MainDialog::initImage(scene_logo, gui_logo);
   graphics->setScene(scene);
-  graphics_marker->setScene(scene_marker);
-  graphics_cam->setScene(scene_cam);
+  graphics_color->setScene(scene_color);
+  graphics_depth->setScene(scene_depth);
   graphics_logo->setScene(scene_logo);
 
   // GUIのウィジェット配置
   QHBoxLayout *layout_image_H = new QHBoxLayout;
-  layout_image_H->addWidget(graphics_cam);
   layout_image_H->addWidget(graphics);
-  layout_image_H->addWidget(graphics_marker);
+  layout_image_H->addWidget(graphics_color);
+  layout_image_H->addWidget(graphics_depth);
 
   QHBoxLayout *layout_Botton_H = new QHBoxLayout;
   layout_Botton_H->addWidget(setButton);
-  layout_Botton_H->addWidget(resetButton);
   layout_Botton_H->addWidget(deleteButton);
   layout_Botton_H->addWidget(saveButton);
 
@@ -94,8 +91,8 @@ void MainDialog::createROS2node(const char *node_name)
       [this](const sensor_msgs::msg::Image::SharedPtr msg) {
         this->depth_create.topic_callback_image_(msg);
         this->updateNowImage();
-        this->updateSceneImage();
-        this->updateMarkerImage();
+        this->updateColorImage();
+        this->updateDepthImage();
         this->setString();
       });
   subscription_transform_ = node_->create_subscription<geometry_msgs::msg::Transform>(
@@ -116,7 +113,7 @@ void MainDialog::setLabelText()
   label->setText(text);
 }
 
-void MainDialog::setSceneNum()
+void MainDialog::setString()
 {
   char str[50];
   sprintf(str, "%d Scenes were descrived. ", depth_create.getSceneNum());
@@ -124,36 +121,9 @@ void MainDialog::setSceneNum()
   label->setText(qstr);
 }
 
-void MainDialog::setUsedSceneNum()
-{
-  char str[100];
-  sprintf(str, "Calibrated! (%d marker were used for this calibration) ", depth_create.getUseSceneNum());
-  QString qstr(str);
-  label->setText(qstr);
-}
-
-void MainDialog::setString()
-{
-  if (depth_create.getFinishFlag())
-  {
-    // 終わった
-    this->setUsedSceneNum();
-  }
-  else
-  {
-    // まだ終わってない
-    this->setSceneNum();
-  }
-}
-
 void MainDialog::inputDataToggle()
 {
   depth_create.setCaptureFlag();
-}
-
-void MainDialog::resetToggle()
-{
-  depth_create.resetScene();
 }
 
 void MainDialog::deleteToggle()
@@ -172,27 +142,27 @@ void MainDialog::updateNowImage()
   depth_create.getNowImage(&img);
   if (img.empty())
     return;
-  this->setItemToScene(scene_cam, img);
+  this->setItemToScene(scene, img);
   update();
 }
 
-void MainDialog::updateSceneImage()
+void MainDialog::updateColorImage()
 {
   cv::Mat img;
   depth_create.getNewSceneImage(&img);
   if (img.empty())
     return;
-  this->setItemToScene(scene, img);
+  this->setItemToScene(scene_color, img);
   update();
 }
 
-void MainDialog::updateMarkerImage()
+void MainDialog::updateDepthImage()
 {
   cv::Mat img;
-  depth_create.getNewMarkerImage(&img);
+  depth_create.getNewDepthImage(&img);
   if (img.empty())
     return;
-  this->setItemToScene(scene_marker, img);
+  this->setItemToScene(scene_depth, img);
   update();
 }
 

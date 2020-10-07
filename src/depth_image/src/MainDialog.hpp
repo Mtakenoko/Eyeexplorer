@@ -28,12 +28,9 @@ private Q_SLOTS:
     void setLabelText();
     void inputDataToggle();
     void saveToggle();
-    void resetToggle();
     void deleteToggle();
-    void updateSceneImage();
-    void updateMarkerImage();
-    void setSceneNum();
-    void setUsedSceneNum();
+    void updateColorImage();
+    void updateDepthImage();
     void setString();
 
 private:
@@ -41,15 +38,14 @@ private:
     QLineEdit *lineEdit;
     QPushButton *setButton;
     QPushButton *saveButton;
-    QPushButton *resetButton;
     QPushButton *deleteButton;
     QGraphicsView *graphics;
-    QGraphicsView *graphics_marker;
-    QGraphicsView *graphics_cam;
+    QGraphicsView *graphics_color;
+    QGraphicsView *graphics_depth;
     QGraphicsView *graphics_logo;
     QGraphicsScene *scene;
-    QGraphicsScene *scene_marker;
-    QGraphicsScene *scene_cam;
+    QGraphicsScene *scene_color;
+    QGraphicsScene *scene_depth;
     QGraphicsScene *scene_logo;
     std::string spla_girl;
     std::string gui_logo;
