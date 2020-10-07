@@ -7,7 +7,7 @@
 MainDialog::MainDialog(QWidget *parent)
     : QDialog(parent),
       spla_girl("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/20191020032920502.png"),
-      gui_logo("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/logo2.png"),
+      gui_logo("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/eyeexplorer_logo.png"),
       topic_sub_image("endoscope_image"), topic_sub_transform("endoscope_transform"), topic_sub_model("eyeball"),
       topic_pub_color_image("/endoscope/color_image"), topic_pub_depth_image("/endoscope/depth_image")
 {
