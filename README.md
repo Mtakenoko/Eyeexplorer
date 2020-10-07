@@ -70,6 +70,7 @@ ros2 run calibration arm_param_calibrator
 使い方としては、<br>
 「ARマーカを撮影→setボタン→新しいARマーカーを撮影→setボタン→（複数繰り返し）→calibrateボタン」<br>
 みたいな感じ。結果は`calibration/Output/offset.txt`に出力されます。
+
 ## 時間キャリブレーション
 TS-01からの入力とカメラ画像の入力の遅延時間をおおまかに計算するキャリブレーションソフト。
 ```
@@ -156,6 +157,12 @@ ros2 run map pullout_endoscope
 rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz 
 ```
 
+## depth_image
+DenseDepthなどのDNNを用いて深度推定を行うために、学習用のデータセットを作るためのノード。
+```
+ros2 run depth_image depth_image_creator 
+```
+位置やスケールなどのパラメータが既知のモデルを用いて、仮想的な深度画像を生成する。モデルは`visualization_msgs::msg::Marker`で定義されているものを用いること。
 
 ## いろいろなrosbagデータ
 読み込むときはこんな感じ
