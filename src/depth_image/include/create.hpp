@@ -10,7 +10,8 @@
 class Scene
 {
 public:
-    Scene() : flag_set_image(false), flag_set_transform(false), flag_set_model(false) {}
+    Scene() : flag_set_image(false), flag_set_transform(false), flag_set_model(false),
+              flag_caliculated(false) {}
     cv::Mat color_image;
     cv::Mat depth_image;
     size_t frame_num;
@@ -20,6 +21,7 @@ public:
     bool flag_set_image;
     bool flag_set_transform;
     bool flag_set_model;
+    bool flag_caliculated;
 };
 
 class Depth_Create
@@ -52,11 +54,13 @@ private:
 
 private:
     double *offset_output;
+    std::string filepath;
 
 public:
     int scene_counter;
 
 private:
     bool flag_set;
+    bool flag_mkdir;
 };
 #endif

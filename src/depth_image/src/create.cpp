@@ -1,11 +1,14 @@
 #include <fstream>
+#include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <rclcpp/rclcpp.hpp>
 #include "../include/create.hpp"
 #include "../../htl/include/transform.hpp"
 
 Depth_Create::Depth_Create()
-    : scene_counter(0), flag_set(false)
+    : scene_counter(0), flag_set(false), flag_mkdir(true)
 {
     std::cout << "Welcome!" << std::endl;
 }
@@ -76,7 +79,11 @@ void Depth_Create::input_model_data(const visualization_msgs::msg::Marker::Share
 void Depth_Create::calc()
 {
     scene.color_image = now_image.clone();
-    scene_counter++;
+    scene.depth_image = now_image.clone();
+    scene.flag_caliculated = true;
+    scene.flag_set_image = false;
+    scene.flag_set_transform = false;
+    scene.flag_set_model = false;
     flag_set = false;
 }
 
@@ -108,20 +115,47 @@ void Depth_Create::getNewDepthImage(cv::Mat *image)
         *image = scene.depth_image.clone();
 }
 
-void Depth_Create::clear()
-{
-    scene_counter = 0;
-    flag_set = false;
-    std::cout << "scene was clear" << std::endl;
-}
-
 void Depth_Create::deleteScene()
 {
     flag_set = false;
+    scene.flag_set_image = false;
+    scene.flag_set_transform = false;
+    scene.flag_set_model = false;
     std::cout << "scene was deleted" << std::endl;
 }
+
 void Depth_Create::saveScene()
 {
+    if (!scene.flag_caliculated)
+        return;
+
+    if (flag_mkdir)
+    {
+        time_t now = time(NULL);
+        struct tm *pnow = localtime(&now);
+        filepath = "/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/Output/" +
+                   std::to_string(pnow->tm_year + 1900) +
+                   std::to_string(pnow->tm_mon + 1) +
+                   std::to_string(pnow->tm_mday + 1) +
+                   std::to_string(pnow->tm_hour + 1) +
+                   std::to_string(pnow->tm_min + 1) +
+                   std::to_string(pnow->tm_sec) + "/";
+        struct stat st;
+        if (stat(filepath.c_str(), &st) != 0)
+        {
+            std::cout << "mkdir : " << filepath << std::endl;
+            mkdir(filepath.c_str(), 0775);
+        }
+        flag_mkdir = false;
+    }
+
+    if (!scene.color_image.empty() && !scene.depth_image.empty())
+    {
+        cv::imwrite(filepath + std::to_string(scene_counter) + ".jpg", scene.color_image);
+        cv::imwrite(filepath + std::to_string(scene_counter) + ".png", scene.depth_image);
+        std::cout << "#" << scene_counter << " scene was saved" << std::endl;
+        scene.flag_caliculated = false;
+        scene_counter++;
+    }
     flag_set = false;
-    std::cout << "scene was saved" << std::endl;
 }
