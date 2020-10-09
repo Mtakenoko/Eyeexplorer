@@ -7,11 +7,27 @@
 #include <geometry_msgs/msg/transform.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 
+#define fovx 396.7
+#define fovy 396.9
+#define u0 163.6
+#define v0 157.1
+#define MAX_DIST 0.025
+
 class Scene
 {
 public:
     Scene() : flag_set_image(false), flag_set_transform(false), flag_set_model(false),
               flag_caliculated(false) {}
+    bool isInModel()
+    {
+        double distance = (eyemodel.scale.x + eyemodel.scale.y + eyemodel.scale.z) / 6. -
+                          std::sqrt((Transform_world.at<double>(0) - eyemodel.pose.position.x) * (Transform_world.at<double>(0) - eyemodel.pose.position.x) +
+                                    (Transform_world.at<double>(1) - eyemodel.pose.position.y) * (Transform_world.at<double>(1) - eyemodel.pose.position.y) +
+                                    (Transform_world.at<double>(2) - eyemodel.pose.position.z) * (Transform_world.at<double>(2) - eyemodel.pose.position.z));
+        return distance > 0;
+    }
+
+public:
     cv::Mat color_image;
     cv::Mat depth_image;
     size_t frame_num;

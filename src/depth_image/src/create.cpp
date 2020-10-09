@@ -4,6 +4,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include "../include/create.hpp"
+#include "../include/depth.hpp"
 #include "../../htl/include/transform.hpp"
 
 Depth_Create::Depth_Create()
@@ -75,8 +76,36 @@ void Depth_Create::input_model_data(const visualization_msgs::msg::Marker::Share
 void Depth_Create::calc()
 {
     scene.color_image = now_image.clone();
-    scene.depth_image = now_image.clone();
-    scene.flag_caliculated = true;
+
+    // まずモデル内部に内視鏡が存在しているかチェックする
+    if (!scene.isInModel())
+    {
+        std::cout << "Endoscope is not in the eyeball model" << std::endl;
+        scene.flag_caliculated = false;
+        scene.flag_set_image = false;
+        scene.flag_set_transform = false;
+        scene.flag_set_model = false;
+        flag_set = false;
+        return;
+    }
+
+    // 深度画像計算
+    cv::Mat cameraMatrix(3, 3, CV_64FC1);
+    cameraMatrix = (cv::Mat_<double>(3, 3) << fovx, 0.0, u0,
+                    0.0, fovy, v0,
+                    0.0, 0.0, 1.0);
+    DepthModel<double> depthmodel;
+    depthmodel.setImageInfo(now_image.rows, now_image.cols, cameraMatrix);
+    depthmodel.setCameraPose(scene.Rotation_world, scene.Transform_world);
+    depthmodel.setModel(scene.eyemodel);
+    depthmodel.setMaxDistance(MAX_DIST);
+    scene.depth_image = depthmodel.create();
+
+    // フラグ管理
+    if (!scene.depth_image.empty())
+        scene.flag_caliculated = true;
+    else
+        scene.flag_caliculated = false;
     scene.flag_set_image = false;
     scene.flag_set_transform = false;
     scene.flag_set_model = false;
@@ -108,7 +137,7 @@ void Depth_Create::getNewSceneImage(cv::Mat *image)
 void Depth_Create::getNewDepthImage(cv::Mat *image)
 {
     if (!scene.depth_image.empty())
-        *image = scene.depth_image.clone();
+        cv::cvtColor(scene.depth_image, *image, cv::COLOR_GRAY2BGR);
 }
 
 void Depth_Create::deleteScene()
