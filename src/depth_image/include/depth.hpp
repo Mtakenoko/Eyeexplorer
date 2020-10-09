@@ -3,6 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <omp.h>
 
 template <class T>
 class DepthModel
@@ -77,10 +78,12 @@ cv::Mat DepthModel<T>::create()
 {
     this->setProjectionMatrix();
     cv::Mat dst(width, height, CV_8UC1);
-    // @TODO: OpenMPで並列化
-    for (int i = 0; i < width; i++)
+    bool flag_miss(false);
+    int i, j;
+#pragma omp parallel for private(j)
+    for (i = 0; i < width; i++)
     {
-        for (int j = 0; j < height; j++)
+        for (j = 0; j < height; j++)
         {
             // 画素と焦点を通る直線のベクトル方程式を求める
             cv::Point3_<T> P_l, v_l;
@@ -90,21 +93,20 @@ cv::Mat DepthModel<T>::create()
             cv::Point3_<T> point;
             int status = this->calcIntersection(P_l, v_l, point);
 
-            // z方向の距離に合わせてスケーリングを行い、デプス画像に登録
+            // デプス画像に登録
             if (status != 1)
-            {
-                std::cout << "Miss calc" << std::endl;
-                cv::Mat nullptr_mat;
-                return nullptr_mat;
-            }
+                flag_miss = true;
             if (point.z > max_distance)
                 dst.at<uchar>(i, j) = (uchar)(255);
             else
                 dst.at<uchar>(i, j) = (uchar)(point.z / max_distance * 255);
         }
     }
-    cv::imshow("gray", dst);
-    cv::waitKey(1);
+    if (flag_miss)
+    {
+        cv::Mat nullptr_mat;
+        return nullptr_mat;
+    }
     return dst;
 }
 
