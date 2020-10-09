@@ -6,7 +6,8 @@
 
 MainDialog::MainDialog(QWidget *parent)
     : QDialog(parent),
-      spla_girl("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/20191020032920502.png"),
+      fallguys1("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/fallguys1.png"),
+      fallguys2("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/fallguys2.jpg"),
       gui_logo("/home/takeyama/workspace/ros2_eyeexplorer/src/depth_image/data/eyeexplorer_logo.png"),
       topic_sub_image("endoscope_image"), topic_sub_transform("endoscope_transform"), topic_sub_model("eyeball")
 {
@@ -36,9 +37,9 @@ MainDialog::MainDialog(QWidget *parent)
   scene_depth->setSceneRect(QRectF(0, 0, 320, 320));
 
   // 最初なにもないのもつまらないのでイカちゃん達の画像をいれてる。かわいい。
-  MainDialog::initImage(scene, spla_girl);
-  MainDialog::initImage(scene_color, spla_girl);
-  MainDialog::initImage(scene_depth, spla_girl);
+  MainDialog::initImage(scene, fallguys1);
+  MainDialog::initImage(scene_color, fallguys1);
+  MainDialog::initImage(scene_depth, fallguys2);
   MainDialog::initImage(scene_logo, gui_logo);
   graphics->setScene(scene);
   graphics_color->setScene(scene_color);

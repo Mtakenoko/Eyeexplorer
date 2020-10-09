@@ -47,7 +47,8 @@ private:
     QGraphicsScene *scene_color;
     QGraphicsScene *scene_depth;
     QGraphicsScene *scene_logo;
-    std::string spla_girl;
+    std::string fallguys1;
+    std::string fallguys2;
     std::string gui_logo;
 
     void setItemToScene(QGraphicsScene *qscene, const cv::Mat image);
