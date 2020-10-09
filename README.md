@@ -6,6 +6,7 @@
 - 眼科用内視鏡の自動切り抜き
 - ARマーカーを用いたロボットの関節角等のパラメータ補正
 - TS-01管理
+- 仮想深度画像生成
 などがあります
 
 # Application & Package
@@ -152,17 +153,17 @@ ros2 run map pullout_endoscope
    (default) : 0.005
 ```
 
+## depth_image
+DenseDepthなどのDNNを用いて深度推定を行うために、学習用のデータセットを作るためのソフトウェア。Captureボタンを押しデプス画像がうまく生成されていればSaveボタンを押す。深度画像の出力は`/depth_image/Output`内の各日時毎に生成されたディレクトリに登録順に保存される。
+```
+ros2 run depth_image depth_image_creator 
+```
+ここでは位置やスケールなどのパラメータが既知のモデルを用いて、仮想的な深度画像を生成する。その際用いられるモデルは`visualization_msgs::msg::Marker`で定義されているものを用いること。現在は楕円体のみ対応しています。
+
 ## Rviz2
 ```
 rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz 
 ```
-
-## depth_image
-DenseDepthなどのDNNを用いて深度推定を行うために、学習用のデータセットを作るためのノード。
-```
-ros2 run depth_image depth_image_creator 
-```
-位置やスケールなどのパラメータが既知のモデルを用いて、仮想的な深度画像を生成する。モデルは`visualization_msgs::msg::Marker`で定義されているものを用いること。
 
 ## いろいろなrosbagデータ
 読み込むときはこんな感じ
