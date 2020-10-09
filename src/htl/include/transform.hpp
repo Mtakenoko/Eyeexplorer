@@ -9,45 +9,50 @@ namespace htl
     {
     public:
         template <class T>
-        static bool RotMatToQuaternion(
-            T *qx, T *qy, T *qz, T *qw,
-            const T &m11, const T &m12, const T &m13,
-            const T &m21, const T &m22, const T &m23,
-            const T &m31, const T &m32, const T &m33);
+        static bool RotMatToQuaternion(T *qx, T *qy, T *qz, T *qw,
+                                       const T &m11, const T &m12, const T &m13,
+                                       const T &m21, const T &m22, const T &m23,
+                                       const T &m31, const T &m32, const T &m33);
+        template <class T>
+        static bool RotMatToQuaternion(const cv::Mat &RotMat,
+                                       T *qx, T *qy, T *qz, T *qw);
 
         template <class T>
-        static void QuaternionToEulerAngles(const T &q0, const T &q1, const T &q2, const T &q3,
+        static void QuaternionToEulerAngles(T q0, T q1, T q2, T q3,
                                             T &roll, T &pitch, T &yaw);
 
         template <class T>
-        static void QuaternionToRotMat(
-            T &m11, T &m12, T &m13,
-            T &m21, T &m22, T &m23,
-            T &m31, T &m32, T &m33,
-            const T &qx, const T &qy, const T &qz, const T &qw);
+        static cv::Vec<T, 3> QuaternionToRodrigues(T q0, T q1, T q2, T q3);
+
+        template <class T>
+        static void EulerAnglesToQuaternion(T roll, T pitch, T yaw,
+                                            T &q0, T &q1, T &q2, T &q3);
+
+        template <class T>
+        static void QuaternionToRotMat(T &m11, T &m12, T &m13,
+                                       T &m21, T &m22, T &m23,
+                                       T &m31, T &m32, T &m33,
+                                       const T &qx, const T &qy, const T &qz, const T &qw);
 
         template <class T>
         static cv::Mat QuaternionToRotMat(const T &qx, const T &qy, const T &qz, const T &qw);
 
         template <class T>
-        static T RevFromRotMat(const cv::Mat &R);
+        static T RevFromRotMat(cv::Mat R);
 
         template <class T>
-        static void RotMatToAngles(cv::Mat R,
-                                   T &angle_x, T &angle_y, T &angle_z);
-
-        static bool isRotMat(const cv::Mat &R);
-
+        static void RotMatToAngles(cv::Mat R, T &angle_x, T &angle_y, T &angle_z);
+        
         template <class T>
-        static cv::Vec3f RotMatToEulerAngles(const cv::Mat &R);
+        static void RodriguesToQuaternion(const cv::Vec<T, 3> &rvec,
+                                          T &q0, T &q1, T &q2, T &q3);
     };
 
     template <class T>
-    bool Transform::RotMatToQuaternion(
-        T *qx, T *qy, T *qz, T *qw,
-        const T &m11, const T &m12, const T &m13,
-        const T &m21, const T &m22, const T &m23,
-        const T &m31, const T &m32, const T &m33)
+    bool Transform::RotMatToQuaternion(T *qx, T *qy, T *qz, T *qw, const T &m11,
+                                       const T &m12, const T &m13, const T &m21,
+                                       const T &m22, const T &m23, const T &m31,
+                                       const T &m32, const T &m33)
 
     {
         // 最大成分を検索
@@ -69,7 +74,7 @@ namespace htl
 
         // 最大要素の値を算出
         T *q[4] = {qx, qy, qz, qw};
-        T v = sqrtf(elem[biggestIndex]) * 0.5f;
+        T v = std::sqrt(elem[biggestIndex]) * 0.5f;
         *q[biggestIndex] = v;
         T mult = 0.25f / v;
 
@@ -101,8 +106,73 @@ namespace htl
     }
 
     template <class T>
-    void Transform::QuaternionToEulerAngles(const T &q0, const T &q1, const T &q2, const T &q3,
-                                            T &roll, T &pitch, T &yaw)
+    bool Transform::RotMatToQuaternion(const cv::Mat &R,
+                                       T *qx, T *qy, T *qz, T *qw)
+
+    {
+        T m11 = R.at<T>(0, 0);
+        T m12 = R.at<T>(0, 1);
+        T m13 = R.at<T>(0, 2);
+        T m21 = R.at<T>(1, 0);
+        T m22 = R.at<T>(1, 1);
+        T m23 = R.at<T>(1, 2);
+        T m31 = R.at<T>(2, 0);
+        T m32 = R.at<T>(2, 1);
+        T m33 = R.at<T>(2, 2);
+
+        // 最大成分を検索
+        T elem[4]; // 0:x, 1:y, 2:z, 3:w
+        elem[0] = m11 - m22 - m33 + 1.0;
+        elem[1] = -m11 + m22 - m33 + 1.0;
+        elem[2] = -m11 - m22 + m33 + 1.0;
+        elem[3] = m11 + m22 + m33 + 1.0;
+
+        unsigned biggestIndex = 0;
+        for (int i = 1; i < 4; i++)
+        {
+            if (elem[i] > elem[biggestIndex])
+                biggestIndex = i;
+        }
+
+        if (elem[biggestIndex] < 0.0f)
+            return false; // 引数の行列に間違いあり！
+
+        // 最大要素の値を算出
+        T *q[4] = {qx, qy, qz, qw};
+        T v = std::sqrt(elem[biggestIndex]) * 0.5f;
+        *q[biggestIndex] = v;
+        T mult = 0.25f / v;
+
+        switch (biggestIndex)
+        {
+        case 0: // x
+            *q[1] = (m12 + m21) * mult;
+            *q[2] = (m31 + m13) * mult;
+            *q[3] = (m32 - m23) * mult;
+            break;
+        case 1: // y
+            *q[0] = (m12 + m21) * mult;
+            *q[2] = (m23 + m32) * mult;
+            *q[3] = (m13 - m31) * mult;
+            break;
+        case 2: // z
+            *q[0] = (m31 + m13) * mult;
+            *q[1] = (m23 + m32) * mult;
+            *q[3] = (m21 - m12) * mult;
+            break;
+        case 3: // w
+            *q[0] = (m32 - m23) * mult;
+            *q[1] = (m13 - m31) * mult;
+            *q[2] = (m21 - m12) * mult;
+            break;
+        }
+
+        return true;
+    }
+
+    template <class T>
+    void Transform::QuaternionToEulerAngles(T q0, T q1, T q2, T q3, T &roll,
+                                            T &pitch, T &yaw)
     {
         T q0q0 = q0 * q0;
         T q0q1 = q0 * q1;
@@ -114,17 +184,53 @@ namespace htl
         T q2q2 = q2 * q2;
         T q2q3 = q2 * q3;
         T q3q3 = q3 * q3;
-        roll = atan2(2.0 * (q2q3 + q0q1), q0q0 - q1q1 - q2q2 + q3q3);
-        pitch = asin(2.0 * (q0q2 - q1q3));
-        yaw = atan2(2.0 * (q1q2 + q0q3), q0q0 + q1q1 - q2q2 - q3q3);
+        roll = std::atan2(2.0 * (q2q3 + q0q1), q0q0 - q1q1 - q2q2 + q3q3);
+        pitch = std::asin(2.0 * (q0q2 - q1q3));
+        yaw = std::atan2(2.0 * (q1q2 + q0q3), q0q0 + q1q1 - q2q2 - q3q3);
     }
 
     template <class T>
-    void Transform::QuaternionToRotMat(
-        T &m11, T &m12, T &m13,
-        T &m21, T &m22, T &m23,
-        T &m31, T &m32, T &m33,
-        const T &qx, const T &qy, const T &qz, const T &qw)
+    cv::Vec<T, 3> Transform::QuaternionToRodrigues(T q0, T q1, T q2, T q3)
+    {
+        cv::Mat R = Transform::QuaternionToRotMat<T>(q0, q1, q2, q3);
+        cv::Vec<T, 3> rvec;
+        cv::Rodrigues(R, rvec);
+        return rvec;
+    }
+
+    template <class T>
+    void Transform::RodriguesToQuaternion(const cv::Vec<T, 3> &rvec,
+                                          T &q0, T &q1, T &q2, T &q3)
+    {
+        cv::Mat R = (cv::Mat_<T>(3, 3) << 1., 0., 0.,
+                     0., 1., 0.,
+                     0., 0., 1.);
+        cv::Rodrigues(rvec, R);
+        Transform::RotMatToQuaternion<T>(R, &q0, &q1, &q2, &q3);
+    }
+
+    template <class T>
+    void Transform::EulerAnglesToQuaternion(T roll, T pitch, T yaw,
+                                            T &q0, T &q1, T &q2, T &q3)
+    {
+        T cosRoll = std::cos(roll / 2.0);
+        T sinRoll = std::sin(roll / 2.0);
+        T cosPitch = std::cos(pitch / 2.0);
+        T sinPitch = std::sin(pitch / 2.0);
+        T cosYaw = std::cos(yaw / 2.0);
+        T sinYaw = std::sin(yaw / 2.0);
+
+        q0 = cosRoll * cosPitch * cosYaw + sinRoll * sinPitch * sinYaw;
+        q1 = sinRoll * cosPitch * cosYaw - cosRoll * sinPitch * sinYaw;
+        q2 = cosRoll * sinPitch * cosYaw + sinRoll * cosPitch * sinYaw;
+        q3 = cosRoll * cosPitch * sinYaw - sinRoll * sinPitch * cosYaw;
+    }
+
+    template <class T>
+    void Transform::QuaternionToRotMat(T &m11, T &m12, T &m13, T &m21, T &m22,
+                                       T &m23, T &m31, T &m32, T &m33,
+                                       const T &qx, const T &qy, const T &qz,
+                                       const T &qw)
     {
         m11 = 1.0f - 2.0 * qy * qy - 2.0 * qz * qz;
         m12 = 2.0 * qx * qy + 2.0 * qw * qz;
@@ -140,9 +246,10 @@ namespace htl
     }
 
     template <class T>
-    cv::Mat Transform::QuaternionToRotMat(const T &qx, const T &qy, const T &qz, const T &qw)
+    cv::Mat Transform::QuaternionToRotMat(const T &qx, const T &qy, const T &qz,
+                                          const T &qw)
     {
-        cv::Mat Output = (cv::Mat_<T>(3, 3) << 1., 0., 0.,
+        cv::Mat Output = (cv::Mat_<T>(3, 3) << 1.0, 0., 0.,
                           0., 1., 0.,
                           0., 0., 1.);
         Output.at<T>(0, 0) = qx * qx - qy * qy - qz * qz + qw * qw;
@@ -158,83 +265,44 @@ namespace htl
     }
 
     template <class T>
-    T Transform::RevFromRotMat(const cv::Mat &R_arm)
+    T Transform::RevFromRotMat(cv::Mat R_arm)
     {
         //回転行列をクォータニオンに変換
         T qx, qy, qz, qw;
-        Transform::RotMatToQuaternion(&qx, &qy, &qz, &qw,
-                                      R_arm.at<T>(0, 0), R_arm.at<T>(0, 1), R_arm.at<T>(0, 2),
-                                      R_arm.at<T>(1, 0), R_arm.at<T>(1, 1), R_arm.at<T>(1, 2),
-                                      R_arm.at<T>(2, 0), R_arm.at<T>(2, 1), R_arm.at<T>(2, 2));
+        Transform::RotMatToQuaternion<T>(&qx, &qy, &qz, &qw, R_arm.at<T>(0, 0),
+                                         R_arm.at<T>(0, 1), R_arm.at<T>(0, 2),
+                                         R_arm.at<T>(1, 0), R_arm.at<T>(1, 1),
+                                         R_arm.at<T>(1, 2), R_arm.at<T>(2, 0),
+                                         R_arm.at<T>(2, 1), R_arm.at<T>(2, 2));
         //クォータニオンの4つめの要素から回転角を取り出す
         T phi = 2 * std::acos(qw);
         return phi;
     }
 
     template <class T>
-    void Transform::RotMatToAngles(cv::Mat R,
-                                   T &angle_x, T &angle_y, T &angle_z)
+    void Transform::RotMatToAngles(cv::Mat R, T &angle_x, T &angle_y,
+                                   T &angle_z)
     {
         T threshhold = 0.001;
 
-        if (abs(R.at<T>(2, 1) - 1.0) < threshhold)
+        if (std::abs(R.at<T>(2, 1) - 1.0) < threshhold)
         {
             angle_x = M_PI / 2;
             angle_y = 0;
-            angle_z = atan2(R.at<T>(1, 0), R.at<T>(0, 0));
+            angle_z = std::atan2(R.at<T>(1, 0), R.at<T>(0, 0));
         }
-        else if (abs(R.at<T>(2, 1) + 1.0) < threshhold)
+        else if (std::abs(R.at<T>(2, 1) + 1.0) < threshhold)
         {
             angle_x = -M_PI / 2;
             angle_y = 0;
-            angle_z = atan2(R.at<T>(1, 0), R.at<T>(0, 0));
+            angle_z = std::atan2(R.at<T>(1, 0), R.at<T>(0, 0));
         }
         else
         {
-            angle_x = asin(R.at<T>(2, 1));
-            angle_y = atan2(R.at<T>(2, 0), R.at<T>(2, 2));
-            angle_z = atan2(R.at<T>(0, 1), R.at<T>(1, 1));
+            angle_x = std::asin(R.at<T>(2, 1));
+            angle_y = std::atan2(R.at<T>(2, 0), R.at<T>(2, 2));
+            angle_z = std::atan2(R.at<T>(0, 1), R.at<T>(1, 1));
         }
-    }
-
-    // Checks if a matrix is a valid rotation matrix.
-    bool Transform::isRotMat(const cv::Mat &R)
-    {
-        cv::Mat Rt;
-        cv::transpose(R, Rt);
-        cv::Mat shouldBeIdentity = Rt * R;
-        cv::Mat I = cv::Mat::eye(3, 3, shouldBeIdentity.type());
-
-        return cv::norm(I, shouldBeIdentity) < 1e-6;
-    }
-
-    // Calculates rotation matrix to euler angles
-    // The result is the same as MATLAB except the order
-    // of the euler angles ( x and z are swapped ).
-    template <class T>
-    cv::Vec3f Transform::RotMatToEulerAngles(const cv::Mat &R)
-    {
-
-        assert(isRotMat(R));
-
-        float sy = std::sqrt(R.at<T>(0, 0) * R.at<T>(0, 0) + R.at<T>(1, 0) * R.at<T>(1, 0));
-
-        bool singular = sy < 1e-6; // If
-
-        float x, y, z;
-        if (!singular)
-        {
-            x = atan2(R.at<T>(2, 1), R.at<T>(2, 2));
-            y = atan2(-R.at<T>(2, 0), sy);
-            z = atan2(R.at<T>(1, 0), R.at<T>(0, 0));
-        }
-        else
-        {
-            x = atan2(-R.at<T>(1, 2), R.at<T>(1, 1));
-            y = atan2(-R.at<T>(2, 0), sy);
-            z = 0;
-        }
-        return cv::Vec3f(x, y, z);
     }
 } // namespace htl
 #endif
