@@ -104,15 +104,6 @@ cv::Mat DepthModel<T>::create()
                 dst.at<uchar>(i, j) = (uchar)(255);
             else
                 dst.at<uchar>(i, j) = (uchar)(point_cam.z / max_distance * 255);
-            if (i == width / 2 && j == height / 2)
-            {
-                std::cout << "P_l : " << P_l << std::endl;
-                std::cout << "v_l : " << v_l << std::endl;
-                std::cout << "trnasform : " << transform << std::endl;
-                std::cout << "point_world : " << point_world << std::endl;
-                std::cout << "point_cam : " << Point_cam << std::endl;
-                std::cout << "depth : " << point_cam.z << " => " << point_cam.z / max_distance * 255 << std::endl;
-            }
         }
     }
     if (flag_miss)

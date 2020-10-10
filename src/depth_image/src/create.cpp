@@ -8,10 +8,7 @@
 #include "../../htl/include/transform.hpp"
 
 Depth_Create::Depth_Create()
-    : scene_counter(0), flag_set(false), flag_mkdir(true)
-{
-    std::cout << "Welcome!" << std::endl;
-}
+    : scene_counter(0), flag_set(false), flag_mkdir(true) {}
 
 void Depth_Create::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {

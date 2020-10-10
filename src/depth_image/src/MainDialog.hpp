@@ -35,21 +35,28 @@ private Q_SLOTS:
 
 private:
     QLabel *label;
+    QLabel *label_camera;
+    QLabel *label_color;
+    QLabel *label_depth;
+    QLabel *label_scale_bar;
     QLineEdit *lineEdit;
     QPushButton *setButton;
     QPushButton *saveButton;
     QPushButton *deleteButton;
-    QGraphicsView *graphics;
+    QGraphicsView *graphics_camera;
     QGraphicsView *graphics_color;
     QGraphicsView *graphics_depth;
     QGraphicsView *graphics_logo;
-    QGraphicsScene *scene;
+    QGraphicsView *graphics_scale_bar;
+    QGraphicsScene *scene_camera;
     QGraphicsScene *scene_color;
     QGraphicsScene *scene_depth;
     QGraphicsScene *scene_logo;
+    QGraphicsScene *scene_scale_bar;
     std::string fallguys1;
     std::string fallguys2;
     std::string gui_logo;
+    std::string scale_bar;
 
     void setItemToScene(QGraphicsScene *qscene, const cv::Mat image);
     void initImage(QGraphicsScene *qscene, std::string file_path);
