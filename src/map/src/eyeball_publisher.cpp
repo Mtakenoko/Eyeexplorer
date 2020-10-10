@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
         marker_msg.color.b = 0.2;
 
         marker_msg.pose.position.x = 0.3668;
-        marker_msg.pose.position.y = -0.1655;
-        marker_msg.pose.position.z = -0.0030;
+        marker_msg.pose.position.y = -0.170;
+        marker_msg.pose.position.z = 0.0034;
 
         //Publish
         RCLCPP_INFO(node->get_logger(), "Publishing Sphere");

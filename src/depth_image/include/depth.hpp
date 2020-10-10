@@ -80,7 +80,7 @@ cv::Mat DepthModel<T>::create()
     cv::Mat dst(width, height, CV_8UC1);
     bool flag_miss(false);
     int i, j;
-#pragma omp parallel for private(j)
+    // #pragma omp parallel for private(j)
     for (i = 0; i < width; i++)
     {
         for (j = 0; j < height; j++)
@@ -90,16 +90,20 @@ cv::Mat DepthModel<T>::create()
             this->calcPixelVector(i, j, P_l, v_l);
 
             // 直線とモデルの交点を求める
-            cv::Point3_<T> point;
-            int status = this->calcIntersection(P_l, v_l, point);
+            cv::Point3_<T> point_world;
+            int status = this->calcIntersection(P_l, v_l, point_world);
+
+            // カメラ座標系に変換
+            cv::Mat Point_cam = Rotation.t() * (cv::Mat(point_world) - transform);
+            cv::Point3_<T> point_cam(Point_cam.at<T>(0), Point_cam.at<T>(1), Point_cam.at<T>(2));
 
             // デプス画像に登録
             if (status != 1)
                 flag_miss = true;
-            if (point.z > max_distance)
+            if (point_cam.z > max_distance)
                 dst.at<uchar>(i, j) = (uchar)(255);
             else
-                dst.at<uchar>(i, j) = (uchar)(point.z / max_distance * 255);
+                dst.at<uchar>(i, j) = (uchar)(point_cam.z / max_distance * 255);
         }
     }
     if (flag_miss)
@@ -144,6 +148,9 @@ void DepthModel<T>::calcPixelVector(const int &im_x, const int &im_y,
     P.z = -(P.x * P31 / P33 + P.y * P32 / P33 + P34 / P33);
 
     v.z = 1. / P33 - (v.x * P31 / P33 + v.y * P32 / P33);
+
+    // vを正規化
+    v /= std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 template <class T>
@@ -151,51 +158,23 @@ int DepthModel<T>::calcIntersection(const cv::Point3_<T> &P_line, const cv::Poin
 {
     cv::Point3_<T> P_ellipse((T)model.pose.position.x, (T)model.pose.position.y, (T)model.pose.position.z);
     cv::Point3_<T> P = P_line - P_ellipse;
-    T A = (v.x / (T)model.scale.x) * (v.x / (T)model.scale.x) +
-          (v.y / (T)model.scale.y) * (v.y / (T)model.scale.y) +
-          (v.z / (T)model.scale.z) * (v.z / (T)model.scale.z);
-    T B = 2 * P.x * v.x / ((T)model.scale.x * (T)model.scale.x) +
-          2 * P.y * v.y / ((T)model.scale.y * (T)model.scale.y) +
-          2 * P.z * v.z / ((T)model.scale.z * (T)model.scale.z);
-    T C = (P.x / (T)model.scale.x) * (P.x / (T)model.scale.x) +
-          (P.y / (T)model.scale.y) * (P.y / (T)model.scale.y) +
-          (P.z / (T)model.scale.z) * (P.z / (T)model.scale.z) - 1;
+    T a = (T)model.scale.x / 2.0;
+    T b = (T)model.scale.y / 2.0;
+    T c = (T)model.scale.z / 2.0;
+
+    T A = (v.x / a) * (v.x / a) + (v.y / b) * (v.y / b) + (v.z / c) * (v.z / c);
+    T B = 2 * (P.x * v.x / (a * a) + P.y * v.y / (b * b) + P.z * v.z / (c * c));
+    T C = (P.x / a) * (P.x / a) + (P.y / b) * (P.y / b) + (P.z / c) * (P.z / c) - 1.;
 
     T D = B * B - 4 * A * C;
     if (D > 0)
     {
         T t1 = (-B + std::sqrt(D)) / (2 * A);
-        T t2 = (-B - std::sqrt(D)) / (2 * A);
-        cv::Point3_<T> Q1 = P_line + t1 * v;
-        cv::Point3_<T> Q2 = P_line + t2 * v;
-        if (Q1.z > 0 && Q2.z > 0)
-        {
-            if (Q1.z < Q2.z)
-            {
-                point = Q1;
-                return 1;
-            }
-            else
-            {
-                point = Q2;
-                return 1;
-            }
-        }
-        else if (Q1.z > 0 && Q2.z < 0)
-        {
-            point = Q1;
-            return 1;
-        }
-        else if (Q1.z < 0 && Q2.z > 0)
-        {
-            point = Q2;
-            return 1;
-        }
-        else
-        {
-            std::cout << " Intersection point.z < 0 " << std::endl;
-            return -1;
-        }
+        // T t2 = (-B - std::sqrt(D)) / (2 * A);
+        cv::Point3_<T> Q1 = P + t1 * v + P_ellipse;
+        // cv::Point3_<T> Q2 = P + t2 * v + P_ellipse;
+        point = Q1;
+        return 1;
     }
     else
     {

@@ -159,6 +159,14 @@ DenseDepthなどのDNNを用いて深度推定を行うために、学習用の�
 ros2 run depth_image depth_image_creator 
 ```
 ここでは位置やスケールなどのパラメータが既知のモデルを用いて、仮想的な深度画像を生成する。その際用いられるモデルは`visualization_msgs::msg::Marker`で定義されているものを用いること。現在は楕円体のみ対応しています。
+### データセット用のrosbag2
+データセット作成用のrosbag2を用意しています。下記は内視鏡の明るさ設定を2段階目にして行っています。
+```
+ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
+```
+```
+ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
+```
 
 ## Rviz2
 ```

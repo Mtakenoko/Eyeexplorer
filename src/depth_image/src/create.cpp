@@ -8,10 +8,7 @@
 #include "../../htl/include/transform.hpp"
 
 Depth_Create::Depth_Create()
-    : scene_counter(0), flag_set(false), flag_mkdir(true)
-{
-    std::cout << "Welcome!" << std::endl;
-}
+    : scene_counter(0), flag_set(false), flag_mkdir(true) {}
 
 void Depth_Create::topic_callback_image_(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
@@ -90,10 +87,9 @@ void Depth_Create::calc()
     }
 
     // 深度画像計算
-    cv::Mat cameraMatrix(3, 3, CV_64FC1);
-    cameraMatrix = (cv::Mat_<double>(3, 3) << fovx, 0.0, u0,
-                    0.0, fovy, v0,
-                    0.0, 0.0, 1.0);
+    cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << fovx, 0.0, u0,
+                            0.0, fovy, v0,
+                            0.0, 0.0, 1.0);
     DepthModel<double> depthmodel;
     depthmodel.setImageInfo(now_image.rows, now_image.cols, cameraMatrix);
     depthmodel.setCameraPose(scene.Rotation_world, scene.Transform_world);
