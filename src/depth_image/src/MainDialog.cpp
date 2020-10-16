@@ -106,8 +106,8 @@ MainDialog::MainDialog(QWidget *parent)
   // ボタンの配置
   QHBoxLayout *layout_Botton_H = new QHBoxLayout;
   layout_Botton_H->addWidget(setButton);
-  layout_Botton_H->addWidget(deleteButton);
   layout_Botton_H->addWidget(saveButton);
+  layout_Botton_H->addWidget(deleteButton);
 
   // 全体の配置
   QVBoxLayout *layout_V = new QVBoxLayout;
