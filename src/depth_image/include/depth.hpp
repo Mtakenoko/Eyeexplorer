@@ -80,18 +80,18 @@ cv::Mat DepthModel<T>::create()
     cv::Mat dst(width, height, CV_8UC1);
     bool flag_miss(false);
     int i, j;
-    // #pragma omp parallel for private(j)
+#pragma omp parallel for private(j)
     for (i = 0; i < width; i++)
     {
         for (j = 0; j < height; j++)
         {
             // 画素と焦点を通る直線のベクトル方程式を求める
             cv::Point3_<T> P_l, v_l;
-            this->calcPixelVector(i, j, P_l, v_l);
+            DepthModel<T>::calcPixelVector(i, j, P_l, v_l);
 
             // 直線とモデルの交点を求める
             cv::Point3_<T> point_world;
-            int status = this->calcIntersection(P_l, v_l, point_world);
+            int status = DepthModel<T>::calcIntersection(P_l, v_l, point_world);
 
             // カメラ座標系に変換
             cv::Mat Point_cam = Rotation.t() * (cv::Mat(point_world) - transform);
@@ -104,6 +104,15 @@ cv::Mat DepthModel<T>::create()
                 dst.at<uchar>(i, j) = (uchar)(255);
             else
                 dst.at<uchar>(i, j) = (uchar)(point_cam.z / max_distance * 255);
+            if ((i == 0 && j == 0) ||
+                (i == width - 1 && j == 0) ||
+                (i == 0 && j == height - 1) ||
+                (i == width - 1 && j == height - 1) ||
+                (i == width / 2 && j == height / 2))
+            {
+                printf("[%d, %d] = ", i, j);
+                std::cout << point_cam << std::endl;
+            }
         }
     }
     if (flag_miss)
