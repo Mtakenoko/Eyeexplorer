@@ -59,10 +59,8 @@ DESTINATION lib/${PROJECT_NAME}
 add_executable(reconstructor
   src/reconstructor.cpp
   src/Reconstruction.cpp
-  src/triangulate.cpp
   src/cost_function.cpp
   option/options_reconstructor.cpp
-  ../htl/src/msg_converter.cpp
 )
 target_link_libraries(reconstructor
   ceres

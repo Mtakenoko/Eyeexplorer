@@ -164,9 +164,6 @@ ros2 run depth_image depth_image_creator
 ```
 ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
 ```
-```
-ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
-```
 
 ## Rviz2
 ```
@@ -176,7 +173,7 @@ rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz
 ## いろいろなrosbagデータ
 読み込むときはこんな感じ
 ```
-ros2 bag play workspace/ros2_eyeexplorer/rosbag2/calib_flower.bag
+ros2 bag play workspace/ros2_eyeexplorer/rosbag2/0923_eye1.bag
 ```
 逆に記録するときはこんな感じ。基本的に取るべきトピックは`/joiont_states`と`/endoscope_image`の2つでOK。
 ```

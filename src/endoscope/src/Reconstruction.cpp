@@ -1,10 +1,9 @@
 #include "../include/endoscope/Reconstruction.hpp"
-#include "../include/endoscope/triangulate.hpp"
 #include "../include/endoscope/Bundler.hpp"
 #include "../include/endoscope/cost_function.hpp"
-#include "../include/endoscope/transformer.hpp"
-#include "../../htl/include/msg_converter.hpp"
-#include "../../htl/include/transform.hpp"
+#include "/home/takeyama/workspace/htl/ros/msg_converter.hpp"
+#include "/home/takeyama/workspace/htl/opencv/transform.hpp"
+#include "/home/takeyama/workspace/htl/opencv/triangulate.hpp"
 
 Reconstruction::Reconstruction()
     : flag_reconstruction(false), flag_setFirstFrame(true),
@@ -179,13 +178,13 @@ void Reconstruction::chooseKeyFrame()
         // xy方向の移動量bundler
         cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
         bool moving_xy_max = cv::norm(t_move_xy) < XY_MAX_CHOOSE;
-        bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN_CHOOSE;
+        // bool moving_xy_min = cv::norm(t_move_xy) > XY_MIN_CHOOSE;
         // 仰角
-        float phi = Transformer<float>::RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+        float phi = htl::Transform::RevFromRotMat<float>(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
         bool moving_phi_max = std::abs(phi) < PHI_MAX_CHOOSE;
 
         // printf("KF #%d: t_z = %f[%f], xy = %f [%f %f], phi = %f [%f]\n", itr->camerainfo.frame_num, std::abs(t_endo.at<float>(2)), Z_MAX_CHOOSE, cv::norm(t_move_xy), XY_MIN_CHOOSE, XY_MAX_CHOOSE, std::abs(phi), PHI_MAX_CHOOSE);
-        if (moving_z_max && moving_xy_max && moving_xy_min && moving_phi_max)
+        if (moving_z_max && moving_xy_max && moving_phi_max)
         {
             // std::cout << "KeyFrame No." << itr->camerainfo.frame_num << " is used (" << itr->scene_counter << ")" << std::endl;
             // std::cout << "moving_z  : " << t_endo.at<float>(2) << " (" << Z_MAX_CHOOSE << ")" << std::endl;
@@ -227,7 +226,7 @@ void Reconstruction::setKeyFrame()
             cv::Point2f t_move_xy(t_endo.at<float>(0), t_endo.at<float>(1));
             bool moving_xy = cv::norm(t_move_xy) < XY_MAX_SET;
             // 仰角
-            float phi = Transformer<float>::RevFromRotMat(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
+            float phi = htl::Transform::RevFromRotMat<float>(itr->camerainfo.Rotation_world.t() * frame_data.camerainfo.Rotation_world);
             bool moving_phi = std::abs(phi) < PHI_MAX_SET;
             if (moving_xy && moving_phi)
             {
@@ -323,7 +322,7 @@ void Reconstruction::input_data(const std::shared_ptr<const sensor_msgs::msg::Im
     frame_data.extractor.image = frame_image.clone();
 
     // 運動学で求めたグローバル座標からみたカメラの位置姿勢
-    frame_data.camerainfo.Rotation_world = Transformer<float>::QuaternionToRotMat((float)msg_arm->rotation.x, (float)msg_arm->rotation.y, (float)msg_arm->rotation.z, (float)msg_arm->rotation.w);
+    frame_data.camerainfo.Rotation_world = htl::Transform::QuaternionToRotMat<float>((float)msg_arm->rotation.x, (float)msg_arm->rotation.y, (float)msg_arm->rotation.z, (float)msg_arm->rotation.w);
     frame_data.camerainfo.Transform_world = (cv::Mat_<float>(3, 1) << msg_arm->translation.x, msg_arm->translation.y, msg_arm->translation.z);
     frame_data.camerainfo.setData();
 
@@ -559,8 +558,8 @@ void Reconstruction::triangulate()
 
             // 三次元復元
             std::vector<bool> eliminated_scene;
-            cv::Mat point3D_result = Triangulate::triangulation_RANSAC(point2D, ProjectMat, eliminated_scene, num_Scene);
-            // cv::Mat point3D_result = Triangulate::triangulation(point2D, ProjectMat);
+            // cv::Mat point3D_result = htl::Triangulate::triangulation_RANSAC<float>(point2D, ProjectMat, eliminated_scene, num_Scene);
+            cv::Mat point3D_result = htl::Triangulate::triangulation<float>(point2D, ProjectMat);
 
             if (!point3D_result.empty())
             {
@@ -1018,49 +1017,49 @@ void Reconstruction::publish(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg:
     cv::Mat pointCloud_normal;
     keyframe_data.point_3D.point3D.convertTo(pointCloud_normal, CV_32FC3);
     auto msg_cloud_normal_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_normal, *msg_cloud_normal_pub, Converter::Color::BLUE);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_normal, *msg_cloud_normal_pub, htl::Converter::Color::BLUE);
     pub_pointcloud_normal->publish(*msg_cloud_normal_pub);
 
     cv::Mat pointCloud_normal_hold;
     point3D_hold.convertTo(pointCloud_normal_hold, CV_32FC3);
     auto msg_cloud_normal_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, Converter::Color::YELLOW);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_normal_hold, *msg_cloud_normal_hold_pub, htl::Converter::Color::YELLOW);
     pub_pointcloud_normal_hold->publish(*msg_cloud_normal_hold_pub);
 
     cv::Mat pointCloud_BA;
     keyframe_data.point_3D.point3D_BA.convertTo(pointCloud_BA, CV_32FC3);
     auto msg_cloud_BA_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_BA, *msg_cloud_BA_pub, Converter::Color::GREEN);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_BA, *msg_cloud_BA_pub, htl::Converter::Color::GREEN);
     pub_pointcloud_BA->publish(*msg_cloud_BA_pub);
 
     cv::Mat pointCloud_BA_hold;
     point3D_BA_hold.convertTo(pointCloud_BA_hold, CV_32FC3);
     auto msg_cloud_BA_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, Converter::Color::RED);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_BA_hold, *msg_cloud_BA_hold_pub, htl::Converter::Color::RED);
     pub_pointcloud_BA_hold->publish(*msg_cloud_BA_hold_pub);
 
     cv::Mat pointCloud_filtered;
     keyframe_data.point_3D.point3D_filtered.convertTo(pointCloud_filtered, CV_32FC3);
     auto msg_cloud_filtered_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_filtered, *msg_cloud_filtered_pub, Converter::Color::AQUA);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_filtered, *msg_cloud_filtered_pub, htl::Converter::Color::AQUA);
     pub_pointcloud_filtered->publish(*msg_cloud_filtered_pub);
 
     cv::Mat pointCloud_filtered_hold;
     point3D_filtered_hold.convertTo(pointCloud_filtered_hold, CV_32FC3);
     auto msg_cloud_filtered_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, Converter::Color::RED);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_filtered_hold, *msg_cloud_filtered_hold_pub, htl::Converter::Color::RED);
     pub_pointcloud_filtered_hold->publish(*msg_cloud_filtered_hold_pub);
 
     cv::Mat pointCloud_est;
     keyframe_data.point_3D.point3D_est.convertTo(pointCloud_est, CV_32FC3);
     auto msg_cloud_est_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_est, *msg_cloud_est_pub, Converter::Color::TEAL);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_est, *msg_cloud_est_pub, htl::Converter::Color::TEAL);
     pub_pointcloud_est->publish(*msg_cloud_est_pub);
 
     cv::Mat pointCloud_est_hold;
     point3D_est_hold.convertTo(pointCloud_est_hold, CV_32FC3);
     auto msg_cloud_est_hold_pub = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    Converter::cvMat_to_msgPointCloud(pointCloud_est_hold, *msg_cloud_est_hold_pub, Converter::Color::OLIVE);
+    htl::Converter::cvMat_to_msgPointCloud(pointCloud_est_hold, *msg_cloud_est_hold_pub, htl::Converter::Color::OLIVE);
     pub_pointcloud_est_hold->publish(*msg_cloud_est_hold_pub);
 
     // Image
