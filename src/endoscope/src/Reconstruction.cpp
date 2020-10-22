@@ -558,9 +558,8 @@ void Reconstruction::triangulate()
 
             // 三次元復元
             std::vector<bool> eliminated_scene;
-            // cv::Mat point3D_result = htl::Triangulate::triangulation_RANSAC<float>(point2D, ProjectMat, eliminated_scene, num_Scene);
-            cv::Mat point3D_result = htl::Triangulate::triangulation<float>(point2D, ProjectMat);
-
+            cv::Mat point3D_result = htl::Triangulate::triangulation_RANSAC<float>(point2D, ProjectMat, eliminated_scene, num_Scene);
+            // cv::Mat point3D_result = htl::Triangulate::triangulation<float>(point2D, ProjectMat);
             if (!point3D_result.empty())
             {
                 // 点の登録

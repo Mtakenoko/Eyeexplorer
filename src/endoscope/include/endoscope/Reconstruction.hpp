@@ -58,7 +58,7 @@
 
 // マッチング辞書の中からその特徴点がこの数より多いシーンで撮影されていることがわかれば三次元復元を行う
 #define KEYPOINT_SCENE 4
-#define KEYPOINT_SCENE_DELETE 10
+#define KEYPOINT_SCENE_DELETE 50
 
 // マッチング誤対応除去用パラメータ
 #define THRESH_VARIANCE 100       // 分散のしきい値
@@ -68,7 +68,7 @@
 #define THRESH_DISTANCE_EYE 0.02
 
 // 3次元点の統計学的フィルタ用パラメータ
-#define THRESH_VARIANCE_POINT 0.00001 // 分散のしきい値
+#define THRESH_VARIANCE_POINT 0.00005 // 分散のしきい値
 
 // 移動量推定と運動学との差がおおきいときに三次元復元しないかどうか決定するパラメータ
 #define THRESH_DOT 0.93
