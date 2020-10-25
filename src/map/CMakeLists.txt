@@ -35,10 +35,21 @@ find_package(message_filters REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(PCL REQUIRED)
-find_package(pcl_conversions REQUIRED)
+# find_package(PCL REQUIRED)
+# find_package(pcl_conversions REQUIRED)
 find_package(Boost REQUIRED system)
 find_package(Ceres REQUIRED)
+find_package(octomap REQUIRED)
+find_package(OpenMP)
+
+# include directory
+include_directories(${OCTOMAP_INCLUDE_DIRS})
+
+# OpenMP
+if (OPENMP_FOUND) 
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
 
 # PCL
 include_directories(
@@ -99,106 +110,127 @@ add_definitions(${PCL_DEFINITIONS})
 
 # eyeball_estimator_insertion_point node
 # スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(eyeball_estimator_insertion_point
-  src/eyeball_estimator.cpp
+# add_executable(eyeball_estimator_insertion_point
+#   src/eyeball_estimator.cpp
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(eyeball_estimator_insertion_point
+#   "rclcpp"
+#   "sensor_msgs"
+#   "visualization_msgs"
+#   "OpenCV"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS
+#   eyeball_estimator_insertion_point
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# # pointcloud_filter node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(pointcloud_filter
+#   src/filter.cpp
+#   src/pointcloud_filter.cpp
+# )
+# target_link_libraries(pointcloud_filter
+#   ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+#   ${PCL_LIBRARIES}
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(pointcloud_filter
+#   "rclcpp"
+#   "sensor_msgs"
+#   "pcl_conversions"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS
+#   pointcloud_filter
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# # pullout_endoscope node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(pullout_endoscope
+#   src/puller.cpp
+#   src/pullout_endoscope.cpp
+#   option/options_pullout.cpp
+# )
+# target_link_libraries(pullout_endoscope
+#   ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+#   ${PCL_LIBRARIES}
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(pullout_endoscope
+#   "rclcpp"
+#   "sensor_msgs"
+#   "geometry_msgs"
+#   "message_filters"
+#   "OpenCV"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS
+#   pullout_endoscope
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# # pullout node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(pullout
+#   src/pullout.cpp
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(pullout
+#   "rclcpp"
+#   "std_msgs"
+#   "geometry_msgs"
+#   "visualization_msgs"
+#   "OpenCV"
+# )
+# # 実行ファイルをインストール
+# install(TARGETS
+#   pullout
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# # eyeball_publisher node
+# # スタンドアローンノードの実行ファイルをコンパイルする
+# add_executable(eyeball_publisher
+#   src/eyeball_publisher.cpp
+# )
+# # コンパイルターゲットに依存パッケージの情報を追加する
+# ament_target_dependencies(eyeball_publisher
+#   "rclcpp"
+#   "rcl_interfaces"
+#   "rcutils"
+#   "std_msgs"
+#   "visualization_msgs"
+# )
+# target_link_libraries(eyeball_publisher
+#   ${Boost_SYSTEM_LIBRARY}
+# )
+# # 実行ファイルをインストール
+# install(TARGETS eyeball_publisher
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+# gridmap_creator node
+add_executable(gridmap_creator
+  src/gridmap_creator.cpp
 )
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(eyeball_estimator_insertion_point
-  "rclcpp"
-  "sensor_msgs"
-  "visualization_msgs"
-  "OpenCV"
-)
-# 実行ファイルをインストール
-install(TARGETS
-  eyeball_estimator_insertion_point
-  DESTINATION lib/${PROJECT_NAME}
+target_link_libraries(gridmap_creator 
+  ${OCTOMAP_LIBRARIES}
 )
 
-# pointcloud_filter node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(pointcloud_filter
-  src/filter.cpp
-  src/pointcloud_filter.cpp
-)
-target_link_libraries(pointcloud_filter
-  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
-  ${PCL_LIBRARIES}
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(pointcloud_filter
-  "rclcpp"
-  "sensor_msgs"
-  "pcl_conversions"
-)
-# 実行ファイルをインストール
-install(TARGETS
-  pointcloud_filter
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# pullout_endoscope node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(pullout_endoscope
-  src/puller.cpp
-  src/pullout_endoscope.cpp
-  option/options_pullout.cpp
-)
-target_link_libraries(pullout_endoscope
-  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
-  ${PCL_LIBRARIES}
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(pullout_endoscope
+ament_target_dependencies(gridmap_creator
   "rclcpp"
   "sensor_msgs"
   "geometry_msgs"
-  "message_filters"
+  "octomap"
   "OpenCV"
+  "OpenMP"
 )
-# 実行ファイルをインストール
 install(TARGETS
-  pullout_endoscope
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# pullout node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(pullout
-  src/pullout.cpp
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(pullout
-  "rclcpp"
-  "std_msgs"
-  "geometry_msgs"
-  "visualization_msgs"
-  "OpenCV"
-)
-# 実行ファイルをインストール
-install(TARGETS
-  pullout
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# eyeball_publisher node
-# スタンドアローンノードの実行ファイルをコンパイルする
-add_executable(eyeball_publisher
-  src/eyeball_publisher.cpp
-)
-# コンパイルターゲットに依存パッケージの情報を追加する
-ament_target_dependencies(eyeball_publisher
-  "rclcpp"
-  "rcl_interfaces"
-  "rcutils"
-  "std_msgs"
-  "visualization_msgs"
-)
-target_link_libraries(eyeball_publisher
-  ${Boost_SYSTEM_LIBRARY}
-)
-# 実行ファイルをインストール
-install(TARGETS eyeball_publisher
+  gridmap_creator
   DESTINATION lib/${PROJECT_NAME}
 )
 
