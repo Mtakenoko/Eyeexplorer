@@ -42,6 +42,11 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
+find_package(octomap REQUIRED)
+
+# include directory
+include_directories(${OCTOMAP_INCLUDE_DIRS})
+
 
 #test_talker node
 add_executable(test_talker
@@ -218,6 +223,24 @@ ament_target_dependencies(ceres_test2
 )
 install(TARGETS
   ceres_test2
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# octomap_test node
+add_executable(octomap_test
+  src/octomap_test.cpp
+)
+target_link_libraries(octomap_test 
+  ${OCTOMAP_LIBRARIES}
+)
+
+ament_target_dependencies(octomap_test
+  "rclcpp"
+  "std_msgs"
+  "octomap"
+)
+install(TARGETS
+  octomap_test
   DESTINATION lib/${PROJECT_NAME}
 )
 
