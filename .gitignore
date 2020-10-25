@@ -10,3 +10,4 @@ memo.md
 src/tensorflow_test/venv
 src/depth_image/Output
 src/arm/arm_rviz/launch/__pycache__
+src/test/output

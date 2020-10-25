@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     tree->updateInnerOccupancy();
 
     // データの保存
-    tree->writeBinary("/src/test/data/map.bt");
+    tree->writeBinary("src/test/output/map.bt");
 
     rclcpp::spin(node);
     rclcpp::shutdown();

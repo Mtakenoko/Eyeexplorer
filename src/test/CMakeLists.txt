@@ -244,6 +244,24 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# octomap_test2 node
+add_executable(octomap_test2
+  src/octomap_test2.cpp
+)
+target_link_libraries(octomap_test2
+  ${OCTOMAP_LIBRARIES}
+)
+
+ament_target_dependencies(octomap_test2
+  "rclcpp"
+  "std_msgs"
+  "octomap"
+)
+install(TARGETS
+  octomap_test2
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
