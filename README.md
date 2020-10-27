@@ -172,6 +172,16 @@ ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
 rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz 
 ```
 
+## venv
+DenseDpethを動かすための仮想環境の立ち上げ
+```
+source src/depth_predict/my_env/bin/activate
+```
+仮想環境終了コマンド
+```
+deactivate
+```
+
 ## いろいろなrosbagデータ
 読み込むときはこんな感じ
 ```
