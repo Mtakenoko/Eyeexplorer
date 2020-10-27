@@ -128,10 +128,18 @@ ros2 run endoscope reconstructor
    BRIEF  : 5 
 ```
 ## map
+### モデルとの距離計測
 点群から平面や球面など指定したモデルを推定し、そこまでの距離を計測する。そして近ければ内視鏡抜去する信号をpublishする。
 ```
 ros2 run map pullout_endoscope
 ```
+
+### 占有確率マップの作成
+深度画像と内視鏡深度画像を用いてワールド座標系での占有確率マップを作成する
+```
+ros2 run map gridmap_creator
+```
+
 ### option
 基本的には`-h`オプションをして確認してください。
 ```
@@ -165,6 +173,11 @@ ros2 run depth_image depth_image_creator
 データセット作成用のrosbag2を用意しています。下記は内視鏡の明るさ設定を2段階目にして行っています。
 ```
 ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
+```
+
+## depth_predict
+```
+python /home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/predict.py
 ```
 
 ## Rviz2

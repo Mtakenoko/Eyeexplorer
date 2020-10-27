@@ -4,8 +4,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <geometry_msgs/msg/transform.hpp>
+#include <cv_bridge/cv_bridge.h>
 
-#include <omp.h>
+// #include <omp.h>
 
 #include <octomap/octomap.h>
 
@@ -15,12 +16,14 @@
 #include "/home/takeyama/workspace/htl/opencv/pose.hpp"
 #include "/home/takeyama/workspace/htl/opencv/transform.hpp"
 
-#define fovx 396.7
-#define fovy 396.9
-#define u0 163.6
-#define v0 157.1
-#define WIDTH 320
-#define HEIGHT 320
+#define fovx 198
+#define fovy 198
+#define u0 80.0
+#define v0 80.0
+#define WIDTH 160
+#define HEIGHT 160
+#define MIN_DEPTH 0.0
+#define MAX_DEPTH 25.0
 
 class Gridmap : public rclcpp::Node
 {
@@ -46,7 +49,6 @@ private:
     htl::Pose<float> tip;
     cv::Mat depth_image;
     std::vector<htl::Position<float>> pointcloud;
-    cv::Mat CameraMatrix;
     cv::Mat ProjectionMatrix;
 
 private:
@@ -66,16 +68,19 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     qos.reliability(reliability_policy);
 
     subscription_tip_ = this->create_subscription<geometry_msgs::msg::Transform>("/endoscope_transform", qos, std::bind(&Gridmap::topic_tip_callback_, this, std::placeholders::_1));
-    subscription_depthimage = this->create_subscription<sensor_msgs::msg::Image>("/CNN_endoscope/image/depth", qos, std::bind(&Gridmap::topic_depthimage_callback_, this, std::placeholders::_1));
+    subscription_depthimage = this->create_subscription<sensor_msgs::msg::Image>("/endoscope/image/depth", qos, std::bind(&Gridmap::topic_depthimage_callback_, this, std::placeholders::_1));
 
     // 占有グリッドの設定
     tree.setOccupancyThres(0.7);
     tree.setResolution(0.001);
 
     // カメラ内部パラメータの設定
-    CameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
-                    0.0, fovy, v0,
-                    0.0, 0.0, 1.0);
+    cv::Mat CameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
+                            0.0, fovy, v0,
+                            0.0, 0.0, 1.0);
+    cv::Mat CameraPose(3, 4, CV_32FC1);
+    cv::hconcat(cv::Mat::eye(3, 3, CV_32FC1), cv::Mat::zeros(3, 1, CV_32FC1), CameraPose);
+    this->ProjectionMatrix = CameraMatrix * CameraPose;
 }
 
 void Gridmap::set_VoxelMinimumSize(const double &size)
@@ -115,8 +120,12 @@ void Gridmap::input_tip_data(const geometry_msgs::msg::Transform::SharedPtr msg_
 
 void Gridmap::input_depthimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
-    cv::Mat frame_image(msg_image->height, msg_image->width, htl::Converter::Encoding_to_cvMattype(msg_image->encoding), const_cast<unsigned char *>(msg_image->data.data()), msg_image->step);
-    depth_image = frame_image.clone();
+    std::cout << std::endl;
+    std::cout << "Received image" << std::endl;
+    cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg_image);
+    cv_ptr->image.convertTo(depth_image, CV_32F);
+    // cv::imshow("depth", depth_image);
+    // cv::waitKey(3);
     flag_setdepthimage = true;
 }
 
@@ -124,21 +133,18 @@ void Gridmap::calc()
 {
     // ワールド座標系から見た点群の位置を計算
     octomap::point3d origin(this->tip.position.x, this->tip.position.y, this->tip.position.z); // 計測原点。カメラの3次元座標。
-    cv::Mat Rotation = htl::Transform::QuaternionToRotMat<float>(this->tip.quaternion);
-    cv::Mat Transform = (cv::Mat_<float>(3, 1) << tip.position.x, tip.position.y, tip.position.z);
-    cv::Mat CameraPose(3, 4, CV_32FC1);
-    cv::hconcat(Rotation.t(), -Rotation.t() * Transform, CameraPose);
-    this->ProjectionMatrix = this->CameraMatrix * CameraPose;
 
-    int i, j;
-#pragma omp parallel for private(j)
-    for (i = 0; i < WIDTH; i++)
+    // 本当は並列化したいけど、tree.updateNode()がスレッドセーフではなかった。残念。
+    // int i, j;
+    // #pragma omp parallel for private(j)
+    for (int i = 1; i < WIDTH - 1; i++)
     {
-        for (j = 0; j < HEIGHT; j++)
+        for (int j = 1; j < HEIGHT - 1; j++)
         {
             htl::Position<float> point = this->get_Point3d(i, j);
             octomap::point3d end(point.x, point.y, point.z); // 計測した1点の3次元座標
-            tree.insertRay(origin, end);                     // レイを飛ばして空間を削り出す
+            tree.updateNode(end, true);                      // integrate 'occupied' measurement
+            // tree.insertRay(origin, end); // レイを飛ばして空間を削り出す
         }
     }
 
@@ -180,27 +186,34 @@ void Gridmap::print_query_info(octomap::point3d query, octomap::OcTreeNode *node
 
 htl::Position<float> Gridmap::get_Point3d(const int &u, const int &v)
 {
-    float depth = depth_image.at<float>(u, v);
+    float depth = (depth_image.at<float>(u, v) * (MAX_DEPTH - MIN_DEPTH) + MIN_DEPTH) / 1000.;
 
-    float P11 = this->ProjectionMatrix.at<float>(0, 0);
-    float P12 = this->ProjectionMatrix.at<float>(0, 1);
-    float P13 = this->ProjectionMatrix.at<float>(0, 2);
-    float P14 = this->ProjectionMatrix.at<float>(0, 3);
-    float P21 = this->ProjectionMatrix.at<float>(1, 0);
-    float P22 = this->ProjectionMatrix.at<float>(1, 1);
-    float P23 = this->ProjectionMatrix.at<float>(1, 2);
-    float P24 = this->ProjectionMatrix.at<float>(1, 3);
-    float P31 = this->ProjectionMatrix.at<float>(3, 0);
-    float P32 = this->ProjectionMatrix.at<float>(3, 1);
-    float P33 = this->ProjectionMatrix.at<float>(3, 2);
-    float P34 = this->ProjectionMatrix.at<float>(3, 3);
+    float A1 = ProjectionMatrix.at<float>(0, 0) - ProjectionMatrix.at<float>(2, 0) * u;
+    float B1 = ProjectionMatrix.at<float>(0, 1) - ProjectionMatrix.at<float>(2, 1) * u;
+    float C1 = ProjectionMatrix.at<float>(0, 2) - ProjectionMatrix.at<float>(2, 2) * u;
+    float D1 = ProjectionMatrix.at<float>(0, 4) - ProjectionMatrix.at<float>(2, 3) * u;
+    float A2 = ProjectionMatrix.at<float>(1, 0) - ProjectionMatrix.at<float>(2, 0) * v;
+    float B2 = ProjectionMatrix.at<float>(1, 1) - ProjectionMatrix.at<float>(2, 1) * v;
+    float C2 = ProjectionMatrix.at<float>(1, 2) - ProjectionMatrix.at<float>(2, 2) * v;
+    float D2 = ProjectionMatrix.at<float>(1, 3) - ProjectionMatrix.at<float>(2, 3) * v;
 
-    htl::Position<float> point;
-    point.x = (((P14 - P34 * u) * (P22 - P32 * v) - (P24 - P34 * v) * (P12 - P32 * u)) + depth * ((P13 - P33 * u) * (P22 - P32 * v) - (P23 - P33 * v) * (P12 - P32 * u))) /
-              ((P11 - P31 * u) * (P22 - P32 * v) - (P21 - P31 * v) * (P12 - P32 * u));
-    point.y = (((P14 - P34 * u) * (P21 - P31 * v) - (P24 - P34 * v) * (P11 - P31 * u)) + depth * ((P13 - P22 * u) * (P21 - P31 * v) - (P23 - P33 * v) * (P11 - P31 * u))) /
-              ((P12 - P32 * u) * (P21 - P31 * v) - (P22 - P32 * v) * (P11 - P31 * u));
-    point.z = depth;
-    return point;
+    htl::Position<float> point_camera;
+    point_camera.x = -((C1 * B2 - C2 * B1) * depth + (D1 * B2 - D2 * B1)) / (A1 * B2 - A2 * B1);
+    point_camera.y = -((C1 * A2 - C2 * A1) * depth + (D1 * A2 - D2 * A1)) / (B1 * A2 - B2 * A1);
+    point_camera.z = depth;
+
+    htl::Position<float> point_world;
+    cv::Mat Rotation = htl::Transform::QuaternionToRotMat<float>(this->tip.quaternion);
+    cv::Mat Transform = (cv::Mat_<float>(3, 1) << tip.position.x, tip.position.y, tip.position.z);
+    cv::Mat temp_point = Rotation * cv::Mat1f(point_camera) + Transform;
+    point_world.x = temp_point.at<float>(0);
+    point_world.y = temp_point.at<float>(1);
+    point_world.z = temp_point.at<float>(2);
+    if (u == 10 && v == 20)
+    {
+        std::cout << "point_camera :" << point_camera << std::endl;
+        std::cout << "point_world :" << point_world << std::endl;
+    }
+    return point_world;
 }
 #endif

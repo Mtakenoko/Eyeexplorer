@@ -41,6 +41,7 @@ find_package(Boost REQUIRED system)
 find_package(Ceres REQUIRED)
 find_package(octomap REQUIRED)
 find_package(OpenMP)
+find_package(cv_bridge)
 
 # include directory
 include_directories(${OCTOMAP_INCLUDE_DIRS})
@@ -62,28 +63,6 @@ link_directories(
   ${Boost_LIBRARY_DIRS}
 )
 add_definitions(${PCL_DEFINITIONS})
-
-# # pointcloud_storage node
-# # スタンドアローンノードの実行ファイルをコンパイルする
-# add_executable(pointcloud_storage
-#   src/pointcloud_storage.cpp
-# )
-# # コンパイルターゲットに依存パッケージの情報を追加する
-# ament_target_dependencies(pointcloud_storage
-#   "rclcpp"
-#   "sensor_msgs"
-#   "std_msgs"
-#   "OpenCV"
-#   "tf2_msgs"
-#   "tf2_geometry_msgs"
-#   "rcl_interfaces"
-#   "rcutils"
-#   "pcl_conversions"
-# )
-# # 実行ファイルをインストール
-# install(TARGETS pointcloud_storage
-#   DESTINATION lib/${PROJECT_NAME}
-# )
 
 # # eyeball_estimator node
 # # スタンドアローンノードの実行ファイルをコンパイルする
@@ -192,26 +171,26 @@ add_definitions(${PCL_DEFINITIONS})
 #   DESTINATION lib/${PROJECT_NAME}
 # )
 
-# # eyeball_publisher node
-# # スタンドアローンノードの実行ファイルをコンパイルする
-# add_executable(eyeball_publisher
-#   src/eyeball_publisher.cpp
-# )
-# # コンパイルターゲットに依存パッケージの情報を追加する
-# ament_target_dependencies(eyeball_publisher
-#   "rclcpp"
-#   "rcl_interfaces"
-#   "rcutils"
-#   "std_msgs"
-#   "visualization_msgs"
-# )
-# target_link_libraries(eyeball_publisher
-#   ${Boost_SYSTEM_LIBRARY}
-# )
-# # 実行ファイルをインストール
-# install(TARGETS eyeball_publisher
-#   DESTINATION lib/${PROJECT_NAME}
-# )
+# eyeball_publisher node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(eyeball_publisher
+  src/eyeball_publisher.cpp
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(eyeball_publisher
+  "rclcpp"
+  "rcl_interfaces"
+  "rcutils"
+  "std_msgs"
+  "visualization_msgs"
+)
+target_link_libraries(eyeball_publisher
+  ${Boost_SYSTEM_LIBRARY}
+)
+# 実行ファイルをインストール
+install(TARGETS eyeball_publisher
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # gridmap_creator node
 add_executable(gridmap_creator
@@ -228,6 +207,7 @@ ament_target_dependencies(gridmap_creator
   "octomap"
   "OpenCV"
   "OpenMP"
+  "cv_bridge"
 )
 install(TARGETS
   gridmap_creator
