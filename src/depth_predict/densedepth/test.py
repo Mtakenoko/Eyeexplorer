@@ -1,6 +1,7 @@
 import os
 import glob
 import matplotlib
+import cv2
 
 class Test(object):
     def __init__(self):
@@ -11,7 +12,6 @@ class Test(object):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
         from keras.models import load_model
         from layers import BilinearUpSampling2D
-        from utils import load_images
 
         # Custom object needed for inference and training
         custom_objects = {'BilinearUpSampling2D': BilinearUpSampling2D, 'depth_loss_function': None}
@@ -24,19 +24,20 @@ class Test(object):
         print('\nModel loaded ({0}).'.format('eye_data.h5'))
 
     def load_test_images(self):
-        # Input images
-        self.inputs = load_images(glob.glob('/home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/examples/eye/*.jpg') )
+        from utils import load_images
+        self.inputs = load_images(glob.glob('/home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/examples/eye/*.jpg'))
         print('\nLoaded ({0}) images of size {1}.'.format(self.inputs.shape[0], self.inputs.shape[1:]))
 
-    def input_image(self):
-        # @TODO; subしたやつを入れる
-        self.inputs = load_images(glob.glob('/home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/examples/eye/*.jpg') )
+    def input_image(self, cvimage):
+        from utils import load_cvimage
+        self.inputs = load_cvimage(cvimage)
+        print('\nLoaded ({0}) images of size {1}.'.format(self.inputs.shape[0], self.inputs.shape[1:]))
 
     def depth_predict(self):
         from utils import predict
         # Compute results
         self.outputs = predict(self.model, self.inputs, minDepth=0.0, maxDepth=25.0, batch_size=4)
-        return outputs
+        return self.outputs
         
     def dispaly():
         from utils import display_images

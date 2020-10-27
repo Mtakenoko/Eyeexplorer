@@ -31,6 +31,12 @@ def load_images(image_files):
         loaded_images.append(x)
     return np.stack(loaded_images, axis=0)
 
+def load_cvimage(cvimage):
+    loaded_images = []
+    x = np.clip(cvimage / 255, 0, 1)
+    loaded_images.append(x)
+    return np.stack(loaded_images, axis=0)
+
 def to_multichannel(i):
     if i.shape[2] == 3: return i
     i = i[:,:,0]

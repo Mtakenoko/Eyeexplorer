@@ -17,20 +17,19 @@ class Predict(Node):
         self.bridge = CvBridge()
 
         self.pub = self.create_publisher(Image, '/endoscope/image/depth', 10)
-        self.sub = self.create_subscription(Image, '/endoscope/image/color', self.image_callback, 10)
+        self.sub = self.create_subscription(Image, '/endoscope_image', self.image_callback, 10)
 
         self.test = Test()
 
     def image_callback(self, msg : Image):
         print("received image stamp {}".format(msg._header.frame_id))
-        self.cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        self.test.input_image(cv_image)
+        output = self.test.depth_predict()
+        self.cv2image_publish(output[0])
 
-        self.test.load_test_images()
-        self.test.depth_predict()
-        self.cv2image_publish(self.cv_image)
-
-    def cv2image_publish(self):
-        self.pub.publish(self.bridge.cv2_to_imgmsg(self.cv_image))
+    def cv2image_publish(self, image):
+        self.pub.publish(self.bridge.cv2_to_imgmsg(image))
 
 
 def main(args=None):
