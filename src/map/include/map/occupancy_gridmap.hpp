@@ -27,6 +27,7 @@ class Gridmap : public rclcpp::Node
 {
 public:
     Gridmap();
+    ~Gridmap();
     void set_VoxelMinimumSize(const double &size);
     void calc();
     void search();
@@ -81,6 +82,18 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     this->ProjectionMatrix = CameraMatrix * CameraPose;
 }
 
+Gridmap::~Gridmap()
+{
+    this->tree.writeBinary("/home/takeyama/workspace/ros2_eyeexplorer/src/map/output/simple_tree.bt");
+    std::cout << std::endl;
+    std::cout << "wrote example file simple_tree.bt" << std::endl
+              << std::endl;
+    std::cout << "now you can use octovis to visualize:" << std::endl
+              << "  octovis /home/takeyama/workspace/ros2_eyeexplorer/src/map/output/simple_tree.bt" << std::endl;
+    std::cout << "Hint: hit 'F'-key in viewer to see the freespace" << std::endl
+              << std::endl;
+}
+
 void Gridmap::set_VoxelMinimumSize(const double &size)
 {
     tree.setResolution(size);
@@ -90,18 +103,14 @@ void Gridmap::topic_tip_callback_(const geometry_msgs::msg::Transform::SharedPtr
 {
     this->input_tip_data(msg_tip);
     if (flag_setdepthimage)
-    {
         this->calc();
-    }
 }
 
 void Gridmap::topic_depthimage_callback_(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
     this->input_depthimage_data(msg_image);
     if (flag_settip)
-    {
         this->calc();
-    }
 }
 
 void Gridmap::input_tip_data(const geometry_msgs::msg::Transform::SharedPtr msg_tip)

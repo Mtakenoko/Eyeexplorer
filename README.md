@@ -134,13 +134,7 @@ ros2 run endoscope reconstructor
 ros2 run map pullout_endoscope
 ```
 
-### 占有確率マップの作成
-深度画像と内視鏡深度画像を用いてワールド座標系での占有確率マップを作成する
-```
-ros2 run map gridmap_creator
-```
-
-### option
+#### option
 基本的には`-h`オプションをして確認してください。
 ```
  -h: This message.
@@ -162,6 +156,13 @@ ros2 run map gridmap_creator
  --distance: Set distance of safety zone to avoide enfoscope from eye-ball
    (default) : 0.005
 ```
+
+### 占有確率マップの作成
+深度画像と内視鏡深度画像を用いてワールド座標系での占有確率マップを作成する
+```
+ros2 run map gridmap_creator
+```
+
 
 ## depth_image
 DenseDepthなどのDNNを用いて深度推定を行うために、学習用のデータセットを作るためのソフトウェア。Captureボタンを押しデプス画像がうまく生成されていればSaveボタンを押す。深度画像の出力は`/depth_image/Output`内の各日時毎に生成されたディレクトリに登録順に保存される。
