@@ -206,7 +206,6 @@ ament_target_dependencies(gridmap_creator
   "geometry_msgs"
   "octomap"
   "OpenCV"
-  "OpenMP"
   "cv_bridge"
 )
 install(TARGETS

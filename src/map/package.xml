@@ -26,7 +26,6 @@
   <!-- <depend>libpcl-all-dev</depend> -->
   <depend>libboost-system-dev</depend>
   <depend>octomap</depend>
-  <depend>OpenMP</depend>
   <depend>cv_bridge</depend>
 
   <test_depend>ament_lint_auto</test_depend>

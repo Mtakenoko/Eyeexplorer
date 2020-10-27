@@ -6,8 +6,6 @@
 #include <geometry_msgs/msg/transform.hpp>
 #include <cv_bridge/cv_bridge.h>
 
-// #include <omp.h>
-
 #include <octomap/octomap.h>
 
 #include <opencv2/opencv.hpp>
@@ -134,9 +132,6 @@ void Gridmap::calc()
     // ワールド座標系から見た点群の位置を計算
     octomap::point3d origin(this->tip.position.x, this->tip.position.y, this->tip.position.z); // 計測原点。カメラの3次元座標。
 
-    // 本当は並列化したいけど、tree.updateNode()がスレッドセーフではなかった。残念。
-    // int i, j;
-    // #pragma omp parallel for private(j)
     for (int i = 1; i < WIDTH - 1; i++)
     {
         for (int j = 1; j < HEIGHT - 1; j++)
