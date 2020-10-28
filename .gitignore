@@ -16,4 +16,4 @@ src/depth_predict/densedepth/eye_data.h5
 src/depth_predict/densedepth/eyemodel_data.zip
 src/depth_predict/densedepth/examples
 src/depth_predict/densedepth/__pycache__
-src/map/output/simple_tree.bt
+src/map/output

@@ -7,6 +7,8 @@
 
 #include <octomap/octomap.h>
 
+#include <omp.h>
+
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 
@@ -53,7 +55,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_depthimage;
 
 private:
-    octomap::OcTree tree;
+    std::shared_ptr<octomap::OcTree> tree;
     htl::Pose<float> tip;
     cv::Mat depth_image;
     cv::Mat ProjectionMatrix;
@@ -62,7 +64,7 @@ private:
 };
 
 Gridmap::Gridmap() : Node("Gridmap_creator"),
-                     flag_set_tip(false), flag_set_depthimage(false), tree(0.001)
+                     flag_set_tip(false), flag_set_depthimage(false)
 {
     // QoSの設定
     size_t depth = rmw_qos_profile_default.depth;
@@ -82,15 +84,17 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     cv::hconcat(cv::Mat::eye(3, 3, CV_32FC1), cv::Mat::zeros(3, 1, CV_32FC1), CameraPose);
     this->ProjectionMatrix = CameraMatrix * CameraPose;
 
+    tree = std::make_shared<octomap::OcTree>(0.001);
+
     // // default Param
     // std::cout << std::endl;
     // std::cout << "OcTree default Param:" << std::endl
-    //           << "  ClampingThresMax : " << tree.getClampingThresMax() << std::endl
-    //           << "  ClampingThresMin : " << tree.getClampingThresMin() << std::endl
-    //           << "  OccupancyThres : " << tree.getOccupancyThres() << std::endl
-    //           << "  ProbHit : " << tree.getProbHit() << std::endl
-    //           << "  ProbMiss : " << tree.getProbMiss() << std::endl
-    //           << "  Resolution : " << tree.getResolution() << std::endl;
+    //           << "  ClampingThresMax : " << tree->getClampingThresMax() << std::endl
+    //           << "  ClampingThresMin : " << tree->getClampingThresMin() << std::endl
+    //           << "  OccupancyThres : " << tree->getOccupancyThres() << std::endl
+    //           << "  ProbHit : " << tree->getProbHit() << std::endl
+    //           << "  ProbMiss : " << tree->getProbMiss() << std::endl
+    //           << "  Resolution : " << tree->getResolution() << std::endl;
 }
 
 Gridmap::~Gridmap()
@@ -100,32 +104,32 @@ Gridmap::~Gridmap()
 
 void Gridmap::set_OcTree_OccupancyThres(const double &thresh)
 {
-    tree.setOccupancyThres(thresh);
+    tree->setOccupancyThres(thresh);
 }
 
 void Gridmap::set_OcTree_ProbHit(const double &prob)
 {
-    tree.setProbHit(prob);
+    tree->setProbHit(prob);
 }
 
 void Gridmap::set_OcTree_ProbMiss(const double &prob)
 {
-    tree.setProbMiss(prob);
+    tree->setProbMiss(prob);
 }
 
 void Gridmap::set_OcTree_ClampingThresMax(const double &threshProb)
 {
-    tree.setClampingThresMax(threshProb);
+    tree->setClampingThresMax(threshProb);
 }
 
 void Gridmap::set_OcTree_ClampingThresMin(const double &threshProb)
 {
-    tree.setClampingThresMin(threshProb);
+    tree->setClampingThresMin(threshProb);
 }
 
 void Gridmap::set_OcTree_Resolution(const double &resolution)
 {
-    tree.setResolution(resolution);
+    tree->setResolution(resolution);
 }
 
 void Gridmap::topic_tip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip)
@@ -169,25 +173,29 @@ void Gridmap::calc()
 {
     // ワールド座標系から見た点群の位置を計算
     octomap::point3d origin(this->tip.position.x, this->tip.position.y, this->tip.position.z); // 計測原点。カメラの3次元座標。
+    // tree->updateNode(origin, false);
 
     htl::Position<float> test;
-    for (int i = 1; i < WIDTH - 1; i++)
+    int i, j;
+#pragma omp parallel for private(j)
+    for (i = 1; i < WIDTH - 1; i++)
     {
-        for (int j = 1; j < HEIGHT - 1; j++)
+        for (j = 1; j < HEIGHT - 1; j++)
         {
             htl::Position<float> point = this->get_Point3d(i, j);
             octomap::point3d end(point.x, point.y, point.z); // 計測した1点の3次元座標
-            tree.updateNode(end, true);                      // integrate 'occupied' measurement
-            // tree.insertRay(origin, end); // レイを飛ばして空間を削り出す
-            if (i == u0 && j == v0)
+            tree->updateNode(end, true);                     // integrate 'occupied' measurement
+            // tree->insertRay(origin, end); // レイを飛ばして空間を削り出す
+            if (i == 1 && j == 1)
                 test = point;
         }
     }
+
     this->search(0.0, 0.0, 0.0);
-    this->search(this->tip.position.x, this->tip.position.y, this->tip.position.z);
     this->search(test.x, test.y, test.z);
-    this->search((this->tip.position.x + test.x) / 2.0, (this->tip.position.y + test.y) / 2.0, (this->tip.position.z + test.z) / 2.0);
-    std::cout << "tree.size() : " << this->tree.size() << std::endl;
+    this->search(test.x + 0.001, test.y, test.z);
+    this->search(this->tip.position.x, this->tip.position.y, this->tip.position.z);
+    std::cout << "tree->size() : " << this->tree->size() << std::endl;
 
     flag_set_tip = false;
     flag_set_depthimage = false;
@@ -197,7 +205,7 @@ void Gridmap::search(float x, float y, float z)
 {
     octomap::OcTreeNode *result;
     octomap::point3d query(x, y, z);
-    result = tree.search(query);
+    result = tree->search(query);
     this->print_query_info(query, result);
 }
 
@@ -207,12 +215,12 @@ void Gridmap::publish()
 
 void Gridmap::writeMap()
 {
-    this->tree.writeBinary("/home/takeyama/workspace/ros2_eyeexplorer/src/map/output/simple_tree.bt");
+    this->tree->writeBinary("/home/takeyama/workspace/ros2_eyeexplorer/src/map/output/simple_tree->bt");
     std::cout << std::endl;
-    std::cout << "wrote example file simple_tree.bt" << std::endl
+    std::cout << "wrote example file simple_tree->bt" << std::endl
               << std::endl;
     std::cout << "now you can use octovis to visualize:" << std::endl
-              << "  octovis /home/takeyama/workspace/ros2_eyeexplorer/src/map/output/simple_tree.bt" << std::endl;
+              << "  octovis /home/takeyama/workspace/ros2_eyeexplorer/src/map/output/simple_tree->bt" << std::endl;
     std::cout << "Hint: hit 'F'-key in viewer to see the freespace" << std::endl
               << std::endl;
 }

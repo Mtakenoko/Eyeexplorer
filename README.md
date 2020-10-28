@@ -143,7 +143,8 @@ ros2 run map pullout_endoscope
     1 - reliable (default)
  -d: Depth of the queue: only honored if used together with 'keep last'. 10 (default)
  -k: History QoS setting:
-    0 - only store up to N samples, configurable via the queue depth (default)
+    0 - only store up to N samples, configur
+    this->search(0.0, 0.0, 0.0);able via the queue depth (default)
     1 - keep all the samples
  --thresh_ransac: Set Threshhold of RANSAC  
    (default) : 5.0
@@ -189,7 +190,7 @@ rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz
 ## venv
 DenseDpethを動かすための仮想環境の立ち上げ
 ```
-source src/depth_predict/my_env/bin/activate
+source /home/takeyama/workspace/my_env/bin/activate
 ```
 仮想環境終了コマンド
 ```

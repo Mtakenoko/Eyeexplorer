@@ -26,6 +26,7 @@
   <!-- <depend>pcl_apps_msgs</depend> -->
   <!-- <depend>libpcl-all-dev</depend> -->
   <depend>libboost-system-dev</depend>
+  <depend>OpenMP</depend>
   <depend>octomap</depend>
   <depend>cv_bridge</depend>
 
