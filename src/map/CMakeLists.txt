@@ -28,6 +28,7 @@ find_package(rcutils REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -204,6 +205,7 @@ ament_target_dependencies(gridmap_creator
   "rclcpp"
   "sensor_msgs"
   "geometry_msgs"
+  "nav_msgs"
   "octomap"
   "OpenCV"
   "cv_bridge"
