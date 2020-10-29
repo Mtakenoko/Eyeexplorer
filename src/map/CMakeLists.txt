@@ -206,6 +206,7 @@ ament_target_dependencies(gridmap_creator
   "sensor_msgs"
   "geometry_msgs"
   "nav_msgs"
+  "visualization_msgs"
   "octomap"
   "OpenCV"
   "OpenMP"

@@ -4,6 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <geometry_msgs/msg/transform.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <octomap/octomap.h>
 
@@ -52,7 +53,8 @@ private:
     void print_query_info(octomap::point3d query, octomap::OcTreeNode *node);
     htl::Position<float> get_Point3d(const int &width, const int &height);
     rclcpp::Subscription<geometry_msgs::msg::Transform>::SharedPtr subscription_tip_;
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_depthimage;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_depthimage_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_markerarray_;
 
 private:
     std::shared_ptr<octomap::OcTree> tree;
@@ -74,7 +76,8 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     qos.reliability(reliability_policy);
 
     subscription_tip_ = this->create_subscription<geometry_msgs::msg::Transform>("/endoscope_transform", qos, std::bind(&Gridmap::topic_tip_callback_, this, std::placeholders::_1));
-    subscription_depthimage = this->create_subscription<sensor_msgs::msg::Image>("/endoscope/image/depth", qos, std::bind(&Gridmap::topic_depthimage_callback_, this, std::placeholders::_1));
+    subscription_depthimage_ = this->create_subscription<sensor_msgs::msg::Image>("/endoscope/image/depth", qos, std::bind(&Gridmap::topic_depthimage_callback_, this, std::placeholders::_1));
+    publisher_markerarray_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/occupancy_grid/marker", qos);
 
     // カメラ内部パラメータの設定
     cv::Mat CameraMatrix = (cv::Mat_<float>(3, 3) << fovx, 0.0, u0,
@@ -191,11 +194,16 @@ void Gridmap::calc()
         }
     }
 
-    this->search(0.0, 0.0, 0.0);
-    this->search(test.x, test.y, test.z);
-    this->search(test.x + 0.001, test.y, test.z);
-    this->search(this->tip.position.x, this->tip.position.y, this->tip.position.z);
+    // this->search(0.0, 0.0, 0.0);
+    // this->search(test.x, test.y, test.z);
+    // this->search(test.x + 0.001, test.y, test.z);
+    // this->search(test.x, test.y + 0.001, test.z);
+    // this->search(test.x, test.y, test.z + 0.001);
+    // this->search(test.x + 0.1, test.y + 0.1, test.z + 0.1);
+    // this->search(this->tip.position.x, this->tip.position.y, this->tip.position.z);
     std::cout << "tree->size() : " << this->tree->size() << std::endl;
+
+    this->publish();
 
     flag_set_tip = false;
     flag_set_depthimage = false;
@@ -211,6 +219,49 @@ void Gridmap::search(float x, float y, float z)
 
 void Gridmap::publish()
 {
+    auto markerarray_msgs_ = std::make_shared<visualization_msgs::msg::MarkerArray>();
+    int id = 0;
+    for (auto itr = tree->begin_leafs(); itr != tree->end_leafs(); itr++)
+    {
+        visualization_msgs::msg::Marker marker_msg;
+        rclcpp::Clock::SharedPtr clock = this->get_clock();
+
+        marker_msg.header.frame_id = "world";
+        marker_msg.header.stamp = clock->now();
+        marker_msg.ns = "occupancy_grid";
+        marker_msg.id = id++;
+
+        // 形状
+        marker_msg.type = visualization_msgs::msg::Marker::CUBE;
+        marker_msg.action = visualization_msgs::msg::Marker::ADD;
+
+        // 大きさ
+        marker_msg.scale.x = 0.0005;
+        marker_msg.scale.y = 0.0005;
+        marker_msg.scale.z = 0.0005;
+
+        // 色
+        marker_msg.color.a = (float)itr->getOccupancy();
+        marker_msg.color.r = 0.0;
+        marker_msg.color.g = 0.0;
+        marker_msg.color.b = 1.0;
+
+        // 位置・姿勢
+        marker_msg.pose.position.x = itr.getX();
+        marker_msg.pose.position.y = itr.getY();
+        marker_msg.pose.position.z = itr.getZ();
+        marker_msg.pose.orientation.x = 0.0;
+        marker_msg.pose.orientation.y = 0.0;
+        marker_msg.pose.orientation.z = 0.0;
+        marker_msg.pose.orientation.w = 1.0;
+
+        // printf("position : [%lf %lf %lf] => %lf\n", itr.getX(), itr.getY(), itr.getZ(), itr->getOccupancy());
+
+        markerarray_msgs_->markers.push_back(marker_msg);
+    }
+
+    if (id != 0)
+        this->publisher_markerarray_->publish(*markerarray_msgs_);
 }
 
 void Gridmap::writeMap()
@@ -260,13 +311,13 @@ htl::Position<float> Gridmap::get_Point3d(const int &u, const int &v)
     point_world.x = temp_point.at<float>(0);
     point_world.y = temp_point.at<float>(1);
     point_world.z = temp_point.at<float>(2);
-    if (u == 1 && v == 1)
-    {
-        std::cout << "Rotation :" << Rotation << std::endl;
-        std::cout << "Transform :" << cv::Point3f(Transform) << std::endl;
-        std::cout << "point_camera :" << point_camera << std::endl;
-        std::cout << "point_world :" << point_world << std::endl;
-    }
+    // if (u == 1 && v == 1)
+    // {
+    //     std::cout << "Rotation :" << Rotation << std::endl;
+    //     std::cout << "Transform :" << cv::Point3f(Transform) << std::endl;
+    //     std::cout << "point_camera :" << point_camera << std::endl;
+    //     std::cout << "point_world :" << point_world << std::endl;
+    // }
     return point_world;
 }
 #endif
