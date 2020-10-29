@@ -179,21 +179,20 @@ void Gridmap::calc()
     // tree->updateNode(origin, false);
 
     htl::Position<float> test;
-    int i, j;
-#pragma omp parallel for private(j)
-    for (i = 1; i < WIDTH - 1; i++)
+    for (int i = 1; i < WIDTH - 1; i++)
     {
-        for (j = 1; j < HEIGHT - 1; j++)
+        for (int j = 1; j < HEIGHT - 1; j++)
         {
+            // printf("[%d, %d]\n", i, j);
             htl::Position<float> point = this->get_Point3d(i, j);
-            octomap::point3d end(point.x, point.y, point.z); // 計測した1点の3次元座標
-            tree->updateNode(end, true);                     // integrate 'occupied' measurement
-            // tree->insertRay(origin, end); // レイを飛ばして空間を削り出す
+            // std::cout << "point : " << point << std::endl;
+            octomap::point3d end(point.x, point.y, point.z); // 計測した1点の3次元座標1
+            // tree->updateNode(end, true);                     // integrate 'occupied' measurement
+            tree->insertRay(origin, end); // レイを飛ばして空間を削り出す
             if (i == 1 && j == 1)
                 test = point;
         }
     }
-
     // this->search(0.0, 0.0, 0.0);
     // this->search(test.x, test.y, test.z);
     // this->search(test.x + 0.001, test.y, test.z);
