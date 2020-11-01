@@ -23,14 +23,14 @@ class Predict(Node):
 
     def image_callback(self, msg : Image):
         print("received image stamp {}".format(msg._header.frame_id))
-        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
         self.test.input_image(cv_image)
-        output = self.test.depth_predict()
-        self.cv2image_publish(output[0])
+        outputs = self.test.depth_predict()
+        self.cv2image_publish(outputs[0])
+        self.test.display_images(outputs)
 
     def cv2image_publish(self, image):
         self.pub.publish(self.bridge.cv2_to_imgmsg(image))
-
 
 def main(args=None):
     rclpy.init(args=args)
@@ -44,5 +44,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
-        
