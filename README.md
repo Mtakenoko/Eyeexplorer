@@ -128,11 +128,13 @@ ros2 run endoscope reconstructor
    BRIEF  : 5 
 ```
 ## map
+### モデルとの距離計測
 点群から平面や球面など指定したモデルを推定し、そこまでの距離を計測する。そして近ければ内視鏡抜去する信号をpublishする。
 ```
 ros2 run map pullout_endoscope
 ```
-### option
+
+#### option
 基本的には`-h`オプションをして確認してください。
 ```
  -h: This message.
@@ -141,7 +143,8 @@ ros2 run map pullout_endoscope
     1 - reliable (default)
  -d: Depth of the queue: only honored if used together with 'keep last'. 10 (default)
  -k: History QoS setting:
-    0 - only store up to N samples, configurable via the queue depth (default)
+    0 - only store up to N samples, configur
+    this->search(0.0, 0.0, 0.0);able via the queue depth (default)
     1 - keep all the samples
  --thresh_ransac: Set Threshhold of RANSAC  
    (default) : 5.0
@@ -155,6 +158,13 @@ ros2 run map pullout_endoscope
    (default) : 0.005
 ```
 
+### 占有確率マップの作成
+深度画像と内視鏡深度画像を用いてワールド座標系での占有確率マップを作成する
+```
+ros2 run map gridmap_creator
+```
+
+
 ## depth_image
 DenseDepthなどのDNNを用いて深度推定を行うために、学習用のデータセットを作るためのソフトウェア。Captureボタンを押しデプス画像がうまく生成されていればSaveボタンを押す。深度画像の出力は`/depth_image/Output`内の各日時毎に生成されたディレクトリに登録順に保存される。
 ```
@@ -167,6 +177,11 @@ ros2 run depth_image depth_image_creator
 ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
 ```
 
+## depth_predict
+```
+python /home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/predict.py
+```
+
 ## Rviz2
 ```
 rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz 
@@ -175,7 +190,7 @@ rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz
 ## venv
 DenseDpethを動かすための仮想環境の立ち上げ
 ```
-source src/depth_predict/my_env/bin/activate
+source /home/takeyama/workspace/my_env/bin/activate
 ```
 仮想環境終了コマンド
 ```

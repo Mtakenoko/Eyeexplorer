@@ -18,7 +18,7 @@ void exec()
     std::cout << std::endl;
     std::cout << "generating example map" << std::endl;
 
-    octomap::OcTree tree(0.1); // create empty tree with resolution 0.1
+    octomap::OcTree tree(0.01); // create empty tree with resolution 0.1
 
     // insert some measurements of occupied cells
     for (int x = -20; x < 20; x++)
@@ -27,21 +27,14 @@ void exec()
         {
             for (int z = -20; z < 20; z++)
             {
-                octomap::point3d endpoint((float)x * 0.05f, (float)y * 0.05f, (float)z * 0.05f);
-                tree.updateNode(endpoint, true); // integrate 'occupied' measurement
-            }
-        }
-    }
-
-    // insert some measurements of free cells
-    for (int x = -30; x < 30; x++)
-    {
-        for (int y = -30; y < 30; y++)
-        {
-            for (int z = -30; z < 30; z++)
-            {
-                octomap::point3d endpoint((float)x * 0.02f - 1.0f, (float)y * 0.02f - 1.0f, (float)z * 0.02f - 1.0f);
-                tree.updateNode(endpoint, false); // integrate 'free' measurement
+                if (!(x == -10 && y == -10 && z == -10))
+                {
+                    for (int count = 0; count < 2; count++)
+                    {
+                        octomap::point3d endpoint((float)x * 0.05f, (float)y * 0.05f, (float)z * 0.05f);
+                        tree.updateNode(endpoint, true); // integrate 'occupied' measurement
+                    }
+                }
             }
         }
     }
@@ -61,6 +54,12 @@ void exec()
     result = tree.search(query);
     print_query_info(query, result);
 
+    for (int i = -12; i < 12; i++)
+    {
+        query = octomap::point3d(0.1 * (float)i, 0.1 * (float)i, 0.1 * (float)i);
+        result = tree.search(query);
+        print_query_info(query, result);
+    }
     std::cout << std::endl;
     tree.writeBinary("src/test/output/simple_tree.bt");
     std::cout << "wrote example file simple_tree.bt" << std::endl

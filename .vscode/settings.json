@@ -86,7 +86,10 @@
         "qgraphicsview": "cpp",
         "qgraphicspixmapitem": "cpp",
         "*.inc": "cpp",
-        "*.cuh": "cpp"
+        "*.cuh": "cpp",
+        "forward_list": "cpp",
+        "random": "cpp",
+        "variant": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/takeyama/workspace/ros2_ws/build/ros2bag",
