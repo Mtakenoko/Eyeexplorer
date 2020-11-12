@@ -29,6 +29,9 @@
 #define MIN_DEPTH 0.0
 #define MAX_DEPTH 25.0
 
+// Display Param
+#define THRESHOLD_DISPLAY_OCC 0.5
+
 class Gridmap : public rclcpp::Node
 {
 public:
@@ -222,41 +225,44 @@ void Gridmap::publish()
     int id = 0;
     for (auto itr = tree->begin_leafs(); itr != tree->end_leafs(); itr++)
     {
-        visualization_msgs::msg::Marker marker_msg;
-        rclcpp::Clock::SharedPtr clock = this->get_clock();
+        if (itr->getOccupancy() > THRESHOLD_DISPLAY_OCC)
+        {
+            visualization_msgs::msg::Marker marker_msg;
+            rclcpp::Clock::SharedPtr clock = this->get_clock();
 
-        marker_msg.header.frame_id = "world";
-        marker_msg.header.stamp = clock->now();
-        marker_msg.ns = "occupancy_grid";
-        marker_msg.id = id++;
+            marker_msg.header.frame_id = "world";
+            marker_msg.header.stamp = clock->now();
+            marker_msg.ns = "occupancy_grid";
+            marker_msg.id = id++;
 
-        // 形状
-        marker_msg.type = visualization_msgs::msg::Marker::CUBE;
-        marker_msg.action = visualization_msgs::msg::Marker::ADD;
+            // 形状
+            marker_msg.type = visualization_msgs::msg::Marker::CUBE;
+            marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
-        // 大きさ
-        marker_msg.scale.x = 0.0005;
-        marker_msg.scale.y = 0.0005;
-        marker_msg.scale.z = 0.0005;
+            // 大きさ
+            marker_msg.scale.x = 0.0005;
+            marker_msg.scale.y = 0.0005;
+            marker_msg.scale.z = 0.0005;
 
-        // 色
-        marker_msg.color.a = (float)itr->getOccupancy();
-        marker_msg.color.r = 0.0;
-        marker_msg.color.g = 0.0;
-        marker_msg.color.b = 1.0;
+            // 色
+            marker_msg.color.a = (float)itr->getOccupancy();
+            marker_msg.color.r = 0.0;
+            marker_msg.color.g = 0.0;
+            marker_msg.color.b = 1.0;
 
-        // 位置・姿勢
-        marker_msg.pose.position.x = itr.getX();
-        marker_msg.pose.position.y = itr.getY();
-        marker_msg.pose.position.z = itr.getZ();
-        marker_msg.pose.orientation.x = 0.0;
-        marker_msg.pose.orientation.y = 0.0;
-        marker_msg.pose.orientation.z = 0.0;
-        marker_msg.pose.orientation.w = 1.0;
+            // 位置・姿勢
+            marker_msg.pose.position.x = itr.getX();
+            marker_msg.pose.position.y = itr.getY();
+            marker_msg.pose.position.z = itr.getZ();
+            marker_msg.pose.orientation.x = 0.0;
+            marker_msg.pose.orientation.y = 0.0;
+            marker_msg.pose.orientation.z = 0.0;
+            marker_msg.pose.orientation.w = 1.0;
 
-        // printf("position : [%lf %lf %lf] => %lf\n", itr.getX(), itr.getY(), itr.getZ(), itr->getOccupancy());
+            // printf("position : [%lf %lf %lf] => %lf\n", itr.getX(), itr.getY(), itr.getZ(), itr->getOccupancy());
 
-        markerarray_msgs_->markers.push_back(marker_msg);
+            markerarray_msgs_->markers.push_back(marker_msg);
+        }
     }
 
     if (id != 0)

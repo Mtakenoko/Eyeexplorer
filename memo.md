@@ -107,3 +107,10 @@ mapdatabase.add(KeyFrame_Num, ID, MatchingData);
 ```cpp
 mapdatabase.add(KeyFrame_Num, ID, MatchingData);
 ```
+
+# 20201111
+## ConvLSTMについて
+現時点ではDenseNetのエンコーダと自前のデコーダを組み合わせることで深度推定を行っている。ただそれだと5mm程度の誤差が生じてしまっているのが現状。そこで、そもそもの推定値の精度を上げるためにもLSTMを導入したい。<br>
+LSTMを実装するためには下記の事を作成する必要がある
+- LSTM用のデータセットの作成
+- LSTMは入力が5Dのテンソルであり、現在のものに加えてフレーム番号情報を乗っける必要がある。
