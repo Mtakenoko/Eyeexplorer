@@ -195,6 +195,7 @@ install(TARGETS eyeball_publisher
 # gridmap_creator node
 add_executable(gridmap_creator
   src/gridmap_creator.cpp
+  option/options_gridmap.cpp
 )
 target_link_libraries(gridmap_creator 
   ${OCTOMAP_LIBRARIES}

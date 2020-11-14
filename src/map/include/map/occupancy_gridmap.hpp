@@ -43,6 +43,7 @@ public:
     void set_OcTree_ProbMiss(const double &prob);
     void set_OcTree_ClampingThresMax(const double &threshProb);
     void set_OcTree_ClampingThresMin(const double &threshProb);
+    void print_setting();
 
 private:
     void topic_tip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip);
@@ -138,6 +139,18 @@ void Gridmap::set_OcTree_Resolution(const double &resolution)
     tree->setResolution(resolution);
 }
 
+void Gridmap::print_setting()
+{
+    std::cout << std::endl
+              << "Octree setting is ..." << std::endl
+              << "  ClampingThreshMax : " << tree->getClampingThresMax() << std::endl
+              << "  ClampingThreshMin : " << tree->getClampingThresMin() << std::endl
+              << "  OccupancyThres : " << tree->getOccupancyThres() << std::endl
+              << "  ProbHit : " << tree->getProbHit() << std::endl
+              << "  ProbMiss : " << tree->getProbMiss() << std::endl
+              << "  Resolution : " << tree->getResolution() << std::endl;
+}
+
 void Gridmap::topic_tip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip)
 {
     this->input_tip_data(msg_tip);
@@ -166,8 +179,6 @@ void Gridmap::input_tip_data(const geometry_msgs::msg::Transform::SharedPtr msg_
 
 void Gridmap::input_depthimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
-    std::cout << std::endl;
-    std::cout << "Received image #" << msg_image->header.frame_id.c_str()<< std::endl;
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg_image);
     cv_ptr->image.convertTo(depth_image, CV_32F);
     flag_set_depthimage = true;
