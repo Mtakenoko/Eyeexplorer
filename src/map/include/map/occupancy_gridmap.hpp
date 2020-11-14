@@ -167,11 +167,9 @@ void Gridmap::input_tip_data(const geometry_msgs::msg::Transform::SharedPtr msg_
 void Gridmap::input_depthimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
     std::cout << std::endl;
-    std::cout << "Received image" << std::endl;
+    std::cout << "Received image #" << msg_image->header.frame_id.c_str()<< std::endl;
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg_image);
     cv_ptr->image.convertTo(depth_image, CV_32F);
-    // cv::imshow("depth", depth_image);
-    // cv::waitKey(3);
     flag_set_depthimage = true;
 }
 
@@ -191,7 +189,8 @@ void Gridmap::calc()
             // std::cout << "point : " << point << std::endl;
             octomap::point3d end(point.x, point.y, point.z); // 計測した1点の3次元座標1
             // tree->updateNode(end, true);                     // integrate 'occupied' measurement
-            tree->insertRay(origin, end); // レイを飛ばして空間を削り出す
+            tree->insertRay(origin, end);             // レイを飛ばして空間を削り出す
+            tree->insertRay(end + end - origin, end); // レイを飛ばして空間を削り出す(逆向きからも)
             if (i == 1 && j == 1)
                 test = point;
         }
@@ -203,7 +202,7 @@ void Gridmap::calc()
     // this->search(test.x, test.y, test.z + 0.001);
     // this->search(test.x + 0.1, test.y + 0.1, test.z + 0.1);
     // this->search(this->tip.position.x, this->tip.position.y, this->tip.position.z);
-    std::cout << "tree->size() : " << this->tree->size() << std::endl;
+    // std::cout << "tree->size() : " << this->tree->size() << std::endl;
 
     this->publish();
 

@@ -60,6 +60,8 @@ Estimation_EyeBall::Estimation_EyeBall()
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
+    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("EyeBall", 10);
+
     subscription_pointcloud_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
         "/pointcloud/filtered_hold", qos,
         std::bind(&Estimation_EyeBall::topic_callback_, this, std::placeholders::_1));
@@ -227,7 +229,6 @@ void Estimation_EyeBall::publish()
     marker_msg->pose.orientation.z = (double)eye_shape.Orientation.at<float>(2);
     marker_msg->pose.orientation.w = (double)eye_shape.Orientation.at<float>(3);
 
-    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("EyeBall", 10);
     publisher_->publish(std::move(marker_msg));
 }
 #endif
