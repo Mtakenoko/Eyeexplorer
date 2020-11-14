@@ -127,14 +127,14 @@ ros2 run endoscope reconstructor
    SURF   : 4 
    BRIEF  : 5 
 ```
-## map
-### モデルとの距離計測
+
+## 眼球モデルとの距離計測
 点群から平面や球面など指定したモデルを推定し、そこまでの距離を計測する。そして近ければ内視鏡抜去する信号をpublishする。
 ```
 ros2 run map pullout_endoscope
 ```
 
-#### option
+### option
 基本的には`-h`オプションをして確認してください。
 ```
  -h: This message.
@@ -158,10 +158,35 @@ ros2 run map pullout_endoscope
    (default) : 0.005
 ```
 
-### 占有確率マップの作成
+## 占有確率マップの作成
 深度画像と内視鏡深度画像を用いてワールド座標系での占有確率マップを作成する
 ```
 ros2 run map gridmap_creator
+```
+### option
+基本的には`-h`オプションをして確認してください。
+```
+ -h: This message.
+ -r: Reliability QoS setting:
+    0 - best effort
+    1 - reliable (default)
+ -d: Depth of the queue: only honored if used together with 'keep last'. 10 (default)
+ -k: History QoS setting:
+    0 - only store up to N samples, configurable via the queue depth (default)
+    1 - keep all the samples
+ --clamp-max: sets the maximum threshold for occupancy clamping (sensor model)
+   (default) : 0.971
+ --clamp-min: sets the minimum threshold for occupancy clamping (sensor model)
+   (default) : 0.1192
+ --occ: sets the threshold for occupancy (sensor model)
+   (default) : 0.5
+ --prob-hit: sets the probability for a -hit- (will be converted to logodds) - sensor model
+   (default) : 0.7
+ --prob-miss: sets the probability for a -miss- (will be converted to logodds) - sensor model
+   (default) : 0.4
+ --resol: Change the resolution of the octree, scaling all voxels.
+          This will not preserve the (metric) scale!
+   (default) : 0.001
 ```
 
 
@@ -207,6 +232,7 @@ deactivate
 読み込むときはこんな感じ
 ```
 ros2 bag play workspace/ros2_eyeexplorer/rosbag2/0923_eye1.bag
+ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
 ```
 逆に記録するときはこんな感じ。基本的に取るべきトピックは`/joiont_states`と`/endoscope_image`の2つでOK。
 ```
