@@ -3,8 +3,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <opencv2/opencv.hpp>
 
@@ -35,13 +35,13 @@ public:
 private:
     void initialize();
     void process();
-    void input_data(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud);
+    void input_data(const visualization_msgs::msg::MarkerArray::SharedPtr msg_pointcloud);
     void input_marker_data(const visualization_msgs::msg::Marker::SharedPtr msg_pointcloud);
     void estimate();
     void publish();
-    void topic_callback_(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud);
+    void topic_callback_(const visualization_msgs::msg::MarkerArray::SharedPtr msg_pointcloud);
     void topic_callback2_(const visualization_msgs::msg::Marker::SharedPtr msg_pointcloud);
-    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_pointcloud_;
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr subscription_pointcloud_;
     rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr subscription_insertpoint_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr publisher_;
 
@@ -62,15 +62,15 @@ Estimation_EyeBall::Estimation_EyeBall()
 
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("EyeBall", 10);
 
-    subscription_pointcloud_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-        "/pointcloud/filtered_hold", qos,
+    subscription_pointcloud_ = this->create_subscription<visualization_msgs::msg::MarkerArray>(
+        "/occupancy_grid/marker", qos,
         std::bind(&Estimation_EyeBall::topic_callback_, this, std::placeholders::_1));
     subscription_insertpoint_ = this->create_subscription<visualization_msgs::msg::Marker>(
         "/insert_point", qos,
         std::bind(&Estimation_EyeBall::topic_callback2_, this, std::placeholders::_1));
 }
 
-void Estimation_EyeBall::topic_callback_(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud)
+void Estimation_EyeBall::topic_callback_(const visualization_msgs::msg::MarkerArray::SharedPtr msg_pointcloud)
 {
     Estimation_EyeBall::input_data(msg_pointcloud);
     Estimation_EyeBall::estimate();
@@ -82,19 +82,17 @@ void Estimation_EyeBall::topic_callback2_(const visualization_msgs::msg::Marker:
     Estimation_EyeBall::input_marker_data(msg_marker);
 }
 
-void Estimation_EyeBall::input_data(const sensor_msgs::msg::PointCloud2::SharedPtr msg_pointcloud)
+void Estimation_EyeBall::input_data(const visualization_msgs::msg::MarkerArray::SharedPtr msg_pointcloud)
 {
     // メンバ変数の初期化
-    cv::Mat cloud(msg_pointcloud->width, 1, CV_32FC3);
-    auto floatData = reinterpret_cast<float *>(msg_pointcloud->data.data());
-    for (uint32_t i = 0; i < msg_pointcloud->width; i++)
+    cv::Mat cloud(msg_pointcloud->markers.size(), 1, CV_32FC3);
+    for (size_t i = 0; i < msg_pointcloud->markers.size(); i++)
     {
-        for (uint32_t j = 0; j < 3; j++)
-        {
-            cloud.at<cv::Vec3f>(i)[j] = floatData[i * (msg_pointcloud->point_step / sizeof(float)) + j];
-        }
+        cloud.at<cv::Vec3f>(i)[0] = msg_pointcloud->markers[i].pose.position.x;
+        cloud.at<cv::Vec3f>(i)[1] = msg_pointcloud->markers[i].pose.position.y;
+        cloud.at<cv::Vec3f>(i)[2] = msg_pointcloud->markers[i].pose.position.z;
     }
-    pointcloud = cloud.clone();
+    this->pointcloud = cloud.clone();
     flag_SetPointCloud = true;
 }
 
