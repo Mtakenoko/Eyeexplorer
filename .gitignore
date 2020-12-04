@@ -12,6 +12,7 @@ src/depth_image/Output
 src/depth_image_seq/Output
 src/arm/arm_rviz/launch/__pycache__
 src/test/output
+src/depth_predict/densedepth/pre_eye_data
 src/depth_predict/densedepth/eye_data.h5
 src/depth_predict/densedepth/eyemodel_data.zip
 src/depth_predict/densedepth/examples
