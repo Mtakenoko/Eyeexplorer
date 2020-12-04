@@ -111,6 +111,20 @@ install(TARGETS tracking_subscriber
   DESTINATION lib/${PROJECT_NAME}
 )  
 
+# recoder node
+add_executable(recoder
+  src/recoder.cpp
+)
+ament_target_dependencies(recoder
+  "rclcpp"
+  "sensor_msgs"
+  "OpenCV"
+)
+install(TARGETS recoder
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

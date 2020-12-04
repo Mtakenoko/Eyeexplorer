@@ -18,3 +18,4 @@ src/depth_predict/densedepth/eyemodel_data.zip
 src/depth_predict/densedepth/examples
 src/depth_predict/densedepth/__pycache__
 src/map/output
+src/endoscope/data
