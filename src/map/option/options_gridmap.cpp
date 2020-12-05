@@ -55,7 +55,8 @@ bool parse_command_options(
     double *occupancyThres,
     double *probHit,
     double *probMiss,
-    double *resolution)
+    double *resolution,
+    double *display_occ)
 {
   std::vector<std::string> args(argv, argv + argc);
 
@@ -102,6 +103,11 @@ bool parse_command_options(
       ss << " --resol: Change the resolution of the octree, scaling all voxels." << std::endl
          << "          This will not preserve the (metric) scale!" << std::endl;
       ss << "   (default) : 0.001" << std::endl;
+    }
+    if (display_occ != nullptr)
+    {
+      ss << " --occ: Change the probability to display the grid.." << std::endl;
+      ss << "   (default) : 0.5" << std::endl;
     }
     std::cout << ss.str();
     return false;
@@ -162,6 +168,12 @@ bool parse_command_options(
   if (!resolution_str.empty())
   {
     *resolution = std::stod(resolution_str.c_str());
+  }
+
+  auto display_occ_str = get_command_option(args, "--occ");
+  if (!display_occ_str.empty())
+  {
+    *display_occ = std::stod(display_occ_str.c_str());
   }
 
   return true;
