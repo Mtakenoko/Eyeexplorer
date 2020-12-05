@@ -19,3 +19,4 @@ src/depth_predict/densedepth/examples
 src/depth_predict/densedepth/__pycache__
 src/map/output
 src/endoscope/data
+src/depth_predict/densedepth/__pycache__

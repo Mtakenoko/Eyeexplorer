@@ -29,9 +29,6 @@
 #define MIN_DEPTH 0.0
 #define MAX_DEPTH 25.0
 
-// Display Param
-#define THRESHOLD_DISPLAY_OCC 0.5
-
 class Gridmap : public rclcpp::Node
 {
 public:
@@ -43,6 +40,7 @@ public:
     void set_OcTree_ProbMiss(const double &prob);
     void set_OcTree_ClampingThresMax(const double &threshProb);
     void set_OcTree_ClampingThresMin(const double &threshProb);
+    void set_threshold_display_occ(const double &threshold_display_occ);
     void print_setting();
 
 private:
@@ -67,6 +65,7 @@ private:
     cv::Mat ProjectionMatrix;
     bool flag_set_tip;
     bool flag_set_depthimage;
+    double threshold_display_occ;
 };
 
 Gridmap::Gridmap() : Node("Gridmap_creator"),
@@ -137,6 +136,11 @@ void Gridmap::set_OcTree_ClampingThresMin(const double &threshProb)
 void Gridmap::set_OcTree_Resolution(const double &resolution)
 {
     tree->setResolution(resolution);
+}
+
+void Gridmap::set_threshold_display_occ(const double &threshold)
+{
+    this->threshold_display_occ = threshold;
 }
 
 void Gridmap::print_setting()
@@ -235,7 +239,7 @@ void Gridmap::publish()
     int id = 0;
     for (auto itr = tree->begin_leafs(); itr != tree->end_leafs(); itr++)
     {
-        if (itr->getOccupancy() > THRESHOLD_DISPLAY_OCC)
+        if (itr->getOccupancy() > this->threshold_display_occ)
         {
             visualization_msgs::msg::Marker marker_msg;
             rclcpp::Clock::SharedPtr clock = this->get_clock();

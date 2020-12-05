@@ -60,6 +60,7 @@ bool parse_command_options(
     double *occupancyThres = nullptr, 
     double *probHit = nullptr, 
     double *probMiss = nullptr, 
-    double *resolution = nullptr);
+    double *resolution = nullptr,
+    double *display_occ = nullptr);
 
 #endif // RECONSTRUCTION__OPTIONS_HPP_
