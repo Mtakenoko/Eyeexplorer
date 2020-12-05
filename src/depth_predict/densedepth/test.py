@@ -41,22 +41,5 @@ class Test(object):
         return self.outputs
 
     def display_images(self, outputs, is_rescale=False):
-        import matplotlib.pyplot as plt
-        import skimage
-        from skimage.transform import resize
-
-        plasma = plt.get_cmap('plasma')
-        
-        imgs = []
-
-        for i in range(outputs.shape[0]):
-            rescaled = outputs[i][:,:,0]
-            if is_rescale:
-                rescaled = rescaled - np.min(rescaled)
-                rescaled = rescaled / np.max(rescaled)
-            imgs.append(plasma(rescaled)[:,:,:3])
-
-        imgs = np.stack(imgs)
-        image_uint = imgs.astype(np.uint8)[0]
-        imgs_gray = cv2.cvtColor(image_uint, cv2.COLOR_BGR2GRAY)
-        plasma_image = cv2.applyColorMap(imgs_gray, cv2.COLORMAP_PLASMA)
+        cv2.imshow('image', outputs[0])
+        cv2.waitKey(1)

@@ -216,6 +216,7 @@ python /home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/pr
 ## Rviz2
 ```
 rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer.rviz 
+rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer2.rviz 
 ```
 
 ## venv
