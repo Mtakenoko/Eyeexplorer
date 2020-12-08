@@ -36,8 +36,8 @@ find_package(message_filters REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(OpenCV REQUIRED)
-# find_package(PCL REQUIRED)
-# find_package(pcl_conversions REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_conversions REQUIRED)
 find_package(Boost REQUIRED system)
 find_package(Ceres REQUIRED)
 find_package(octomap REQUIRED)
@@ -200,7 +200,6 @@ add_executable(gridmap_creator
 target_link_libraries(gridmap_creator 
   ${OCTOMAP_LIBRARIES}
 )
-
 ament_target_dependencies(gridmap_creator
   "rclcpp"
   "sensor_msgs"
@@ -214,6 +213,28 @@ ament_target_dependencies(gridmap_creator
 )
 install(TARGETS
   gridmap_creator
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# pointcloud_to_pcd node
+# スタンドアローンノードの実行ファイルをコンパイルする
+add_executable(pointcloud_to_pcd
+  src/pointcloud_to_pcd.cpp
+)
+target_link_libraries(pointcloud_to_pcd
+  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${PCL_LIBRARIES}
+)
+# コンパイルターゲットに依存パッケージの情報を追加する
+ament_target_dependencies(pointcloud_to_pcd
+  "rclcpp"
+  "sensor_msgs"
+  "visualization_msgs"
+  "pcl_conversions"
+)
+# 実行ファイルをインストール
+install(TARGETS
+  pointcloud_to_pcd
   DESTINATION lib/${PROJECT_NAME}
 )
 
