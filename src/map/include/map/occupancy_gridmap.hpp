@@ -7,6 +7,7 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <octomap/octomap.h>
+#include <octomap/ColorOcTree.h>
 
 #include <omp.h>
 
@@ -45,8 +46,10 @@ public:
 
 private:
     void topic_tip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip);
+    void topic_colorimage_callback_(const sensor_msgs::msg::Image::SharedPtr msg_colorimage);
     void topic_depthimage_callback_(const sensor_msgs::msg::Image::SharedPtr msg_depthimage);
     void input_tip_data(const geometry_msgs::msg::Transform::SharedPtr msg_tip);
+    void input_colorimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void input_depthimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image);
     void calc();
     void search(float x, float y, float z);
@@ -55,21 +58,23 @@ private:
     void print_query_info(octomap::point3d query, octomap::OcTreeNode *node);
     htl::Position<float> get_Point3d(const int &width, const int &height);
     rclcpp::Subscription<geometry_msgs::msg::Transform>::SharedPtr subscription_tip_;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_colorimage_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_depthimage_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_markerarray_;
 
 private:
-    std::shared_ptr<octomap::OcTree> tree;
+    std::shared_ptr<octomap::ColorOcTree> tree;
     htl::Pose<float> tip;
-    cv::Mat depth_image;
+    cv::Mat color_image, depth_image;
     cv::Mat ProjectionMatrix;
     bool flag_set_tip;
+    bool flag_set_colorimage;
     bool flag_set_depthimage;
     double threshold_display_occ;
 };
 
 Gridmap::Gridmap() : Node("Gridmap_creator"),
-                     flag_set_tip(false), flag_set_depthimage(false)
+                     flag_set_tip(false), flag_set_colorimage(false), flag_set_depthimage(false)
 {
     // QoSの設定
     size_t depth = rmw_qos_profile_default.depth;
@@ -79,6 +84,7 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     qos.reliability(reliability_policy);
 
     subscription_tip_ = this->create_subscription<geometry_msgs::msg::Transform>("/endoscope_transform", qos, std::bind(&Gridmap::topic_tip_callback_, this, std::placeholders::_1));
+    subscription_colorimage_ = this->create_subscription<sensor_msgs::msg::Image>("/endoscope_image", qos, std::bind(&Gridmap::topic_colorimage_callback_, this, std::placeholders::_1));
     subscription_depthimage_ = this->create_subscription<sensor_msgs::msg::Image>("/endoscope/image/depth", qos, std::bind(&Gridmap::topic_depthimage_callback_, this, std::placeholders::_1));
     publisher_markerarray_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/occupancy_grid/marker", qos);
 
@@ -90,7 +96,7 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     cv::hconcat(cv::Mat::eye(3, 3, CV_32FC1), cv::Mat::zeros(3, 1, CV_32FC1), CameraPose);
     this->ProjectionMatrix = CameraMatrix * CameraPose;
 
-    tree = std::make_shared<octomap::OcTree>(0.001);
+    tree = std::make_shared<octomap::ColorOcTree>(0.001);
 
     // // default Param
     // std::cout << std::endl;
@@ -158,14 +164,17 @@ void Gridmap::print_setting()
 void Gridmap::topic_tip_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_tip)
 {
     this->input_tip_data(msg_tip);
-    if (flag_set_depthimage)
-        this->calc();
+}
+
+void Gridmap::topic_colorimage_callback_(const sensor_msgs::msg::Image::SharedPtr msg_image)
+{
+    this->input_colorimage_data(msg_image);
 }
 
 void Gridmap::topic_depthimage_callback_(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
     this->input_depthimage_data(msg_image);
-    if (flag_set_tip)
+    if (flag_set_tip && flag_set_colorimage)
         this->calc();
 }
 
@@ -181,6 +190,13 @@ void Gridmap::input_tip_data(const geometry_msgs::msg::Transform::SharedPtr msg_
     flag_set_tip = true;
 }
 
+void Gridmap::input_colorimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
+{
+    cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg_image);
+    cv_ptr->image.convertTo(color_image, CV_8UC3);
+    flag_set_colorimage = true;
+}
+
 void Gridmap::input_depthimage_data(const sensor_msgs::msg::Image::SharedPtr msg_image)
 {
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg_image);
@@ -192,20 +208,24 @@ void Gridmap::calc()
 {
     // ワールド座標系から見た点群の位置を計算
     octomap::point3d origin(this->tip.position.x, this->tip.position.y, this->tip.position.z); // 計測原点。カメラの3次元座標。
-    // tree->updateNode(origin, false);
-
     htl::Position<float> test;
-    for (int i = 1; i < WIDTH - 1; i++)
+    for (int i = 0; i < WIDTH; i++)
     {
-        for (int j = 1; j < HEIGHT - 1; j++)
+        for (int j = 0; j < HEIGHT; j++)
         {
-            // printf("[%d, %d]\n", i, j);
             htl::Position<float> point = this->get_Point3d(i, j);
-            // std::cout << "point : " << point << std::endl;
-            octomap::point3d end(point.x, point.y, point.z); // 計測した1点の3次元座標1
-            // tree->updateNode(end, true);                     // integrate 'occupied' measurement
-            tree->insertRay(origin, end);             // レイを飛ばして空間を削り出す
-            tree->insertRay(end + end - origin, end); // レイを飛ばして空間を削り出す(逆向きからも)
+            // 計測した1点の3次元座標
+            octomap::point3d end(point.x, point.y, point.z);
+            // integrate 'occupied' measurement
+            // tree->updateNode(end, true);
+            // レイを飛ばして空間を削り出す
+            tree->insertRay(origin, end);
+            // レイを飛ばして空間を削り出す(逆向きからも)
+            tree->insertRay(end + end - origin, end);
+
+            // Set COLOR
+            tree->setNodeColor(tree->coordToKey(end), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
+
             if (i == 1 && j == 1)
                 test = point;
         }
@@ -222,6 +242,7 @@ void Gridmap::calc()
     this->publish();
 
     flag_set_tip = false;
+    flag_set_colorimage = false;
     flag_set_depthimage = false;
 }
 
@@ -254,15 +275,15 @@ void Gridmap::publish()
             marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
             // 大きさ
-            marker_msg.scale.x = 0.0005;
-            marker_msg.scale.y = 0.0005;
-            marker_msg.scale.z = 0.0005;
+            marker_msg.scale.x = tree->getResolution() / 2.;
+            marker_msg.scale.y = tree->getResolution() / 2.;
+            marker_msg.scale.z = tree->getResolution() / 2.;
 
             // 色
             marker_msg.color.a = (float)itr->getOccupancy();
-            marker_msg.color.r = 0.0;
-            marker_msg.color.g = 0.0;
-            marker_msg.color.b = 1.0;
+            marker_msg.color.r = (float)itr->getColor().r / 255.;
+            marker_msg.color.g = (float)itr->getColor().g / 255.;
+            marker_msg.color.b = (float)itr->getColor().b / 255.;
 
             // 位置・姿勢
             marker_msg.pose.position.x = itr.getX();
