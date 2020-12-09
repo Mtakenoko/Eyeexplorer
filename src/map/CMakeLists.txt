@@ -53,6 +53,17 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+#Qt5 configulation
+set(CMAKE_AUTOMOC ON)
+find_package(ament_cmake REQUIRED)
+# find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED
+find_package(Qt5 REQUIRED
+  Core
+  Widgets
+)
+set(QT_LIBRARIES Qt5::Widgets)
+add_definitions(-DQT_NO_KEYWORDS)
+
 # PCL
 include_directories(
   include
@@ -219,11 +230,14 @@ install(TARGETS
 # pointcloud_to_pcd node
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(pointcloud_to_pcd
+  src/pointcloud_to_pcd_main.cpp
   src/pointcloud_to_pcd.cpp
+  src/MainDialog.cpp
 )
 target_link_libraries(pointcloud_to_pcd
-  ${Boost_SYSTEM_LIBRARY}  # pcl_conversions requires this
+  ${Boost_SYSTEM_LIBRARY}
   ${PCL_LIBRARIES}
+  ${QT_LIBRARIES}
 )
 # コンパイルターゲットに依存パッケージの情報を追加する
 ament_target_dependencies(pointcloud_to_pcd
