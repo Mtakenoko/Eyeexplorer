@@ -32,6 +32,7 @@ private:
     QLabel *label;
     QLineEdit *lineEdit;
     QPushButton *saveButton;
+    QPushButton *showButton;
 
 public:
     rclcpp::Node::SharedPtr node_;

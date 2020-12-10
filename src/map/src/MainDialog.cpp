@@ -9,14 +9,17 @@ MainDialog::MainDialog(QWidget *parent)
 {
   label = new QLabel(tr("Welcoome to pointcloud_to_pcd node"));
   saveButton = new QPushButton(tr("Save"));
+  showButton = new QPushButton(tr("Show"));
   lineEdit = new QLineEdit;
 
   // ButtoのSIGNAL SLOT
   connect(saveButton, SIGNAL(clicked()), this, SLOT(saveToggle()));
+  connect(showButton, SIGNAL(clicked()), this, SLOT(showToggle()));
 
   // ボタンの配置
   QHBoxLayout *layout_Botton_H = new QHBoxLayout;
   layout_Botton_H->addWidget(saveButton);
+  layout_Botton_H->addWidget(showButton);
 
   // 全体の配置
   QVBoxLayout *layout_V = new QVBoxLayout;
@@ -46,7 +49,7 @@ void MainDialog::createROS2node(const char *node_name)
       topic_sub_pointcloud, qos,
       [this](const visualization_msgs::msg::MarkerArray::SharedPtr msg) {
         this->pointcloud_to_pcd.topic_callback_(msg);
-        this->pointcloud_to_pcd.launchPCLViewer();
+        this->pointcloud_to_pcd.showPointClooud();
         this->setString();
       });
 }
@@ -60,14 +63,14 @@ void MainDialog::setLabelText()
 void MainDialog::setString()
 {
   char str[50];
-  sprintf(str, "PointCloud Num : %d.", std::to_string(pointcloud_to_pcd.getPointCloudNum()));
+  sprintf(str, "PointCloud Num : %d.", pointcloud_to_pcd.getPointCloudNum());
   QString qstr(str);
   label->setText(qstr);
 }
 
 void MainDialog::showToggle()
 {
-  pointcloud_to_pcd.launchPCLViewer();
+  pointcloud_to_pcd.showSavedPCD();
 }
 
 void MainDialog::saveToggle()

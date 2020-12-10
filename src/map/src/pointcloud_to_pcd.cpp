@@ -5,7 +5,9 @@
 
 #include "../include/map/pointcloud_to_pcd.hpp"
 
-PointCloud_to_PCD::PointCloud_to_PCD() : viewer("cloud viewer"), cloud_(new pcl::PointCloud<pcl::PointXYZ>()) {}
+PointCloud_to_PCD::PointCloud_to_PCD() : viewer("cloud viewer"),
+                                        //  saved_viewer("Saved cloud Viewer"),
+                                         cloud_(new pcl::PointCloud<pcl::PointXYZ>()), saved_cloud_(new pcl::PointCloud<pcl::PointXYZ>()) {}
 
 void PointCloud_to_PCD::topic_callback_(const visualization_msgs::msg::MarkerArray::SharedPtr msg_pointcloud)
 {
@@ -32,11 +34,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloud_to_PCD::input_data(const visualiz
     return input_cloud_;
 }
 
-void PointCloud_to_PCD::show(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_)
-{
-    viewer.showCloud(input_cloud_);
-}
-
 void PointCloud_to_PCD::save(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_)
 {
     if (this->cloud_->size() != 0)
@@ -50,23 +47,34 @@ void PointCloud_to_PCD::save(const pcl::PointCloud<pcl::PointXYZ>::Ptr input_clo
 
         strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", timeinfo);
         std::string str(buffer);
-        std::cout << str << std::endl;
 
         std::cout << "saving PCD File 'ASCII'" << std::endl;
         pcl::io::savePCDFileASCII("/home/takeyama/workspace/ros2_eyeexplorer/src/map/output/" + str + "_cloud_ascii.pcd", *input_cloud_);
         std::cout << "saving PCD File 'Binary'" << std::endl;
         pcl::io::savePCDFileASCII("/home/takeyama/workspace/ros2_eyeexplorer/src/map/output/" + str + "_cloud_binary.pcd", *input_cloud_);
+
+        this->saved_cloud_ = input_cloud_;
     }
 }
 
-void PointCloud_to_PCD::launchPCLViewer()
+void PointCloud_to_PCD::showPointClooud()
 {
-    PointCloud_to_PCD::show(this->cloud_);
+    if (!cloud_->empty())
+        viewer.showCloud(this->cloud_);
 }
+
+void PointCloud_to_PCD::showSavedPCD()
+{
+    // if (!saved_cloud_->empty())
+    //     saved_viewer.showCloud(this->saved_cloud_);
+}
+
 void PointCloud_to_PCD::savePCD()
 {
-    PointCloud_to_PCD::save(this->cloud_);
+    if (!cloud_->empty())
+        PointCloud_to_PCD::save(this->cloud_);
 }
+
 int PointCloud_to_PCD::getPointCloudNum()
 {
     return (int)this->cloud_->size();
