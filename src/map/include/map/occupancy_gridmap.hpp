@@ -216,13 +216,23 @@ void Gridmap::calc()
             htl::Position<float> point = this->get_Point3d(i, j);
             // 計測した1点の3次元座標
             octomap::point3d end(point.x, point.y, point.z);
-            // integrate 'occupied' measurement
-            // tree->updateNode(end, true);
             // レイを飛ばして空間を削り出す
-            tree->insertRay(origin, end);
-            // レイを飛ばして空間を削り出す(逆向きからも)
-            tree->insertRay(end + end - origin, end);
+            tree->insertRay(origin, end, -1.0, true);
+            // Set COLOR
+            tree->setNodeColor(tree->coordToKey(end), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
 
+            // 計測した1点の3次元座標
+            for (int a = -1; a <= 1; a++)
+                for (int b = -1; b <= 1; b++)
+                    for (int c = -1; c <= 1; c++)
+                    {
+                        octomap::point3d neib(point.x + a * tree->getResolution(), point.y + b * tree->getResolution(), point.z + c * tree->getResolution());
+                        tree->updateNode(neib, true, false);
+                        tree->setNodeColor(tree->coordToKey(neib), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
+                    }
+
+            // レイを飛ばして空間を削り出す(逆向きからも)
+            tree->insertRay(end + end - origin, end, -1.0, true);
             // Set COLOR
             tree->setNodeColor(tree->coordToKey(end), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
 
@@ -230,6 +240,7 @@ void Gridmap::calc()
                 test = point;
         }
     }
+    tree->updateInnerOccupancy();
     // this->search(0.0, 0.0, 0.0);
     // this->search(test.x, test.y, test.z);
     // this->search(test.x + 0.001, test.y, test.z);
