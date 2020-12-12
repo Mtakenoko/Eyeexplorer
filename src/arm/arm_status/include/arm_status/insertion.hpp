@@ -91,8 +91,8 @@ public:
         delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
-        float update = /*-delta_Pw.dot(n) + */ p * delta_PwT.dot(delta_PpT);
-        now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) + update;
+        float update = p * delta_PwT.dot(delta_PpT);
+        now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) - update;
         cv::Point3f output = Pw - now_d * n;
 
         // std::cout << std::endl;
@@ -105,10 +105,10 @@ public:
         // std::cout << "delta_PpT" << delta_PpT << std::endl;
         // std::cout << "now_d : " << now_d << std::endl;
         // std::cout << "pre_d : " << pre_d << std::endl;
-        // std::cout << "correct output : " << output << std::endl;
         // std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
         // std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
         // std::cout << "update : " << update << std::endl;
+        // std::cout << "output : " << output << std::endl;
 
         // 過去の値を更新
         // pre_d = now_d;
@@ -160,7 +160,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", 10);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
-    correction.setParameter(10.0);
+    correction.setParameter(100.0);
 }
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
