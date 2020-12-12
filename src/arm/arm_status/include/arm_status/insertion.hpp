@@ -52,19 +52,20 @@ class Correct
 private:
     cv::Point3f Pw, pre_Pw; // 内視鏡先端位置
     cv::Point3f Pp, pre_Pp; // 挿入孔位置（推定）
-    cv::Point3f n;          // 内視鏡視線方向
+    cv::Point3f n, pre_n;   // 内視鏡視線方向
     cv::Point3f delta_Pw, delta_Pp;
     cv::Point3f delta_PwT, delta_PpT;
-    Shape pre_insert_point_shape;
     float now_d, pre_d;
     float p;
 
 public:
-    void setPreData(const cv::Point3f &input_pre_Pw, const cv::Point3f &input_pre_Pp, const float input_d)
+    void setPreData(const cv::Point3f &input_pre_Pw, const cv::Point3f &input_pre_Pp, const cv::Point3f input_pre_n)
     {
         pre_Pw = input_pre_Pw;
         pre_Pp = input_pre_Pp;
-        pre_d = input_d;
+        pre_n = input_pre_n;
+        cv::Point3f pre_distance = pre_Pp - pre_Pw;
+        pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
     }
     void setPreDistance(const float input_d)
     {
@@ -90,8 +91,8 @@ public:
         delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
-        float update = -delta_Pw.dot(n) + p * delta_PwT.dot(delta_PpT);
-        now_d = pre_d + update;
+        float update = /*-delta_Pw.dot(n) + */ p * delta_PwT.dot(delta_PpT);
+        now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) + update;
         cv::Point3f output = Pw - now_d * n;
 
         // std::cout << std::endl;
@@ -105,11 +106,15 @@ public:
         // std::cout << "now_d : " << now_d << std::endl;
         // std::cout << "pre_d : " << pre_d << std::endl;
         // std::cout << "correct output : " << output << std::endl;
+        // std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
+        // std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
+        // std::cout << "update : " << update << std::endl;
 
         // 過去の値を更新
-        pre_d = now_d;
-        pre_Pw = Pw;
-        pre_Pp = Pp;
+        // pre_d = now_d;
+        // pre_Pw = Pw;
+        // pre_Pp = Pp;
+        // pre_n = n;
 
         return output;
     }
@@ -167,8 +172,7 @@ void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform
         if (flag_calc)
         {
             this->calcIntersection();
-            cv::Point3f pre_distance = insert_point_shape.Position - pre_inter.point;
-            correction.setPreData(pre_inter.point, insert_point_shape.Position, std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z));
+            correction.setPreData(pre_inter.point, insert_point_shape.Position, pre_inter.normal);
         }
         else
         {
