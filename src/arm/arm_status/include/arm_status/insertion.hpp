@@ -139,7 +139,6 @@ public:
     cv::Mat pointcloud;
 
 private:
-    void initialize();
     void process();
     void input_data(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud);
     void estimate();
@@ -172,7 +171,6 @@ Estimation_InsertPoint::Estimation_InsertPoint()
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
 {
-    this->initialize();
     this->input_data(msg_pointcloud);
     if (trans_vector.size() >= QUEUE_START_SIZE)
     {
@@ -194,12 +192,11 @@ void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform
     }
 }
 
-void Estimation_InsertPoint::initialize()
-{
-}
-
 void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
 {
+    if (msg_pointcloud->translation.x == 0. || msg_pointcloud->translation.y == 0. || msg_pointcloud->translation.z == 0.)
+        return;
+        
     Shape msg_trans;
     msg_trans.Position.x = (float)msg_pointcloud->translation.x;
     msg_trans.Position.y = (float)msg_pointcloud->translation.y;
