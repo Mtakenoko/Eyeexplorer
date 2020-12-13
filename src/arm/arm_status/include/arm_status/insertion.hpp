@@ -59,6 +59,14 @@ private:
     float p;
 
 public:
+    void setInitialData(const cv::Point3f &input_pre_Pw, const cv::Point3f input_pre_n, const cv::Point3f &input_pre_Pp)
+    {
+        pre_Pw = input_pre_Pw;
+        pre_n = input_pre_n;
+        cv::Point3f pre_distance = input_pre_Pp - pre_Pw;
+        pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
+        pre_Pp = pre_Pw - pre_d * pre_n;
+    }
     void setPreData(const cv::Point3f &input_pre_Pw, const cv::Point3f &input_pre_Pp, const cv::Point3f input_pre_n)
     {
         pre_Pw = input_pre_Pw;
@@ -67,23 +75,20 @@ public:
         cv::Point3f pre_distance = pre_Pp - pre_Pw;
         pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
     }
-    void setPreDistance(const float input_d)
-    {
-        pre_d = input_d;
-    }
     void setParameter(const float input_p)
     {
         p = input_p;
     }
-    cv::Point3f calc(const cv::Point3f &input_Pw, const cv::Point3f &input_Pp, const cv::Point3f &input_n)
+    cv::Point3f calc(const cv::Point3f &input_Pw, const cv::Point3f &input_n)
     {
         // 現在の位置をinput
         Pw = input_Pw;
-        Pp = input_Pp;
         n = input_n;
 
-        // ロボットと挿入孔（推定値）の位置の移動量
+        // ロボットの位置の移動量
         delta_Pw = Pw - pre_Pw;
+        // 計算上求まる挿入孔位置（これだけだと過去の長さの誤差の影響をそのまま受けるのでよくない）
+        Pp = Pw - (delta_Pw.dot(n) + pre_d * pre_n.dot(n)) * n;
         delta_Pp = Pp - pre_Pp;
 
         // 移動量を視線方向に垂直な平面に正射影
@@ -92,7 +97,7 @@ public:
 
         // 更新式
         float update = p * delta_PwT.dot(delta_PpT);
-        now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) - update;
+        now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) + update;
         cv::Point3f output = Pw - now_d * n;
 
         // std::cout << std::endl;
@@ -101,20 +106,22 @@ public:
         // std::cout << "Pp : " << Pp << std::endl;
         // std::cout << "pre_Pp : " << pre_Pp << std::endl;
         // std::cout << "n : " << n << std::endl;
+        // std::cout << "pre_n : " << pre_n << std::endl;
         // std::cout << "delta_PwT" << delta_PwT << std::endl;
         // std::cout << "delta_PpT" << delta_PpT << std::endl;
-        // std::cout << "now_d : " << now_d << std::endl;
-        // std::cout << "pre_d : " << pre_d << std::endl;
         // std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
         // std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
         // std::cout << "update : " << update << std::endl;
+        // std::cout << "now_d : " << now_d << std::endl;
+        // std::cout << "pre_d : " << pre_d << std::endl;
         // std::cout << "output : " << output << std::endl;
 
         // 過去の値を更新
-        // pre_d = now_d;
-        // pre_Pw = Pw;
-        // pre_Pp = Pp;
-        // pre_n = n;
+        cv::Point3f pre_distance = pre_Pw - output;
+        pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
+        pre_Pw = pre_Pw;
+        pre_Pp = output;
+        pre_n = pre_distance / pre_d;
 
         return output;
     }
@@ -172,13 +179,13 @@ void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform
         if (flag_calc)
         {
             this->calcIntersection();
-            correction.setPreData(pre_inter.point, insert_point_shape.Position, pre_inter.normal);
+            correction.setInitialData(pre_inter.point, pre_inter.normal, insert_point_shape.Position);
         }
         else
         {
             if (flag_correct)
             {
-                output_point_shape.Position = correction.calc(now_intersect.point, output_point_shape.Position, now_intersect.normal);
+                output_point_shape.Position = correction.calc(now_intersect.point, now_intersect.normal);
                 output_point_shape.Orientation = insert_point_shape.Orientation;
                 output_point_shape.Scale = insert_point_shape.Scale;
             }
