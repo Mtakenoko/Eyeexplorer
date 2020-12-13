@@ -200,7 +200,6 @@ void Estimation_EyeBall::publish()
     int id = 0;
     marker_msg->header.frame_id = "world";
     marker_msg->header.stamp = clock->now();
-    marker_msg->ns = "eye_ball";
     marker_msg->id = ++id;
 
     // 形状
