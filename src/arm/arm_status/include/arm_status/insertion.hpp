@@ -10,6 +10,7 @@
 #include "/home/takeyama/workspace/htl/opencv/transform.hpp"
 
 #define QUEUE_START_SIZE 5
+#define QUEUE_HOLD_SIZE 10
 #define PHI_MAX_CHOOSE 0.1
 
 struct Line_Intersect
@@ -128,11 +129,11 @@ private:
 private:
     void calcIntersection();
     std::vector<Line_Intersect> trans_vector;
-    bool flag_calc, flag_correct;
+    bool flag_correct;
 };
 
 Estimation_InsertPoint::Estimation_InsertPoint()
-    : Node("insertpoint_estimator"), flag_calc(false), flag_correct(false)
+    : Node("insertpoint_estimator"), flag_correct(false)
 {
     // QoSの設定
     size_t depth = rmw_qos_profile_default.depth;
@@ -144,7 +145,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", 10);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
-    correction.setParameter(1.0002);
+    correction.setParameter(1.0);
 }
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
@@ -152,23 +153,18 @@ void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform
     this->input_data(msg_pointcloud);
     if (trans_vector.size() >= QUEUE_START_SIZE)
     {
-        if (flag_calc)
+        if (flag_correct)
         {
-            if (flag_correct)
-            {
-                output_point_shape.Position = correction.calc(now_intersect.point, now_intersect.normal);
-                output_point_shape.Orientation = insert_point_shape.Orientation;
-                output_point_shape.Scale = insert_point_shape.Scale;
-                flag_calc = true;
-                flag_correct = true;
-            }
-            else
-            {
-                this->calcIntersection();
-                correction.setInitialData(pre_inter.point, pre_inter.normal, insert_point_shape.Position);
-                flag_calc = true;
-                flag_correct = true;
-            }
+            output_point_shape.Position = correction.calc(now_intersect.point, now_intersect.normal);
+            output_point_shape.Orientation = insert_point_shape.Orientation;
+            output_point_shape.Scale = insert_point_shape.Scale;
+            flag_correct = true;
+        }
+        else
+        {
+            this->calcIntersection();
+            correction.setInitialData(pre_inter.point, pre_inter.normal, insert_point_shape.Position);
+            flag_correct = true;
         }
         this->publish();
     }
@@ -194,7 +190,6 @@ void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::Sha
 
     bool near_frame_detect(false);
     std::vector<float> phi_vector;
-    // 新しく登録したキーフレームから探索する(すぐ見つかりやすいので高速になる)
     for (auto itr = trans_vector.begin(); itr != trans_vector.end(); itr++)
     {
         float phi = htl::Transform::RevFromRotMat<float>(itr->Rotation.t() * rot_now);
@@ -206,22 +201,25 @@ void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::Sha
         trans_vector.push_back(now_intersect);
         pre_inter = now_intersect;
 
+        if (this->trans_vector.size() > QUEUE_START_SIZE)
+        {
+            flag_correct = true;
+            if (this->trans_vector.size() > QUEUE_HOLD_SIZE)
+            {
+                std::vector<Line_Intersect>::iterator itr_begin = this->trans_vector.begin();
+                this->trans_vector.erase(itr_begin);
+            }
+        }
+        else
+        {
+            flag_correct = false;
+        }
+
         std::cout << std::endl;
         std::cout << "trans size : " << trans_vector.size() << std::endl;
         std::cout << "point : " << now_intersect.point << std::endl;
         std::cout << "Rotation : " << now_intersect.Rotation << std::endl;
         std::cout << "tilt : " << now_intersect.tilt << std::endl;
-
-        flag_calc = true;
-        flag_correct = false;
-
-        if (this->trans_vector.size() > QUEUE_START_SIZE)
-        {
-            std::vector<Line_Intersect>::iterator itr_begin = this->trans_vector.begin();
-            this->trans_vector.erase(itr_begin);
-            flag_calc = true;
-            flag_correct = true;
-        }
     }
 }
 
