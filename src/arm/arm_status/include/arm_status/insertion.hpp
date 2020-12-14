@@ -49,6 +49,7 @@ public:
 
 class Correct
 {
+
 private:
     cv::Point3f Pw, pre_Pw; // 内視鏡先端位置
     cv::Point3f Pp, pre_Pp; // 挿入孔位置（推定）
@@ -57,8 +58,10 @@ private:
     cv::Point3f delta_PwT, delta_PpT;
     float now_d, pre_d;
     float p;
+    int count;
 
 public:
+    Correct() : count(0) {}
     void setInitialData(const cv::Point3f &input_pre_Pw, const cv::Point3f input_pre_n, const cv::Point3f &input_pre_Pp)
     {
         pre_Pw = input_pre_Pw;
@@ -96,33 +99,50 @@ public:
         delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
-        float update = p * delta_PwT.dot(delta_PpT);
+        float update = p * delta_Pp.dot(n);
         now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) + update;
         cv::Point3f output = Pw - now_d * n;
 
-        // std::cout << std::endl;
-        // std::cout << "Pw : " << Pw << std::endl;
-        // std::cout << "pre_Pw : " << pre_Pw << std::endl;
-        // std::cout << "Pp : " << Pp << std::endl;
-        // std::cout << "pre_Pp : " << pre_Pp << std::endl;
-        // std::cout << "n : " << n << std::endl;
-        // std::cout << "pre_n : " << pre_n << std::endl;
-        // std::cout << "delta_PwT" << delta_PwT << std::endl;
-        // std::cout << "delta_PpT" << delta_PpT << std::endl;
-        // std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
-        // std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
-        // std::cout << "update : " << update << std::endl;
-        // std::cout << "now_d : " << now_d << std::endl;
-        // std::cout << "pre_d : " << pre_d << std::endl;
-        // std::cout << "output : " << output << std::endl;
+        if (count < 10 || count % 100 == 0)
+        {
+            std::cout << std::endl;
+            std::cout << "count : " << count << std::endl;
+            std::cout << "Pw : " << Pw << std::endl;
+            std::cout << "pre_Pw : " << pre_Pw << std::endl;
+            std::cout << "Pp : " << Pp << std::endl;
+            std::cout << "pre_Pp : " << pre_Pp << std::endl;
+            std::cout << "n : " << n << std::endl;
+            std::cout << "pre_n : " << pre_n << std::endl;
+            std::cout << "delta_Pw" << delta_Pw << std::endl;
+            std::cout << "delta_Pp" << delta_Pp << std::endl;
+            std::cout << "delta_PwT" << delta_PwT << std::endl;
+            std::cout << "delta_PpT" << delta_PpT << std::endl;
+            std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
+            std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
+            std::cout << "delta_PwT.dot(delta_PpT) : " << delta_PwT.dot(delta_PpT) << std::endl;
+            std::cout << "delta_Pp.dot(n) : " << delta_Pp.dot(n) << std::endl;
+            std::cout << "update : " << update << std::endl;
+            std::cout << "now_d : " << now_d << std::endl;
+            std::cout << "pre_d : " << pre_d << std::endl;
+            std::cout << "output : " << output << std::endl;
+        }
 
-        // 過去の値を更新
-        cv::Point3f pre_distance = pre_Pw - output;
-        pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
-        pre_Pw = pre_Pw;
-        pre_Pp = output;
-        pre_n = pre_distance / pre_d;
+        // 過去の値を更新（離れたver）
+        // pre_Pw = pre_Pw;
+        // pre_Pp = output;
+        // cv::Point3f pre_distance = pre_Pp - pre_Pw;
+        // pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
+        // pre_n = pre_distance / pre_d;
 
+        // 過去の値を更新(連続ver)
+        pre_Pw = Pw;
+        pre_Pp = Pp;
+        pre_d = now_d;
+        pre_n = n;
+
+        // if (pre_n.dot(n) < 0)
+        //     pre_n *= -1.0;
+        count++;
         return output;
     }
 };
@@ -166,7 +186,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", 10);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
-    correction.setParameter(100.0);
+    correction.setParameter(1.0002);
 }
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
@@ -176,16 +196,20 @@ void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform
     {
         if (flag_calc)
         {
-            this->calcIntersection();
-            correction.setInitialData(pre_inter.point, pre_inter.normal, insert_point_shape.Position);
-        }
-        else
-        {
             if (flag_correct)
             {
                 output_point_shape.Position = correction.calc(now_intersect.point, now_intersect.normal);
                 output_point_shape.Orientation = insert_point_shape.Orientation;
                 output_point_shape.Scale = insert_point_shape.Scale;
+                flag_calc = true;
+                flag_correct = true;
+            }
+            else
+            {
+                this->calcIntersection();
+                correction.setInitialData(pre_inter.point, pre_inter.normal, insert_point_shape.Position);
+                flag_calc = true;
+                flag_correct = true;
             }
         }
         this->publish();
@@ -196,7 +220,7 @@ void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::Sha
 {
     if (msg_pointcloud->translation.x == 0. || msg_pointcloud->translation.y == 0. || msg_pointcloud->translation.z == 0.)
         return;
-        
+
     Shape msg_trans;
     msg_trans.Position.x = (float)msg_pointcloud->translation.x;
     msg_trans.Position.y = (float)msg_pointcloud->translation.y;
@@ -231,11 +255,14 @@ void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::Sha
         std::cout << "tilt : " << now_intersect.tilt << std::endl;
 
         flag_calc = true;
+        flag_correct = false;
+
         if (this->trans_vector.size() > QUEUE_START_SIZE)
         {
             std::vector<Line_Intersect>::iterator itr_begin = this->trans_vector.begin();
             this->trans_vector.erase(itr_begin);
-            flag_calc = false;
+            flag_calc = true;
+            flag_correct = true;
         }
     }
 }
@@ -285,9 +312,6 @@ void Estimation_InsertPoint::calcIntersection()
     std::cout << "Position : " << insert_point_shape.Position << std::endl;
     // std::cout << "A : " << A << std::endl;
     // std::cout << "B : " << B << std::endl;
-
-    flag_calc = false;
-    flag_correct = true;
 }
 
 void Estimation_InsertPoint::publish()
