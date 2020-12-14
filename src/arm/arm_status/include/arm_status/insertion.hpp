@@ -10,7 +10,6 @@
 #include "/home/takeyama/workspace/htl/opencv/transform.hpp"
 
 #define QUEUE_START_SIZE 5
-// #define QUEUE_MAX_SIZE 10
 #define PHI_MAX_CHOOSE 0.1
 
 struct Line_Intersect
@@ -55,13 +54,10 @@ private:
     cv::Point3f Pp, pre_Pp; // 挿入孔位置（推定）
     cv::Point3f n, pre_n;   // 内視鏡視線方向
     cv::Point3f delta_Pw, delta_Pp;
-    cv::Point3f delta_PwT, delta_PpT;
     float now_d, pre_d;
     float p;
-    int count;
 
 public:
-    Correct() : count(0) {}
     void setInitialData(const cv::Point3f &input_pre_Pw, const cv::Point3f input_pre_n, const cv::Point3f &input_pre_Pp)
     {
         pre_Pw = input_pre_Pw;
@@ -73,10 +69,10 @@ public:
     void setPreData(const cv::Point3f &input_pre_Pw, const cv::Point3f &input_pre_Pp, const cv::Point3f input_pre_n)
     {
         pre_Pw = input_pre_Pw;
-        pre_Pp = input_pre_Pp;
         pre_n = input_pre_n;
-        cv::Point3f pre_distance = pre_Pp - pre_Pw;
+        cv::Point3f pre_distance = input_pre_Pp - pre_Pw;
         pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
+        pre_Pp = pre_Pw - pre_d * pre_n;
     }
     void setParameter(const float input_p)
     {
@@ -94,55 +90,17 @@ public:
         Pp = Pw - (delta_Pw.dot(n) + pre_d * pre_n.dot(n)) * n;
         delta_Pp = Pp - pre_Pp;
 
-        // 移動量を視線方向に垂直な平面に正射影
-        delta_PwT = delta_Pw - n.dot(delta_Pw) * n;
-        delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
-
         // 更新式
         float update = p * delta_Pp.dot(n);
         now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) + update;
         cv::Point3f output = Pw - now_d * n;
 
-        if (count < 10 || count % 100 == 0)
-        {
-            std::cout << std::endl;
-            std::cout << "count : " << count << std::endl;
-            std::cout << "Pw : " << Pw << std::endl;
-            std::cout << "pre_Pw : " << pre_Pw << std::endl;
-            std::cout << "Pp : " << Pp << std::endl;
-            std::cout << "pre_Pp : " << pre_Pp << std::endl;
-            std::cout << "n : " << n << std::endl;
-            std::cout << "pre_n : " << pre_n << std::endl;
-            std::cout << "delta_Pw" << delta_Pw << std::endl;
-            std::cout << "delta_Pp" << delta_Pp << std::endl;
-            std::cout << "delta_PwT" << delta_PwT << std::endl;
-            std::cout << "delta_PpT" << delta_PpT << std::endl;
-            std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
-            std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
-            std::cout << "delta_PwT.dot(delta_PpT) : " << delta_PwT.dot(delta_PpT) << std::endl;
-            std::cout << "delta_Pp.dot(n) : " << delta_Pp.dot(n) << std::endl;
-            std::cout << "update : " << update << std::endl;
-            std::cout << "now_d : " << now_d << std::endl;
-            std::cout << "pre_d : " << pre_d << std::endl;
-            std::cout << "output : " << output << std::endl;
-        }
-
-        // 過去の値を更新（離れたver）
-        // pre_Pw = pre_Pw;
-        // pre_Pp = output;
-        // cv::Point3f pre_distance = pre_Pp - pre_Pw;
-        // pre_d = std::sqrt(pre_distance.x * pre_distance.x + pre_distance.y * pre_distance.y + pre_distance.z * pre_distance.z);
-        // pre_n = pre_distance / pre_d;
-
-        // 過去の値を更新(連続ver)
+        // 過去の値を更新
         pre_Pw = Pw;
         pre_Pp = Pp;
         pre_d = now_d;
         pre_n = n;
 
-        // if (pre_n.dot(n) < 0)
-        //     pre_n *= -1.0;
-        count++;
         return output;
     }
 };
