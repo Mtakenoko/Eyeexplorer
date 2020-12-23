@@ -84,17 +84,17 @@ void Estimation_EyeBall::input_eyeball_data(const visualization_msgs::msg::Marke
 
 void Estimation_EyeBall::calcRMSE()
 {
-    if (!flag_setPointCloud && !flag_setEyeball)
+    if (!flag_setPointCloud || !flag_setEyeball)
         return;
 
     // 点群とモデル眼球との位置精度の評価としてRMSEを計算する
-    float RMSE = 0;
+    float RMSE = 0.;
     for (int i = 0; i < pointcloud.rows; i++)
     {
         float distance_from_center = std::sqrt((eye_model_shape.Position.at<float>(0) - pointcloud.at<cv::Vec3f>(i)[0]) * (eye_model_shape.Position.at<float>(0) - pointcloud.at<cv::Vec3f>(i)[0]) +
                                                (eye_model_shape.Position.at<float>(1) - pointcloud.at<cv::Vec3f>(i)[1]) * (eye_model_shape.Position.at<float>(1) - pointcloud.at<cv::Vec3f>(i)[1]) +
                                                (eye_model_shape.Position.at<float>(2) - pointcloud.at<cv::Vec3f>(i)[2]) * (eye_model_shape.Position.at<float>(2) - pointcloud.at<cv::Vec3f>(i)[2]));
-        float error = distance_from_center - eye_model_shape.Scale.at<float>(0);
+        float error = distance_from_center - eye_model_shape.Scale.at<float>(0) / 2.0;
         RMSE += error * error;
     }
     RMSE /= pointcloud.rows;
@@ -118,6 +118,6 @@ void Estimation_EyeBall::calcDistance()
                                      (eye_model_shape.Scale.at<float>(2) - eye_est_shape.Scale.at<float>(2)) * (eye_model_shape.Scale.at<float>(2) - eye_est_shape.Scale.at<float>(2)));
 
     std::cout << std::endl;
-    std::cout << "distance center : " << distance_center * 1000 << " [mm]" << std::endl;
-    std::cout << "diameter error : " << diameter_error * 1000 << " [mm]" << std::endl;
+    std::cout << "distance center : " << distance_center * 1000. << " [mm]" << std::endl;
+    std::cout << "diameter error : " << diameter_error * 1000. << " [mm]" << std::endl;
 }
