@@ -211,6 +211,28 @@ ros2 run map gridmap_creator
    (default) : 0.001
 ```
 
+## 網膜点群の眼球位置形状推定を用いての補間
+眼球形状推定の結果で網膜の点群を補間するノードはこちら
+```
+ros2 run map interpolator
+```
+### option
+基本的には`-h`オプションをして確認してください。
+```
+ -h: This message.
+ -r: Reliability QoS setting:
+    0 - best effort
+    1 - reliable (default)
+ -d: Depth of the queue: only honored if used together with 'keep last'. 10 (default)
+ -k: History QoS setting:
+    0 - only store up to N samples, configurable via the queue depth (default)
+    1 - keep all the samples
+ --cut: Set Cube pointclouds resolution  
+   (default) : 10
+ --dis: Set Distance between cube point and map
+   (default) : 0.003
+```
+
 
 ## depth_image
 DenseDepthなどのDNNを用いて深度推定を行うために、学習用のデータセットを作るためのソフトウェア。Captureボタンを押しデプス画像がうまく生成されていればSaveボタンを押す。深度画像の出力は`/depth_image/Output`内の各日時毎に生成されたディレクトリに登録順に保存される。
