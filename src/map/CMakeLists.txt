@@ -252,6 +252,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# interpolator node
+add_executable(interpolator
+  src/interpolator.cpp
+  option/options_interpolation.cpp
+)
+ament_target_dependencies(interpolator
+  "rclcpp"
+  "visualization_msgs"
+)
+install(TARGETS
+  interpolator
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
