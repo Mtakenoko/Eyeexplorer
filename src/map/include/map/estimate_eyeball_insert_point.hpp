@@ -174,7 +174,7 @@ void Estimation_EyeBall::estimate()
 
     printf("Estimation Pos [%f %f %f], r : %f\n", x_est, y_est, z_est, r_est);
 
-    if (r_est < 0.018 && r_est > 0.001)
+    if (r_est < 0.014 && r_est > 0.01)
     {
         // 大きさ
         eye_shape.Scale.at<float>(0) = r_est * 2.;

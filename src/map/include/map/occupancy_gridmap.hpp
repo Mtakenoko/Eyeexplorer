@@ -97,16 +97,6 @@ Gridmap::Gridmap() : Node("Gridmap_creator"),
     this->ProjectionMatrix = CameraMatrix * CameraPose;
 
     tree = std::make_shared<octomap::ColorOcTree>(0.001);
-
-    // // default Param
-    // std::cout << std::endl;
-    // std::cout << "OcTree default Param:" << std::endl
-    //           << "  ClampingThresMax : " << tree->getClampingThresMax() << std::endl
-    //           << "  ClampingThresMin : " << tree->getClampingThresMin() << std::endl
-    //           << "  OccupancyThres : " << tree->getOccupancyThres() << std::endl
-    //           << "  ProbHit : " << tree->getProbHit() << std::endl
-    //           << "  ProbMiss : " << tree->getProbMiss() << std::endl
-    //           << "  Resolution : " << tree->getResolution() << std::endl;
 }
 
 Gridmap::~Gridmap()
@@ -222,6 +212,8 @@ void Gridmap::calc()
             tree->setNodeColor(tree->coordToKey(end), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
 
             // 計測した1点の3次元座標
+            double clampingThresMax = tree->getClampingThresMax();
+            tree->setClampingThresMax(clampingThresMax * 3. / 4.);
             for (int a = -1; a <= 1; a++)
                 for (int b = -1; b <= 1; b++)
                     for (int c = -1; c <= 1; c++)
@@ -230,14 +222,22 @@ void Gridmap::calc()
                         tree->updateNode(neib, true, false);
                         tree->setNodeColor(tree->coordToKey(neib), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
                     }
+            tree->setClampingThresMax(clampingThresMax);
 
             // レイを飛ばして空間を削り出す(逆向きからも)
             tree->insertRay(end + end - origin, end, -1.0, true);
+
             // Set COLOR
             tree->setNodeColor(tree->coordToKey(end), color_image.at<cv::Vec3b>(i, j)[2], color_image.at<cv::Vec3b>(i, j)[1], color_image.at<cv::Vec3b>(i, j)[0]);
 
-            if (i == 1 && j == 1)
-                test = point;
+            // if (i == 1 && j == 1)
+            // {
+            //     test = point;
+            //     std::cout << std::endl;
+            //     std::cout << "origin : " << origin << std::endl;
+            //     std::cout << "end : " << end << std::endl;
+            //     std::cout << "origin2 : " << end + end - origin << std::endl;
+            // }
         }
     }
     tree->updateInnerOccupancy();
@@ -286,9 +286,9 @@ void Gridmap::publish()
             marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
             // 大きさ
-            marker_msg.scale.x = tree->getResolution() / 2.;
-            marker_msg.scale.y = tree->getResolution() / 2.;
-            marker_msg.scale.z = tree->getResolution() / 2.;
+            marker_msg.scale.x = tree->getResolution() * 0.8;
+            marker_msg.scale.y = tree->getResolution() * 0.8;
+            marker_msg.scale.z = tree->getResolution() * 0.8;
 
             // 色
             marker_msg.color.a = (float)itr->getOccupancy();

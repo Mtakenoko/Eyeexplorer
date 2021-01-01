@@ -57,8 +57,10 @@ private:
     cv::Point3f delta_Pw, delta_Pp;
     float now_d, pre_d;
     float p;
+    int count;
 
 public:
+    Correct() : count(0) {}
     void setInitialData(const cv::Point3f &input_pre_Pw, const cv::Point3f input_pre_n, const cv::Point3f &input_pre_Pp)
     {
         pre_Pw = input_pre_Pw;
@@ -88,19 +90,40 @@ public:
         // ロボットの位置の移動量
         delta_Pw = Pw - pre_Pw;
         // 計算上求まる挿入孔位置（これだけだと過去の長さの誤差の影響をそのまま受けるのでよくない）
-        Pp = Pw - (delta_Pw.dot(n) + pre_d * pre_n.dot(n)) * n;
+        Pp = Pw - (pre_d * pre_n.dot(n) + delta_Pw.dot(n)) * n;
         delta_Pp = Pp - pre_Pp;
+
+        // 移動量を視線方向に垂直な平面に正射影
+        // cv::Point3f delta_PwT = delta_Pw - n.dot(delta_Pw) * n;
+        // cv::Point3f delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
         float update = p * delta_Pp.dot(n);
-        now_d = delta_Pw.dot(n) + pre_d * pre_n.dot(n) + update;
+        // float update_ = p * delta_Pp.dot(pre_n);
+        // float update2 = p * 1000. * delta_PwT.dot(delta_PpT);
+        now_d = pre_d * pre_n.dot(n) + delta_Pw.dot(n) + update;
         cv::Point3f output = Pw - now_d * n;
+
+        // if (count < 10 || count % 100 == 0)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "now_d : " << now_d << std::endl;
+        //     std::cout << "pre_d : " << pre_d << std::endl;
+        //     std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
+        //     std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
+        //     std::cout << "pre_d * pre_n.dot(n) - delta_Pw.dot(n) : " << pre_d * pre_n.dot(n) - delta_Pw.dot(n) << std::endl;
+        //     std::cout << "update : " << update << std::endl;
+        //     std::cout << "update_ : " << update_ << std::endl;
+        //     std::cout << "update2 : " << update2 << std::endl;
+        // }
 
         // 過去の値を更新
         pre_Pw = Pw;
         pre_Pp = Pp;
         pre_d = now_d;
         pre_n = n;
+
+        count++;
 
         return output;
     }
@@ -145,7 +168,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", 10);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
-    correction.setParameter(1.0);
+    correction.setParameter(0.8);
 }
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)

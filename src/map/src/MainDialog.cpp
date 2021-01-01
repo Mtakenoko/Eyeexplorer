@@ -5,7 +5,7 @@
 #include "MainDialog.hpp"
 
 MainDialog::MainDialog(QWidget *parent)
-    : QDialog(parent), topic_sub_pointcloud("/occupancy_grid/marker")
+    : QDialog(parent), topic_sub_pointcloud("/occupancy_grid/interpolated_marker")
 {
   label = new QLabel(tr("Welcoome to pointcloud_to_pcd node"));
   saveButton = new QPushButton(tr("Save"));
