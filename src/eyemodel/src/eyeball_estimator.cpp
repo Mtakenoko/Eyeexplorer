@@ -8,7 +8,10 @@ void Estimation_EyeBall::topic_callback_(const geometry_msgs::msg::Transform::Sh
     if (flag_setPoint)
         this->input_data(msg);
     if (flag_setCalc)
+    {
+        this->estimate();
         this->estimate_ceres();
+    }
 }
 
 void Estimation_EyeBall::input_data(const geometry_msgs::msg::Transform::SharedPtr msg)
@@ -51,12 +54,88 @@ void Estimation_EyeBall::cancel()
     this->pointcloud.pop_back();
 }
 
+void Estimation_EyeBall::estimate()
+{
+    // ある程度点群の数が溜まってからスタート
+    if (!flag_setPointCloud)
+    {
+        std::cout << std::endl
+                  << "Few PointCloud " << pointcloud.rows << " < " << THRESHOLD_NUM_POINTS << std::endl
+                  << "Please set more!" << std::endl;
+        flag_setCalc = false;
+        return;
+    }
+
+    // ラグランジュ未定乗数法を用いて、挿入孔を通る球の方程式を求める
+    cv::Mat A = cv::Mat::zeros(4, 4, CV_64FC1);
+    cv::Mat B = cv::Mat::zeros(4, 1, CV_64FC1); // ラグランジュ未定乗数法により導いた線形方程式のもの(詳細は研究ノート)
+
+    // A, Bそれぞれに値を挿入する
+    for (int i = 0; i < pointcloud.rows; i++)
+    {
+        // A
+        for (size_t j = 0; j < 3; j++)
+        {
+            for (size_t k = 0; k < 3; k++)
+            {
+                A.at<double>(j, k) += pointcloud.at<cv::Vec3d>(i)[j] * pointcloud.at<cv::Vec3d>(i)[k];
+            }
+        }
+        for (size_t j = 0; j < 3; j++)
+        {
+            A.at<double>(j, 3) += pointcloud.at<cv::Vec3d>(i)[j];
+            A.at<double>(3, j) += pointcloud.at<cv::Vec3d>(i)[j];
+        }
+        A.at<double>(3, 3) += 1.0;
+
+        // B
+        for (size_t j = 0; j < 3; j++)
+        {
+            B.at<double>(j, 0) -= pointcloud.at<cv::Vec3d>(i)[j] * pointcloud.at<cv::Vec3d>(i)[0] * pointcloud.at<cv::Vec3d>(i)[0] +
+                                  pointcloud.at<cv::Vec3d>(i)[j] * pointcloud.at<cv::Vec3d>(i)[1] * pointcloud.at<cv::Vec3d>(i)[1] +
+                                  pointcloud.at<cv::Vec3d>(i)[j] * pointcloud.at<cv::Vec3d>(i)[2] * pointcloud.at<cv::Vec3d>(i)[2];
+        }
+        B.at<double>(3, 0) -= pointcloud.at<cv::Vec3d>(i)[0] * pointcloud.at<cv::Vec3d>(i)[0] +
+                              pointcloud.at<cv::Vec3d>(i)[1] * pointcloud.at<cv::Vec3d>(i)[1] +
+                              pointcloud.at<cv::Vec3d>(i)[2] * pointcloud.at<cv::Vec3d>(i)[2];
+    }
+
+    cv::Mat tmp_X;
+    cv::solve(A, B, tmp_X, cv::DECOMP_SVD);
+
+    double x_est, y_est, z_est, r_est;
+    x_est = -tmp_X.at<double>(0, 0) / 2.0;
+    y_est = -tmp_X.at<double>(1, 0) / 2.0;
+    z_est = -tmp_X.at<double>(2, 0) / 2.0;
+    r_est = std::sqrt((x_est * x_est + y_est * y_est + z_est * z_est) - tmp_X.at<double>(3, 0));
+
+    std::cout << std::endl
+              << "Estimated Position : " << x_est << ", " << y_est << ", " << z_est << std::endl
+              << "Estimated radius : " << r_est << std::endl;
+
+    if (r_est < 0.014 && r_est > 0.01)
+    {
+        // 大きさ
+        eye_shape.Scale.at<double>(0) = r_est * 2.;
+        eye_shape.Scale.at<double>(1) = r_est * 2.;
+        eye_shape.Scale.at<double>(2) = r_est * 2.;
+
+        // 位置
+        eye_shape.Position.at<double>(0) = x_est;
+        eye_shape.Position.at<double>(1) = y_est;
+        eye_shape.Position.at<double>(2) = z_est;
+
+        flag_publish = true;
+    }
+}
+
 void Estimation_EyeBall::estimate_ceres()
 {
     // ある程度点群の数が溜まってからスタート
     if (!flag_setPointCloud)
     {
-        std::cout << "Few PointCloud " << pointcloud.rows << " < " << THRESHOLD_NUM_POINTS << std::endl
+        std::cout << std::endl
+                  << "Few PointCloud " << pointcloud.rows << " < " << THRESHOLD_NUM_POINTS << std::endl
                   << "Please set more!" << std::endl;
         flag_setCalc = false;
         return;
@@ -93,7 +172,7 @@ void Estimation_EyeBall::estimate_ceres()
     //Solverのオプション選択
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
+    options.minimizer_progress_to_stdout = false;
     options.num_threads = 8;
 
     //Solve
@@ -109,8 +188,9 @@ void Estimation_EyeBall::estimate_ceres()
     eye_shape.Scale.at<double>(2) = ellipse_param[2];
 
     // printf
-    std::cout << "Position = " << eye_shape.Position << std::endl;
-    std::cout << "Scale = " << eye_shape.Scale << std::endl;
+    std::cout << std::endl
+              << "Estimated Position : " << eye_shape.Position << std::endl
+              << "Estimated Scale: " << eye_shape.Scale << std::endl;
 
     flag_setCalc = false;
 }

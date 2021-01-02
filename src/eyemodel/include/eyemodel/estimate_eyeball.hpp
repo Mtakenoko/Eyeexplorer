@@ -47,6 +47,7 @@ private:
     void initialize();
     void process();
     void input_data(const geometry_msgs::msg::Transform::SharedPtr msg);
+    void estimate();
     void estimate_ceres();
     void publish();
 
