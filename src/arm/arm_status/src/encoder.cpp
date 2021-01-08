@@ -3,7 +3,7 @@
 
 #include "../include/arm/encoder.h"
 
-#define ENC_OFFSET_FILE "/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/offset/enc_offset.dat"     ///< エンコーダオフセットファイルのパス
+#define ENC_OFFSET_FILE "/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/offset/enc_offset.txt"     ///< エンコーダオフセットファイルのパス
 #define Calib_OFFSET_FILE "/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/offset/calib_offset.txt" ///< エンコーダオフセットファイルのパス
 
 ReadEncoder::ReadEncoder()
@@ -18,7 +18,6 @@ void ReadEncoder::ReadOffsetdat()
     for (int i = 0; i < ADOF; i++)
     {
         ifs >> data[i];
-        data[i] *= 1.0 / DEG; //deg -> rad
         offset[i] += data[i];
     }
     ifs.close();
@@ -60,9 +59,9 @@ Ktl::Vector<ADOF> ReadEncoder::GetOffset()
 
 void ReadEncoder::SetOffset()
 {
-    offset[0] += 0.695877 + 0.170817 - 0.135620 + 0.0197 - 0.03 + 0.0814;
-    offset[1] += 1.313390 - 0.0039 - 0.0422;
-    offset[2] += 0.250914 + 0.224633 - 0.368491 + 0.0039 - 0.074 + 0.5257 - 0.48 + 0.0573;
-    offset[3] += -2.325260 - 0.054457 + 4.9320 + 0.1909;
-    offset[4] += 1.346482 - 3.9817 + 0.2939 - 0.1959;
+    offset[0] += 0.802174;
+    offset[1] += 1.26729;
+    offset[2] += 0.139956;
+    offset[3] += 2.743183;
+    offset[4] += -2.537218;
 }

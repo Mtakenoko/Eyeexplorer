@@ -103,7 +103,7 @@ void forward_kinematics(const sensor_msgs::msg::JointState::SharedPtr sub_msg,
         RCLCPP_INFO(node->get_logger(), "zim: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", passivearm.Pr()[0], passivearm.Pr()[1], passivearm.Pr()[2], rall, pitch, yaw);
         RCLCPP_INFO(node->get_logger(), "tip: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", Ptip[0], Ptip[1], Ptip[2], rall, pitch, yaw);
         RCLCPP_INFO(node->get_logger(), "root: t = [%0.2f %0.2f %0.2f], R = [%0.2f %0.2f %0.2f]", P_root[0], P_root[1], P_root[2], rall, pitch, yaw);
-        printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
+        // printf("q = [%lf %lf %lf %lf %lf]\n", passivearm.q[0], passivearm.q[1], passivearm.q[2], passivearm.q[3], passivearm.q[4]);
         // printf("q = [%lf %lf %lf %lf %lf]\n", enc_pos[0], enc_pos[1], enc_pos[2], enc_pos[3], enc_pos[4]);
     }
 

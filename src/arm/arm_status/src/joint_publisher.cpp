@@ -58,10 +58,10 @@ int main(int argc, char *argv[])
 
     //エンコーダのオフセット設定
     ReadEncoder readencoder;
-    Ktl::Vector<ADOF> offset;
     readencoder.SetOffset();
+    readencoder.ReadOffsetdat();
     readencoder.ReadCalibOffsetdat();
-    offset = readencoder.offset;
+    Ktl::Vector<ADOF> offset = readencoder.offset;
 
     auto callback = [pub_q, clock, offset](const sensor_msgs::msg::JointState::SharedPtr msg_sub) {
         q_msg.position[0] = msg_sub->position[0] + offset[0];
