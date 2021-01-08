@@ -1,6 +1,7 @@
 #ifndef ESTIMATION_INSERT_POINT_HPP__
 #define ESTIMATION_INSERT_POINT_HPP__
 
+#include <fstream>
 #include <opencv2/opencv.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -58,9 +59,17 @@ private:
     float now_d, pre_d;
     float p;
     int count;
+    std::ofstream outputfile;
 
 public:
-    Correct() : count(0) {}
+    Correct() : count(0), outputfile("/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/output/test.txt")
+    {
+        outputfile << "output.x" << " " << "output.y" << " " << "output.z" << " " << "Pw.x" << " " << "Pw.y" << " " << "Pw.z" << " " << "n.x" << " " << "n.y" << " " << "n.z" << std::endl;
+    }
+    ~Correct()
+    {
+        outputfile.close();
+    }
     void setInitialData(const cv::Point3f &input_pre_Pw, const cv::Point3f input_pre_n, const cv::Point3f &input_pre_Pp)
     {
         pre_Pw = input_pre_Pw;
@@ -94,28 +103,30 @@ public:
         delta_Pp = Pp - pre_Pp;
 
         // 移動量を視線方向に垂直な平面に正射影
-        // cv::Point3f delta_PwT = delta_Pw - n.dot(delta_Pw) * n;
-        // cv::Point3f delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
+        cv::Point3f delta_PwT = delta_Pw - n.dot(delta_Pw) * n;
+        cv::Point3f delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
         float update = p * delta_Pp.dot(n);
-        // float update_ = p * delta_Pp.dot(pre_n);
-        // float update2 = p * 1000. * delta_PwT.dot(delta_PpT);
+        float update_ = p * delta_Pp.dot(pre_n);
+        float update2 = p * 1000. * delta_PwT.dot(delta_PpT);
         now_d = pre_d * pre_n.dot(n) + delta_Pw.dot(n) + update;
         cv::Point3f output = Pw - now_d * n;
 
-        // if (count < 10 || count % 100 == 0)
-        // {
-        //     std::cout << std::endl;
-        //     std::cout << "now_d : " << now_d << std::endl;
-        //     std::cout << "pre_d : " << pre_d << std::endl;
-        //     std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
-        //     std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
-        //     std::cout << "pre_d * pre_n.dot(n) - delta_Pw.dot(n) : " << pre_d * pre_n.dot(n) - delta_Pw.dot(n) << std::endl;
-        //     std::cout << "update : " << update << std::endl;
-        //     std::cout << "update_ : " << update_ << std::endl;
-        //     std::cout << "update2 : " << update2 << std::endl;
-        // }
+        if (count < 10 || count % 100 == 0)
+        {
+            std::cout << std::endl;
+            // std::cout << "now_d : " << now_d << std::endl;
+            // std::cout << "pre_d : " << pre_d << std::endl;
+            // std::cout << "pre_d * pre_n.dot(n) : " << pre_d * pre_n.dot(n) << std::endl;
+            // std::cout << "delta_Pw.dot(n) : " << delta_Pw.dot(n) << std::endl;
+            // std::cout << "pre_d * pre_n.dot(n) - delta_Pw.dot(n) : " << pre_d * pre_n.dot(n) - delta_Pw.dot(n) << std::endl;
+            // std::cout << "update : " << update << std::endl;
+            // std::cout << "update_ : " << update_ << std::endl;
+            // std::cout << "update2 : " << update2 << std::endl;
+            std::cout << "output : " << output << std::endl;
+            outputfile << output.x << " " << output.y << " " << output.z << " " << Pw.x << " " << Pw.y << " " << Pw.z << " " << n.x << " " << n.y << " " << n.z << std::endl;
+        }
 
         // 過去の値を更新
         pre_Pw = Pw;
@@ -165,7 +176,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
-    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", 10);
+    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", qos);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
     correction.setParameter(0.8);
@@ -238,11 +249,11 @@ void Estimation_InsertPoint::input_data(const geometry_msgs::msg::Transform::Sha
             flag_correct = false;
         }
 
-        std::cout << std::endl;
-        std::cout << "trans size : " << trans_vector.size() << std::endl;
-        std::cout << "point : " << now_intersect.point << std::endl;
-        std::cout << "Rotation : " << now_intersect.Rotation << std::endl;
-        std::cout << "tilt : " << now_intersect.tilt << std::endl;
+        // std::cout << std::endl;
+        // std::cout << "trans size : " << trans_vector.size() << std::endl;
+        // std::cout << "point : " << now_intersect.point << std::endl;
+        // std::cout << "Rotation : " << now_intersect.Rotation << std::endl;
+        // std::cout << "tilt : " << now_intersect.tilt << std::endl;
     }
 }
 
