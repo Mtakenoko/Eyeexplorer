@@ -58,13 +58,30 @@ private:
     cv::Point3f delta_Pw, delta_Pp;
     float now_d, pre_d;
     float p;
+    float update;
     int count;
     std::ofstream outputfile;
 
 public:
     Correct() : count(0), outputfile("/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/output/test.txt")
     {
-        outputfile << "output.x" << " " << "output.y" << " " << "output.z" << " " << "Pw.x" << " " << "Pw.y" << " " << "Pw.z" << " " << "n.x" << " " << "n.y" << " " << "n.z" << std::endl;
+        outputfile << "output.x"
+                   << " "
+                   << "output.y"
+                   << " "
+                   << "output.z"
+                   << " "
+                   << "Pw.x"
+                   << " "
+                   << "Pw.y"
+                   << " "
+                   << "Pw.z"
+                   << " "
+                   << "n.x"
+                   << " "
+                   << "n.y"
+                   << " "
+                   << "n.z" << std::endl;
     }
     ~Correct()
     {
@@ -107,10 +124,10 @@ public:
         cv::Point3f delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
-        float update = p * delta_Pp.dot(n);
-        float update_ = p * delta_Pp.dot(pre_n);
-        float update2 = p * 1000. * delta_PwT.dot(delta_PpT);
-        now_d = pre_d * pre_n.dot(n) + delta_Pw.dot(n) + update;
+        // update = 0.995 * update + 0.005 * p * delta_Pp.dot(n);
+        // update = 0.995 * update + 0.005 * p * delta_Pp.dot(pre_n);
+        update = 0.995 * update + 0.005 * delta_PwT.dot(delta_PpT);
+        now_d = pre_d * pre_n.dot(n) + delta_Pw.dot(n) + p * update;
         cv::Point3f output = Pw - now_d * n;
 
         if (count < 10 || count % 100 == 0)
@@ -179,7 +196,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", qos);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
-    correction.setParameter(0.8);
+    correction.setParameter(8000.);
 }
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
