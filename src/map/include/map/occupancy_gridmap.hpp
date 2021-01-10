@@ -73,7 +73,7 @@ private:
     double threshold_display_occ;
 };
 
-Gridmap::Gridmap() : Node("Gridmap_creator"),
+Gridmap::Gridmap() : Node("gridmap_creator"),
                      flag_set_tip(false), flag_set_colorimage(false), flag_set_depthimage(false)
 {
     // QoSの設定

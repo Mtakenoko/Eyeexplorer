@@ -94,6 +94,7 @@ install(TARGETS
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(insertpoint_estimator
   src/insertpoint_estimator.cpp
+  option/options_insertpoint.cpp
 )
 # コンパイルターゲットに依存パッケージの情報を追加する
 ament_target_dependencies(insertpoint_estimator

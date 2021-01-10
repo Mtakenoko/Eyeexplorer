@@ -1,6 +1,7 @@
 #ifndef ESTIMATION_INSERT_POINT_HPP__
 #define ESTIMATION_INSERT_POINT_HPP__
 
+#include <ctime>
 #include <fstream>
 #include <opencv2/opencv.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -61,31 +62,54 @@ private:
     float update;
     int count;
     std::ofstream outputfile;
+    bool flag_save;
 
 public:
-    Correct() : count(0), outputfile("/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/output/test.txt")
+    Correct() : count(0), flag_save(false)
     {
-        outputfile << "output.x"
-                   << " "
-                   << "output.y"
-                   << " "
-                   << "output.z"
-                   << " "
-                   << "Pw.x"
-                   << " "
-                   << "Pw.y"
-                   << " "
-                   << "Pw.z"
-                   << " "
-                   << "n.x"
-                   << " "
-                   << "n.y"
-                   << " "
-                   << "n.z" << std::endl;
     }
     ~Correct()
     {
-        outputfile.close();
+        if (flag_save)
+            outputfile.close();
+    }
+    void setSaveFlag(const bool &flag)
+    {
+        flag_save = flag;
+        if (flag_save)
+        {
+            time_t rawtime;
+            struct tm *timeinfo;
+            char buffer[80];
+
+            time(&rawtime);
+            timeinfo = localtime(&rawtime);
+
+            strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", timeinfo);
+            std::string str(buffer);
+
+            outputfile.open("/home/takeyama/workspace/ros2_eyeexplorer/src/arm/arm_status/output/" + str + "_isertionpoint.txt");
+
+            outputfile << "count "
+                       << " "
+                       << "output.x"
+                       << " "
+                       << "output.y"
+                       << " "
+                       << "output.z"
+                       << " "
+                       << "Pw.x"
+                       << " "
+                       << "Pw.y"
+                       << " "
+                       << "Pw.z"
+                       << " "
+                       << "n.x"
+                       << " "
+                       << "n.y"
+                       << " "
+                       << "n.z" << std::endl;
+        }
     }
     void setInitialData(const cv::Point3f &input_pre_Pw, const cv::Point3f input_pre_n, const cv::Point3f &input_pre_Pp)
     {
@@ -142,8 +166,8 @@ public:
             // std::cout << "update_ : " << update_ << std::endl;
             // std::cout << "update2 : " << update2 << std::endl;
             std::cout << "output : " << output << std::endl;
-            outputfile << output.x << " " << output.y << " " << output.z << " " << Pw.x << " " << Pw.y << " " << Pw.z << " " << n.x << " " << n.y << " " << n.z << std::endl;
         }
+        outputfile << count << " " << output.x << " " << output.y << " " << output.z << " " << Pw.x << " " << Pw.y << " " << Pw.z << " " << n.x << " " << n.y << " " << n.z << std::endl;
 
         // 過去の値を更新
         pre_Pw = Pw;
@@ -196,7 +220,7 @@ Estimation_InsertPoint::Estimation_InsertPoint()
     publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("insert_point", qos);
     subscription_ = this->create_subscription<geometry_msgs::msg::Transform>("endoscope_transform", qos, std::bind(&Estimation_InsertPoint::topic_callback_, this, std::placeholders::_1));
 
-    correction.setParameter(8000.);
+    correction.setParameter(1000.);
 }
 
 void Estimation_InsertPoint::topic_callback_(const geometry_msgs::msg::Transform::SharedPtr msg_pointcloud)
