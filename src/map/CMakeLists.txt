@@ -186,6 +186,7 @@ install(TARGETS
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(eyeball_publisher
   src/eyeball_publisher.cpp
+  option/options_eyeball_publihser.cpp
 )
 # コンパイルターゲットに依存パッケージの情報を追加する
 ament_target_dependencies(eyeball_publisher

@@ -4,6 +4,8 @@
 
 #include <visualization_msgs/msg/marker.hpp>
 
+#include "../option/options_eyeball_publihser.hpp"
+
 int main(int argc, char *argv[])
 {
     // Pass command line arguments to rclcpp.
@@ -25,6 +27,16 @@ int main(int argc, char *argv[])
     rmw_qos_history_policy_t history_policy = rmw_qos_profile_default.history;
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
+
+    // Configure demo parameters with command line options
+    double x = 0.3368;
+    double y = -0.1555;
+    double z = 0.015;
+    double rx = 0.024;
+    double ry = 0.024;
+    double rz = 0.024;
+    if (!parse_command_options(argc, argv, &depth, &reliability_policy, &history_policy, &x, &y, &z, &rx, &ry, &rz))
+        return 0;
 
     //時間管理
     rclcpp::TimeSource ts(node);
@@ -51,18 +63,18 @@ int main(int argc, char *argv[])
         marker_msg.type = visualization_msgs::msg::Marker::SPHERE;
         marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
-        marker_msg.scale.x = 0.024;
-        marker_msg.scale.y = 0.024;
-        marker_msg.scale.z = 0.024;
+        marker_msg.scale.x = rx;
+        marker_msg.scale.y = ry;
+        marker_msg.scale.z = rz;
 
         marker_msg.color.a = 0.3;
         marker_msg.color.r = 1.0;
         marker_msg.color.g = 1.0;
         marker_msg.color.b = 0.2;
 
-        marker_msg.pose.position.x = 0.3668;
-        marker_msg.pose.position.y = -0.1655;
-        marker_msg.pose.position.z = -0.0030;
+        marker_msg.pose.position.x = x;
+        marker_msg.pose.position.y = y;
+        marker_msg.pose.position.z = z;
 
         //Publish
         RCLCPP_INFO(node->get_logger(), "Publishing Sphere");
