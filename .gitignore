@@ -20,3 +20,5 @@ src/depth_predict/densedepth/__pycache__
 src/map/output
 src/endoscope/data
 src/depth_predict/densedepth/__pycache__
+src/experiment/output
+src/depth_predict/densedepth/__pycache__/test.cpython-36.pyc

@@ -26,11 +26,13 @@ class Predict(Node):
         cv_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
         self.test.input_image(cv_image)
         outputs = self.test.depth_predict()
-        self.cv2image_publish(outputs[0])
+        self.cv2image_publish(outputs[0], msg.header.stamp)
         # self.test.display_images(outputs)
 
-    def cv2image_publish(self, image):
-        self.pub.publish(self.bridge.cv2_to_imgmsg(image, "32FC1"))
+    def cv2image_publish(self, image, stamp):
+        msg = self.bridge.cv2_to_imgmsg(image, "32FC1")
+        msg.header.stamp = stamp
+        self.pub.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

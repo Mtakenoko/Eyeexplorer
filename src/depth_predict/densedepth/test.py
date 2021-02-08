@@ -32,7 +32,7 @@ class Test(object):
     def input_image(self, cvimage):
         from utils import load_cvimage
         self.inputs = load_cvimage(cvimage)
-        print('\nLoaded ({0}) images of size {1}.'.format(self.inputs.shape[0], self.inputs.shape[1:]))
+        # print('\nLoaded ({0}) images of size {1}.'.format(self.inputs.shape[0], self.inputs.shape[1:]))
 
     def depth_predict(self):
         from utils import predict
