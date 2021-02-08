@@ -228,6 +228,31 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# gridmap_creator2 node
+add_executable(gridmap_creator2
+  src/gridmap_creator2.cpp
+  option/options_gridmap.cpp
+)
+target_link_libraries(gridmap_creator2 
+  ${OCTOMAP_LIBRARIES}
+)
+ament_target_dependencies(gridmap_creator2
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "nav_msgs"
+  "visualization_msgs"
+  "message_filters"
+  "octomap"
+  "OpenCV"
+  "OpenMP"
+  "cv_bridge"
+)
+install(TARGETS
+  gridmap_creator2
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # pointcloud_to_pcd node
 # スタンドアローンノードの実行ファイルをコンパイルする
 add_executable(pointcloud_to_pcd

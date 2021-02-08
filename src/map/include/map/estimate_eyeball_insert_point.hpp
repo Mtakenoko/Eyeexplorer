@@ -60,7 +60,7 @@ Estimation_EyeBall::Estimation_EyeBall()
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(history_policy, depth));
     qos.reliability(reliability_policy);
 
-    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("EyeBall", 10);
+    publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("EyeBall", qos);
 
     subscription_pointcloud_ = this->create_subscription<visualization_msgs::msg::MarkerArray>(
         "/occupancy_grid/marker", qos,
@@ -174,7 +174,7 @@ void Estimation_EyeBall::estimate()
 
     printf("Estimation Pos [%f %f %f], r : %f\n", x_est, y_est, z_est, r_est);
 
-    if (r_est < 0.014 && r_est > 0.01)
+    if (r_est < 0.020 && r_est > 0.01)
     {
         // 大きさ
         eye_shape.Scale.at<float>(0) = r_est * 2.;
