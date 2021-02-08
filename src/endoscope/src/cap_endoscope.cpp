@@ -220,6 +220,7 @@ int main(int argc, char *argv[])
     // Initialize a shared pointer to an Image message.
     auto msg = std::make_unique<sensor_msgs::msg::Image>();
     msg->is_bigendian = false;
+    msg->header.stamp = rclcpp::Clock().now();
     // Get the frame from the video capture.
     cap >> frame;
     if (!Is_ROI_Setted)
@@ -256,6 +257,7 @@ int main(int argc, char *argv[])
       }
       // Publish the image message and increment the frame_id.
       pub->publish(std::move(*msg));
+      std::cout << "msg.sec : [" << msg->header.stamp.sec << ", " << msg->header.stamp.nanosec << "]" << std::endl;
       RCLCPP_INFO(node_logger, "Publishing image #%zd", i);
       ++i;
     }
