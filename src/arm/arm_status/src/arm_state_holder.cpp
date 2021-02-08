@@ -5,6 +5,7 @@
 #include <rclcpp/clock.hpp>
 
 #include <geometry_msgs/msg/transform.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -13,9 +14,7 @@
 
 using namespace std::chrono_literals;
 
-#define DELAY_TIME 100    //[ms]
-
-geometry_msgs::msg::Transform tip_msg;
+#define DELAY_TIME 100 //[ms]
 
 int main(int argc, char *argv[])
 {
@@ -53,15 +52,17 @@ int main(int argc, char *argv[])
     buffer_.canTransform(target_frame, source_frame, tf2::TimePoint(), tf2::durationFromSec(1.0));
 
     std::string topic_pub_tip("endoscope_transform");
+    std::string topic_pub_tip_stamped("endoscope_transformstamped");
     RCLCPP_INFO(node->get_logger(), "Publishing data on topic '%s'", topic_pub_tip.c_str());
-    auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos); // Create the image publisher with our custom QoS profile.
+    auto pub_tip = node->create_publisher<geometry_msgs::msg::Transform>(topic_pub_tip, qos);
+    auto pub_tip_stamped = node->create_publisher<geometry_msgs::msg::TransformStamped>(topic_pub_tip_stamped, qos);
 
     const int end_timing = DELAY_TIME; //[ms]だけ送らせて配信する
     double x[end_timing], y[end_timing], z[end_timing];
     double qx[end_timing], qy[end_timing], qz[end_timing], qw[end_timing];
     bool PUB_START = false;
     int timing = 0;
-    
+
     // lanuchファイルで立ち上げる時にまだ準備できていないときがあるので、少し待つ
     sleep(1);
 
@@ -69,16 +70,20 @@ int main(int argc, char *argv[])
     {
         try
         {
-            geometry_msgs::msg::TransformStamped TransformStamped;
-            TransformStamped = buffer_.lookupTransform(target_frame, source_frame, tf2::TimePoint());
+            geometry_msgs::msg::Transform tip_msg;
+            geometry_msgs::msg::TransformStamped tip_msg_stamped;
 
-            x[timing] = TransformStamped.transform.translation.x;
-            y[timing] = TransformStamped.transform.translation.y;
-            z[timing] = TransformStamped.transform.translation.z;
-            qx[timing] = TransformStamped.transform.rotation.x;
-            qy[timing] = TransformStamped.transform.rotation.y;
-            qz[timing] = TransformStamped.transform.rotation.z;
-            qw[timing] = TransformStamped.transform.rotation.w;
+            geometry_msgs::msg::TransformStamped transformStamped;
+            transformStamped = buffer_.lookupTransform(target_frame, source_frame, tf2::TimePoint());
+            tip_msg_stamped = transformStamped;
+
+            x[timing] = transformStamped.transform.translation.x;
+            y[timing] = transformStamped.transform.translation.y;
+            z[timing] = transformStamped.transform.translation.z;
+            qx[timing] = transformStamped.transform.rotation.x;
+            qy[timing] = transformStamped.transform.rotation.y;
+            qz[timing] = transformStamped.transform.rotation.z;
+            qw[timing] = transformStamped.transform.rotation.w;
             // printf("position_now   = [%0.4f %0.4f %0.4f]\n", x[timing], y[timing], z[timing]);
 
             if (PUB_START)
@@ -108,6 +113,8 @@ int main(int argc, char *argv[])
                     timing++;
                 }
                 pub_tip->publish(tip_msg);
+                pub_tip_stamped->publish(tip_msg_stamped);
+                // std::cout << "msg.sec[ " << transformStamped.header.stamp.sec << ", " << transformStamped.header.stamp.nanosec << std::endl;
             }
 
             if (!PUB_START)
@@ -117,7 +124,7 @@ int main(int argc, char *argv[])
         }
         catch (tf2::TransformException &ex)
         {
-            RCLCPP_ERROR(node_logger, "tf2 error: %s", ex.what());
+            // RCLCPP_ERROR(node_logger, "tf2 error: %s", ex.what());
             // return 0;
         }
         // Do some work in rclcpp and wait for more to come in.
