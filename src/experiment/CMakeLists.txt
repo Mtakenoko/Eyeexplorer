@@ -92,6 +92,23 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# pull_endoscope node
+add_executable(pull_endoscope
+  src/pullEndoscope_main.cpp
+  src/pullEndoscope.cpp
+)
+ament_target_dependencies(pull_endoscope
+  "rclcpp"
+  "sensor_msgs"
+  "geometry_msgs"
+  "visualization_msgs"
+  "OpenCV"
+)
+install(TARGETS
+  pull_endoscope
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
