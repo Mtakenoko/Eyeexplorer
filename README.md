@@ -184,6 +184,7 @@ ros2 run map pullout_endoscope
 内視鏡深度画像と順運動学での位置姿勢を用いてワールド座標系での占有確率マップを作成する
 ```
 ros2 run map gridmap_creator
+ros2 run map gridmap_creator --resol 0.001 --prob-hit 0.6 --occ 0.7
 ```
 ### option
 基本的には`-h`オプションをして確認してください。
