@@ -25,7 +25,7 @@ def generate_launch_description():
         # Reconstructor
         # Node(package='endoscope', node_executable='reconstructor'),
         # Esitimate Insertion Point
-        Node(package='map', node_executable='eyeball_publisher'),
+        # Node(package='map', node_executable='eyeball_publisher'),
         # Esitimate Insertion Point
         # Node(package='map', node_executable='eyeball_estimator_insertion_point'),
         # Pullout

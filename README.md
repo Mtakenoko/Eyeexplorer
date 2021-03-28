@@ -76,7 +76,7 @@ ros2 run calibration arm_param_calibrator
 ```
 使い方としては、<br>
 「ARマーカを撮影→setボタン→新しいARマーカーを撮影→setボタン→（複数繰り返し）→calibrateボタン」<br>
-みたいな感じ。結果は`calibration/Output/offset.txt`に出力されます。
+みたいな感じです。結果は`calibration/Output/offset.txt`に出力されます。この結果を運動学に反映させるには、`src/arm/arm_status/offset/calib_offset.txt`として保存してください。すでに`calib_offset.txt`に既にデータがある場合は、そこに出力結果を足し算して保存してください。
 
 ## 時間キャリブレーション
 TS-01からの入力とカメラ画像の入力の遅延時間をおおまかに計算するキャリブレーションソフト。
@@ -284,3 +284,59 @@ ros2 bag play workspace/ros2_eyeexplorer/rosbag2/depth_create0.bag/
 ```
 ros2 bag record -o  workspace/ros2_eyeexplorer/rosbag2/hoge.bag /joint_states /endoscope_image
 ```
+
+# 引き継ぎ用
+## 簡単なデモ
+とりあえず動かしてみたい時用に、コマンドのみ列挙していきます。詳細は上の部分を見てください、
+### TS-01接続
+```
+ros2 run ts01 ts01_manager
+```
+### 内視鏡キャプチャ
+```
+ros2 run endoscope cap_endoscope -c 2
+```
+### ロボット運動学
+```
+ros2 launch workspace/ros2_eyeexplorer/src/arm/arm_rviz/launch/arm_FK.launch.py 
+```
+
+### 可視化ソフトRviz2立ち上げ
+```
+rviz2 workspace/ros2_eyeexplorer/rviz2/eyeexplorer2.rviz 
+```
+### 内視鏡画像の深度推定
+DenseDpethを動かすための仮想環境の立ち上げ
+```
+source /home/takeyama/workspace/my_env/bin/activate
+```
+深度推定
+```
+python /home/takeyama/workspace/ros2_eyeexplorer/src/depth_predict/densedepth/predict.py
+```
+
+### 占有確率マップの作成
+```
+ros2 run map gridmap_creator --resol 0.001 --prob-hit 0.6 --occ 0.7
+```
+### 挿入孔推定
+```
+ros2 run arm_status insertpoint_estimator 
+```
+
+### 眼球位置形状推定
+```
+ros2 run map eyeball_estimator_insertion_point 
+```
+
+## ビルド方法
+ROS2ではcolconを用いてビルドを行います。パッケージを選択してビルドする例は下記のとおりです。（arm_statusがパッケージ名）。
+```
+colcon build --packages-select arm_status
+```
+
+## 注意事項
+- ロボットのエンコーダ部のコネクタが弱っていて、起動してもエンコーダの値がとれていないことが結構あります。都度コネクタ部分を触ったり接続しなおしてみると治るのでやってみてください。
+- なにかおかしいことが起きた（なぜか動かない、止まっている）場合は、順運動学ノードが止まっている可能性があります。そのため順運動学ノードを再度起動してください。ただ順運動学ノードを止めると今度はTS01マネージャーが止まってしまいます。そのため結果的には、TS01マネージャーと順運動学をどちらも立ち上げてください。
+- DenseDepthによる学習などのソースコードはここにはありません。眼球モデル向けのDenseDepthは[こちら](https://github.com/Mtakenoko/DenseDepth)にあります。使い方はREADMEを参照してください。要求スペックを満たしているPCにて適応してみてください。トレーニングデータは別途お送りします（来なければtakehaya.724@gmail.comまでお願いします）。
+- データオーグメンテーションのソースコードは[endoscope_augmentation](https://github.com/Mtakenoko/endoscope_augmentation)にあります。使い方はREADMEを参照してください。

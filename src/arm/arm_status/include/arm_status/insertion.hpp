@@ -148,9 +148,9 @@ public:
         cv::Point3f delta_PpT = delta_Pp - n.dot(delta_Pp) * n;
 
         // 更新式
-        // update = 0.995 * update + 0.005 * p * delta_Pp.dot(n);
+        // update = delta_Pp.dot(n);
         // update = 0.995 * update + 0.005 * p * delta_Pp.dot(pre_n);
-        update = 0.995 * update + 0.005 * delta_PwT.dot(delta_PpT);
+        update = delta_PwT.dot(delta_PpT);
         now_d = pre_d * pre_n.dot(n) + delta_Pw.dot(n) + p * update;
         cv::Point3f output = Pw - now_d * n;
 
